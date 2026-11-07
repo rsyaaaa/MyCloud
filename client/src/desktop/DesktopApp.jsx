@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useVault } from '../context/VaultContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import GalleryPage from '../pages/GalleryPage';
@@ -7,6 +8,10 @@ import VideoHubPage from '../pages/VideoHubPage';
 import VaultPage from '../pages/VaultPage';
 import AlbumsPage from '../pages/AlbumsPage';
 import AdminPage from '../pages/AdminPage';
+import TrashPage from '../pages/TrashPage';
+import MediaContextMenu from '../components/MediaContextMenu';
+import MediaDetailModal from '../components/MediaDetailModal';
+import AvatarModal from '../components/AvatarModal';
 
 export default function DesktopApp({
   onOpenUpload,
@@ -19,18 +24,43 @@ export default function DesktopApp({
   onDeleteMedia,
   onRenameMedia
 }) {
-  const { user } = useAuth();
-  const [currentTab, setTab] = useState('gallery'); // 'gallery', 'videos', 'albums', 'vault', 'admin'
+  const { user, refreshUser } = useAuth();
+  const { notifyTabChange } = useVault();
+  const [currentTab, setCurrentTabState] = useState('gallery'); // 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Context Menu & Modals
+  const [contextMenu, setContextMenu] = useState({ isOpen: false, media: null, position: { x: 0, y: 0 } });
+  const [detailModalMedia, setDetailModalMedia] = useState(null);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+
+  const setTab = (newTab) => {
+    setCurrentTabState(newTab);
+    notifyTabChange(newTab);
+  };
+
+  const handleOpenContextMenu = (e, media) => {
+    setContextMenu({
+      isOpen: true,
+      media,
+      position: { x: e.clientX, y: e.clientY }
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu((prev) => ({ ...prev, isOpen: false }));
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFFBF5]">
+    <div className="min-h-screen flex flex-col bg-[#FFFBF5] dark:bg-[#171514] text-[#1C1917] dark:text-[#F5F2EB] transition-colors">
       {/* Top Navbar */}
       <Navbar
         onOpenUpload={onOpenUpload}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onOpenQuotaModal={onOpenQuotaModal}
+        onSelectTab={setTab}
+        onOpenAvatarModal={() => setAvatarModalOpen(true)}
       />
 
       <div className="flex flex-1">
@@ -42,7 +72,7 @@ export default function DesktopApp({
         />
 
         {/* Main Desktop Content Area */}
-        <main className="flex-1 overflow-y-auto min-h-[calc(100vh-64px)]">
+        <main className="flex-1 overflow-y-auto min-h-[calc(100vh-64px)] animate-enter">
           {currentTab === 'gallery' && (
             <GalleryPage
               searchQuery={searchQuery}
@@ -52,6 +82,8 @@ export default function DesktopApp({
               onOrganize={onOrganizeMedia}
               onDelete={onDeleteMedia}
               onRename={onRenameMedia}
+              onContextMenu={handleOpenContextMenu}
+              onShowDetail={(media) => setDetailModalMedia(media)}
             />
           )}
 
@@ -63,6 +95,8 @@ export default function DesktopApp({
               onOrganize={onOrganizeMedia}
               onDelete={onDeleteMedia}
               onRename={onRenameMedia}
+              onContextMenu={handleOpenContextMenu}
+              onShowDetail={(media) => setDetailModalMedia(media)}
             />
           )}
 
@@ -74,6 +108,8 @@ export default function DesktopApp({
               onOrganize={onOrganizeMedia}
               onDelete={onDeleteMedia}
               onRename={onRenameMedia}
+              onContextMenu={handleOpenContextMenu}
+              onShowDetail={(media) => setDetailModalMedia(media)}
             />
           )}
 
@@ -83,7 +119,13 @@ export default function DesktopApp({
               onUnlockMedia={onUnlockMedia}
               onDeleteMedia={onDeleteMedia}
               onRenameMedia={onRenameMedia}
+              onContextMenu={handleOpenContextMenu}
+              onShowDetail={(media) => setDetailModalMedia(media)}
             />
+          )}
+
+          {currentTab === 'trash' && (
+            <TrashPage onRefreshQuota={refreshUser} />
           )}
 
           {currentTab === 'admin' && user?.role === 'admin' && (
@@ -91,7 +133,37 @@ export default function DesktopApp({
           )}
         </main>
       </div>
+
+      {/* Floating Right-Click Context Menu */}
+      <MediaContextMenu
+        isOpen={contextMenu.isOpen}
+        onClose={handleCloseContextMenu}
+        media={contextMenu.media}
+        position={contextMenu.position}
+        isMobile={false}
+        isVault={currentTab === 'vault'}
+        onToggleFavorite={onToggleFavorite}
+        onLock={onLockMedia}
+        onUnlock={onUnlockMedia}
+        onOrganize={onOrganizeMedia}
+        onRename={onRenameMedia}
+        onDelete={onDeleteMedia}
+        onShowDetail={(media) => setDetailModalMedia(media)}
+      />
+
+      {/* Media Detail Modal */}
+      <MediaDetailModal
+        isOpen={Boolean(detailModalMedia)}
+        onClose={() => setDetailModalMedia(null)}
+        media={detailModalMedia}
+      />
+
+      {/* Avatar Change Modal */}
+      <AvatarModal
+        isOpen={avatarModalOpen}
+        onClose={() => setAvatarModalOpen(false)}
+        onUpdated={refreshUser}
+      />
     </div>
   );
 }
-

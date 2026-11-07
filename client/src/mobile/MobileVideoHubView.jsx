@@ -4,6 +4,7 @@ import MobileMediaCard from './MobileMediaCard';
 import MobileMediaListItem from './MobileMediaListItem';
 import MobilePagination from './MobilePagination';
 import { api } from '../api';
+import { MediaGridSkeleton, MediaListSkeleton } from '../components/SkeletonLoader';
 
 export default function MobileVideoHubView({
   onOpenViewer,
@@ -17,7 +18,6 @@ export default function MobileVideoHubView({
   const [genres, setGenres] = useState([]);
   const [selectedGenreId, setSelectedGenreId] = useState(null);
   const [sortOption, setSortOption] = useState('newest');
-  const [aspectFilter, setAspectFilter] = useState('all'); // 'all', 'portrait', 'landscape'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -39,14 +39,7 @@ export default function MobileVideoHubView({
         api.listCategories('genre')
       ]);
 
-      let list = videosRes.media || [];
-      if (aspectFilter === 'portrait') {
-        list = list.filter(v => v.is_portrait === 1);
-      } else if (aspectFilter === 'landscape') {
-        list = list.filter(v => v.is_portrait === 0);
-      }
-
-      setVideos(list);
+      setVideos(videosRes.media || []);
       setGenres(catsRes.categories || []);
       setCurrentPage(1);
     } catch (e) {
@@ -58,7 +51,7 @@ export default function MobileVideoHubView({
 
   useEffect(() => {
     loadData();
-  }, [selectedGenreId, sortOption, aspectFilter]);
+  }, [selectedGenreId, sortOption]);
 
   const totalItems = videos.length;
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
@@ -68,17 +61,17 @@ export default function MobileVideoHubView({
   }, [videos, currentPage, pageSize]);
 
   return (
-    <div className="p-4 pb-24 max-w-md mx-auto">
+    <div className="p-4 pb-24 max-w-md mx-auto animate-enter">
       {/* Title */}
       <div className="mb-3">
         <div className="flex items-center gap-2">
           <Film className="w-5 h-5 text-[#C2410C]" />
-          <h2 className="font-serif font-bold text-xl text-[#1C1917]">
+          <h2 className="font-serif font-bold text-xl text-[#1C1917] dark:text-[#F5F2EB]">
             Video Streaming Hub
           </h2>
         </div>
-        <p className="text-[12px] text-[#57534E] mt-0.5">
-          Pemutar video native 9:16 portrait & 16:9 seekable HTTP range.
+        <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
+          Pemutar video native aspect-ratio & HTTP range streaming seekable.
         </p>
       </div>
 
@@ -91,7 +84,7 @@ export default function MobileVideoHubView({
               !selectedGenreId ? 'chip-filter-active' : ''
             }`}
           >
-            Semua Genre
+            Semua
           </button>
           {genres.map((g) => (
             <button
@@ -107,53 +100,36 @@ export default function MobileVideoHubView({
         </div>
       )}
 
-      {/* Orientation + View Mode Bar */}
-      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white rounded-[6px] border border-[#E7E5E4]">
-        {/* Aspect Ratio Filter */}
-        <div className="flex items-center gap-1 bg-[#FFFBF5] p-0.5 rounded-[4px] border border-[#D6D3D1]">
-          <button
-            onClick={() => setAspectFilter('all')}
-            className={`px-2 py-1 text-[11px] font-semibold rounded-[3px] transition-colors ${
-              aspectFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
-            }`}
-          >
-            Semua
-          </button>
-          <button
-            onClick={() => setAspectFilter('portrait')}
-            className={`px-2 py-1 text-[11px] font-semibold rounded-[3px] transition-colors ${
-              aspectFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
-            }`}
-          >
-            9:16
-          </button>
-          <button
-            onClick={() => setAspectFilter('landscape')}
-            className={`px-2 py-1 text-[11px] font-semibold rounded-[3px] transition-colors ${
-              aspectFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
-            }`}
-          >
-            16:9
-          </button>
-        </div>
+      {/* Controls Bar: Sort & View Mode */}
+      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white dark:bg-[#23201D] rounded-[6px] border border-[#E7E5E4] dark:border-[#3E3834]">
+        <select
+          value={sortOption}
+          onChange={(e) => setSortOption(e.target.value)}
+          className="input-artisan h-8 text-[12px] py-0 px-2 bg-transparent border-none flex-1"
+        >
+          <option value="newest">Terbaru</option>
+          <option value="oldest">Terlama</option>
+          <option value="duration_desc">Durasi</option>
+          <option value="size_desc">Ukuran</option>
+        </select>
 
         {/* View Switcher: Grid vs Page List */}
-        <div className="flex items-center gap-1 bg-[#FFFBF5] p-0.5 rounded-[4px] border border-[#D6D3D1]">
+        <div className="flex items-center gap-1 bg-[#FFFBF5] dark:bg-[#2E2A26] p-0.5 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834]">
           <button
             onClick={() => setViewMode('grid')}
             className={`p-1.5 rounded-[3px] transition-colors ${
-              viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
+              viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
             }`}
-            title="Grid"
+            title="Grid View"
           >
             <LayoutGrid className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setViewMode('list')}
             className={`p-1.5 rounded-[3px] transition-colors ${
-              viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
+              viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
             }`}
-            title="Page List"
+            title="Page List View"
           >
             <List className="w-3.5 h-3.5" />
           </button>
@@ -162,16 +138,14 @@ export default function MobileVideoHubView({
 
       {/* Videos List / Grid */}
       {loading ? (
-        <div className="text-center py-16 text-[#A8A29E] font-serif text-[15px]">
-          Memuat video...
-        </div>
+        viewMode === 'grid' ? <MediaGridSkeleton count={6} /> : <MediaListSkeleton count={6} />
       ) : paginatedItems.length === 0 ? (
-        <div className="text-center py-16 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-6">
+        <div className="text-center py-16 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-6">
           <Video className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
-          <h4 className="font-serif font-semibold text-base text-[#1C1917]">
+          <h4 className="font-serif font-semibold text-base text-[#1C1917] dark:text-[#F5F2EB]">
             Belum ada video
           </h4>
-          <p className="text-[12px] text-[#57534E] mt-1">
+          <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
             Unggah file video MP4/MKV untuk mulai streaming.
           </p>
         </div>
@@ -198,7 +172,7 @@ export default function MobileVideoHubView({
           )}
 
           {viewMode === 'list' && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {paginatedItems.map((vid) => {
                 const globalIdx = videos.findIndex((v) => v.id === vid.id);
                 return (
@@ -217,13 +191,14 @@ export default function MobileVideoHubView({
             </div>
           )}
 
+          {/* Pagination */}
           <MobilePagination
             currentPage={currentPage}
             totalPages={totalPages}
             totalItems={totalItems}
             pageSize={pageSize}
-            onPageChange={(p) => {
-              setCurrentPage(p);
+            onPageChange={(page) => {
+              setCurrentPage(page);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />
@@ -232,4 +207,3 @@ export default function MobileVideoHubView({
     </div>
   );
 }
-

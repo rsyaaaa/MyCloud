@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Film, Filter, Tag, Play, Heart, Clock } from 'lucide-react';
+import { Video, Film, Tag } from 'lucide-react';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
+import { MediaGridSkeleton } from '../components/SkeletonLoader';
 
-export default function VideoHubPage({ onOpenViewer, onToggleFavorite, onLock, onOrganize, onDelete, onRename }) {
+export default function VideoHubPage({
+  onOpenViewer,
+  onToggleFavorite,
+  onLock,
+  onOrganize,
+  onDelete,
+  onRename
+}) {
   const [videos, setVideos] = useState([]);
   const [genres, setGenres] = useState([]);
   const [selectedGenreId, setSelectedGenreId] = useState(null);
   const [sortOption, setSortOption] = useState('newest');
-  const [aspectFilter, setAspectFilter] = useState('all'); // 'all', 'portrait', 'landscape'
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
@@ -27,14 +34,7 @@ export default function VideoHubPage({ onOpenViewer, onToggleFavorite, onLock, o
         api.listCategories('genre')
       ]);
 
-      let list = videosRes.media || [];
-      if (aspectFilter === 'portrait') {
-        list = list.filter(v => v.is_portrait === 1);
-      } else if (aspectFilter === 'landscape') {
-        list = list.filter(v => v.is_portrait === 0);
-      }
-
-      setVideos(list);
+      setVideos(videosRes.media || []);
       setGenres(catsRes.categories || []);
     } catch (e) {
       console.error('Failed to load video hub:', e);
@@ -45,57 +45,30 @@ export default function VideoHubPage({ onOpenViewer, onToggleFavorite, onLock, o
 
   useEffect(() => {
     loadData();
-  }, [selectedGenreId, sortOption, aspectFilter]);
+  }, [selectedGenreId, sortOption]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Video Hub Header */}
-      <div className="mb-6 pb-4 border-b border-[#E7E5E4] flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834] flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <Film className="w-6 h-6 text-[#C2410C]" />
-            <h2 className="font-serif font-bold text-2xl text-[#1C1917]">
+            <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB]">
               Video Streaming Hub
             </h2>
           </div>
-          <p className="text-[13px] text-[#57534E] mt-1">
-            Streaming instan lokal dengan HTTP Range seekable, native portrait 9:16 & 16:9 landscape.
+          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1">
+            Streaming instan lokal dengan HTTP Range seekable dan aspect-ratio native.
           </p>
         </div>
 
-        {/* Orientation & Sort Controls */}
+        {/* Sort Controls */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-white p-1 rounded-[4px] border border-[#D6D3D1]">
-            <button
-              onClick={() => setAspectFilter('all')}
-              className={`px-2.5 py-1 text-[12px] font-semibold rounded-[3px] transition-colors ${
-                aspectFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
-              }`}
-            >
-              Semua Rasio
-            </button>
-            <button
-              onClick={() => setAspectFilter('portrait')}
-              className={`px-2.5 py-1 text-[12px] font-semibold rounded-[3px] transition-colors ${
-                aspectFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
-              }`}
-            >
-              Portrait 9:16
-            </button>
-            <button
-              onClick={() => setAspectFilter('landscape')}
-              className={`px-2.5 py-1 text-[12px] font-semibold rounded-[3px] transition-colors ${
-                aspectFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
-              }`}
-            >
-              Landscape 16:9
-            </button>
-          </div>
-
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="input-artisan h-[34px] py-0 text-[13px] bg-white"
+            className="input-artisan h-[36px] py-0 text-[13px] bg-white dark:bg-[#23201D]"
           >
             <option value="newest">Upload Terbaru</option>
             <option value="oldest">Upload Terlama</option>
@@ -108,7 +81,7 @@ export default function VideoHubPage({ onOpenViewer, onToggleFavorite, onLock, o
       {/* Genre Tag Chips */}
       {genres.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6">
-          <span className="text-[12px] font-semibold text-[#57534E] flex items-center gap-1 shrink-0">
+          <span className="text-[12px] font-semibold text-[#57534E] dark:text-[#A8A29E] flex items-center gap-1 shrink-0">
             <Tag className="w-3.5 h-3.5 text-[#365314]" /> Genre:
           </span>
           <button
@@ -131,16 +104,14 @@ export default function VideoHubPage({ onOpenViewer, onToggleFavorite, onLock, o
 
       {/* Video Grid */}
       {loading ? (
-        <div className="text-center py-20 text-[#A8A29E] font-serif text-lg">
-          Memuat koleksi video...
-        </div>
+        <MediaGridSkeleton count={8} />
       ) : videos.length === 0 ? (
-        <div className="text-center py-20 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-8">
+        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
           <Video className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917]">
+          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
             Belum ada video di perpustakaan
           </h4>
-          <p className="text-[13px] text-[#57534E] mt-1 max-w-sm mx-auto">
+          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
             Unggah file video MP4, MKV, MOV melalui tombol Unggah Media untuk menikmati streaming native.
           </p>
         </div>
@@ -163,4 +134,3 @@ export default function VideoHubPage({ onOpenViewer, onToggleFavorite, onLock, o
     </div>
   );
 }
-

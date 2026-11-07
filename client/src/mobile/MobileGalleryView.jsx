@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Image, Video, Heart, LayoutGrid, List, Sparkles, Filter } from 'lucide-react';
+import { Image, Video, Heart, LayoutGrid, List } from 'lucide-react';
 import MemoriesCarousel from '../components/MemoriesCarousel';
 import MobileMediaCard from './MobileMediaCard';
 import MobileMediaListItem from './MobileMediaListItem';
 import MobilePagination from './MobilePagination';
 import { api } from '../api';
+import { MediaGridSkeleton, MediaListSkeleton, MemoriesSkeleton } from '../components/SkeletonLoader';
 
 export default function MobileGalleryView({
   searchQuery,
@@ -13,7 +14,8 @@ export default function MobileGalleryView({
   onLock,
   onOrganize,
   onDelete,
-  onRename
+  onRename,
+  onLongPress
 }) {
   const [mediaList, setMediaList] = useState([]);
   const [memories, setMemories] = useState([]);
@@ -40,7 +42,7 @@ export default function MobileGalleryView({
 
       setMediaList(mediaRes.media || []);
       setMemories(memRes.memories || []);
-      setCurrentPage(1); // reset to page 1 on filter change
+      setCurrentPage(1);
     } catch (err) {
       console.error('Failed to load mobile gallery:', err);
     } finally {
@@ -61,15 +63,21 @@ export default function MobileGalleryView({
   }, [mediaList, currentPage, pageSize]);
 
   return (
-    <div className="p-4 pb-24 max-w-md mx-auto">
+    <div className="p-4 pb-24 max-w-md mx-auto animate-enter">
       {/* Memories Engine Carousel */}
-      {!searchQuery && memories.length > 0 && (
-        <div className="mb-4">
-          <MemoriesCarousel
-            memories={memories}
-            onSelectMedia={(items, index) => onOpenViewer(items, index)}
-          />
-        </div>
+      {!searchQuery && (
+        loading ? (
+          <div className="mb-4">
+            <MemoriesSkeleton />
+          </div>
+        ) : memories.length > 0 ? (
+          <div className="mb-4">
+            <MemoriesCarousel
+              memories={memories}
+              onSelectMedia={(items, index) => onOpenViewer(items, index)}
+            />
+          </div>
+        ) : null
       )}
 
       {/* Mobile Toolbar: Filter Chips */}
@@ -108,14 +116,14 @@ export default function MobileGalleryView({
         </button>
       </div>
 
-      {/* Second Line Toolbar: Sort & View Mode Switcher (Grid vs Page List) */}
-      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white rounded-[6px] border border-[#E7E5E4]">
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] text-[#57534E]">Urut:</span>
+      {/* Second Line Toolbar: Sort & View Mode Switcher */}
+      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white dark:bg-[#23201D] rounded-[6px] border border-[#E7E5E4] dark:border-[#3E3834]">
+        <div className="flex items-center gap-1 flex-1">
+          <span className="text-[11px] text-[#57534E] dark:text-[#A8A29E]">Urut:</span>
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="input-artisan h-7 py-0 text-[11px] px-2 bg-white"
+            className="input-artisan h-7 py-0 text-[11px] px-2 bg-transparent border-none"
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
@@ -125,13 +133,13 @@ export default function MobileGalleryView({
         </div>
 
         {/* View Mode Toggle: Grid vs Page List */}
-        <div className="flex items-center gap-1 bg-[#FFFBF5] p-1 rounded-[4px] border border-[#D6D3D1]">
+        <div className="flex items-center gap-1 bg-[#FFFBF5] dark:bg-[#2E2A26] p-1 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834]">
           <button
             onClick={() => setViewMode('grid')}
             className={`p-1.5 rounded-[3px] transition-colors ${
               viewMode === 'grid'
                 ? 'bg-[#C2410C] text-white'
-                : 'text-[#57534E] hover:text-[#1C1917]'
+                : 'text-[#57534E] dark:text-[#A8A29E]'
             }`}
             title="Grid View"
           >
@@ -142,7 +150,7 @@ export default function MobileGalleryView({
             className={`p-1.5 rounded-[3px] transition-colors ${
               viewMode === 'list'
                 ? 'bg-[#C2410C] text-white'
-                : 'text-[#57534E] hover:text-[#1C1917]'
+                : 'text-[#57534E] dark:text-[#A8A29E]'
             }`}
             title="Page List View"
           >
@@ -153,16 +161,14 @@ export default function MobileGalleryView({
 
       {/* Main Feed Content */}
       {loading ? (
-        <div className="text-center py-16 text-[#A8A29E] font-serif text-[15px]">
-          Memuat galeri...
-        </div>
+        viewMode === 'grid' ? <MediaGridSkeleton count={6} /> : <MediaListSkeleton count={6} />
       ) : paginatedItems.length === 0 ? (
-        <div className="text-center py-16 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-6">
+        <div className="text-center py-16 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-6">
           <Image className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
-          <h4 className="font-serif font-semibold text-base text-[#1C1917]">
+          <h4 className="font-serif font-semibold text-base text-[#1C1917] dark:text-[#F5F2EB]">
             Belum ada berkas media
           </h4>
-          <p className="text-[12px] text-[#57534E] mt-1">
+          <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
             Gunakan tombol <strong>+ Unggah</strong> di atas untuk menambahkan foto/video.
           </p>
         </div>
@@ -183,13 +189,14 @@ export default function MobileGalleryView({
                     onOrganize={onOrganize}
                     onDelete={onDelete}
                     onRename={onRename}
+                    onLongPress={onLongPress}
                   />
                 );
               })}
             </div>
           )}
 
-          {/* View Mode: Page List View (Single Column List) */}
+          {/* View Mode: Page List View */}
           {viewMode === 'list' && (
             <div className="space-y-2.5">
               {paginatedItems.map((media) => {
@@ -204,6 +211,7 @@ export default function MobileGalleryView({
                     onOrganize={onOrganize}
                     onDelete={onDelete}
                     onRename={onRename}
+                    onLongPress={onLongPress}
                   />
                 );
               })}
@@ -226,4 +234,3 @@ export default function MobileGalleryView({
     </div>
   );
 }
-

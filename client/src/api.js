@@ -45,6 +45,15 @@ export const api = {
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),
   getMe: () => apiRequest('/auth/me'),
 
+  // Avatar System
+  getAvatarUrl: (user) => {
+    if (!user) return '/avatars/user_default.jpg';
+    if (user.avatar_url) return user.avatar_url;
+    return user.role === 'admin' ? '/avatars/admin_default.jpg' : '/avatars/user_default.jpg';
+  },
+  uploadAvatar: (formData) => apiRequest('/auth/avatar', { method: 'POST', body: formData }),
+  resetAvatar: () => apiRequest('/auth/avatar', { method: 'DELETE' }),
+
   // Safe Vault PIN
   setupPin: (pin) => apiRequest('/auth/vault/setup-pin', { method: 'POST', body: JSON.stringify({ pin }) }),
   verifyPin: (pin) => apiRequest('/auth/vault/verify-pin', { method: 'POST', body: JSON.stringify({ pin }) }),
@@ -61,6 +70,12 @@ export const api = {
   unlockMedia: (id, vaultToken) => apiRequest(`/media/${id}/unlock`, { method: 'POST', vaultToken }),
   deleteMedia: (id, vaultToken) => apiRequest(`/media/${id}`, { method: 'DELETE', vaultToken }),
   listVaultMedia: (vaultToken) => apiRequest('/media/vault/list', { vaultToken }),
+
+  // Trash System (Folder Sampah)
+  listTrash: () => apiRequest('/media/trash/list'),
+  restoreFromTrash: (id) => apiRequest(`/media/trash/${id}/restore`, { method: 'POST' }),
+  deletePermanently: (id) => apiRequest(`/media/trash/${id}/permanent`, { method: 'DELETE' }),
+  emptyTrash: () => apiRequest('/media/trash/empty', { method: 'POST' }),
 
   // Streaming URLs
   getStreamUrl: (id) => `${API_BASE}/stream/${id}`,

@@ -101,11 +101,11 @@ export default function App() {
   };
 
   const handleDeleteMedia = async (id, vaultToken) => {
-    if (!window.confirm('Yakin ingin menghapus file ini secara permanen dari server?')) return;
+    if (!window.confirm('Pindahkan file ini ke Tempat Sampah (akan dihapus permanen dalam 31 hari)?')) return;
 
     try {
       await api.deleteMedia(id, vaultToken);
-      addToast('File berhasil dihapus permanen.', 'success');
+      addToast('File dipindahkan ke Tempat Sampah.', 'success');
       setViewerOpen(false);
       refreshUser();
     } catch (e) {
@@ -120,8 +120,13 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFFBF5] flex items-center justify-center font-serif text-xl text-[#C2410C]">
-        Memuat MyCloud...
+      <div className="min-h-screen bg-[#FFFBF5] dark:bg-[#171514] flex flex-col items-center justify-center p-6 text-center animate-pulse">
+        <div className="w-16 h-16 rounded-[8px] bg-[#C2410C] text-white flex items-center justify-center font-serif text-2xl font-bold mb-4 shadow-modal">
+          MC
+        </div>
+        <p className="font-serif font-bold text-xl text-[#C2410C]">
+          Memuat MyCloud...
+        </p>
       </div>
     );
   }

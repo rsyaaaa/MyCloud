@@ -157,7 +157,7 @@ router.get('/', authMiddleware, async (req, res) => {
       FROM media_files m
       LEFT JOIN media_category_rel r ON m.id = r.media_id
       LEFT JOIN categories_folders c ON r.category_id = c.id
-      WHERE m.user_id = ? AND m.is_locked = 0
+      WHERE m.user_id = ? AND m.is_locked = 0 AND m.is_trash = 0
     `;
     const params = [req.user.id];
 
@@ -341,7 +341,7 @@ router.post('/:id/unlock', authMiddleware, vaultAuthMiddleware, async (req, res)
   }
 });
 
-// DELETE /api/media/:id
+// DELETE /api/media/:id (Move to Trash / 31-day auto-purge)
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
@@ -353,8 +353,68 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     if (media.is_locked) {
       const vaultToken = req.headers['x-vault-token'] || req.query.vault_token;
       if (!vaultToken) {
-        return res.status(403).json({ error: 'Brankas terkunci. Verifikasi PIN terlebih dahulu untuk menghapus file brankas.' });
+        return res.status(403).json({ error: 'Brankas terkunci. Verifikasi PIN terlebih dahulu untuk memindahkan file brankas ke sampah.' });
       }
+    }
+
+    // Move to Trash (31 days)
+    await db.run(
+      'UPDATE media_files SET is_trash = 1, deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [media.id]
+    );
+
+    return res.json({ message: 'Media berhasil dipindahkan ke Sampah (dihapus permanen otomatis dalam 31 hari).' });
+  } catch (err) {
+    console.error('[Move to Trash] Error:', err);
+    return res.status(500).json({ error: 'Gagal memindahkan media ke sampah.' });
+  }
+});
+
+// GET /api/media/trash/list (List all items in trash)
+router.get('/trash/list', authMiddleware, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT m.*,
+        CAST(MAX(0, 31 - (julianday('now') - julianday(m.deleted_at))) AS INT) as days_left
+       FROM media_files m
+       WHERE m.user_id = ? AND m.is_trash = 1
+       ORDER BY m.deleted_at DESC`,
+      [req.user.id]
+    );
+
+    return res.json({ trash: rows });
+  } catch (err) {
+    console.error('[Trash List] Error:', err);
+    return res.status(500).json({ error: 'Gagal memuat berkas sampah.' });
+  }
+});
+
+// POST /api/media/trash/:id/restore (Restore from trash)
+router.post('/trash/:id/restore', authMiddleware, async (req, res) => {
+  try {
+    const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ? AND is_trash = 1', [req.params.id, req.user.id]);
+    if (!media) {
+      return res.status(404).json({ error: 'Berkas sampah tidak ditemukan.' });
+    }
+
+    await db.run(
+      'UPDATE media_files SET is_trash = 0, deleted_at = NULL WHERE id = ?',
+      [media.id]
+    );
+
+    return res.json({ message: 'Berkas berhasil dipulihkan ke Galeri Utama.' });
+  } catch (err) {
+    console.error('[Restore Trash] Error:', err);
+    return res.status(500).json({ error: 'Gagal memulihkan berkas.' });
+  }
+});
+
+// DELETE /api/media/trash/:id/permanent (Delete permanently from server disk)
+router.delete('/trash/:id/permanent', authMiddleware, async (req, res) => {
+  try {
+    const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ? AND is_trash = 1', [req.params.id, req.user.id]);
+    if (!media) {
+      return res.status(404).json({ error: 'Berkas tidak ditemukan di sampah.' });
     }
 
     // Delete physical files
@@ -374,10 +434,41 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       [media.file_size, req.user.id]
     );
 
-    return res.json({ message: 'Media berhasil dihapus permanen.' });
+    return res.json({ message: 'Berkas berhasil dihapus permanen dari penyimpanan server.' });
   } catch (err) {
-    console.error('[Delete Media] Error:', err);
-    return res.status(500).json({ error: 'Gagal menghapus media.' });
+    console.error('[Permanent Delete] Error:', err);
+    return res.status(500).json({ error: 'Gagal menghapus berkas permanen.' });
+  }
+});
+
+// POST /api/media/trash/empty (Empty all trash for current user)
+router.post('/trash/empty', authMiddleware, async (req, res) => {
+  try {
+    const trashFiles = await db.all('SELECT * FROM media_files WHERE user_id = ? AND is_trash = 1', [req.user.id]);
+
+    let totalDeletedBytes = 0;
+    for (const f of trashFiles) {
+      if (fs.existsSync(f.file_path)) {
+        try { fs.unlinkSync(f.file_path); } catch (e) {}
+      }
+      if (f.thumbnail_path && fs.existsSync(f.thumbnail_path)) {
+        try { fs.unlinkSync(f.thumbnail_path); } catch (e) {}
+      }
+      totalDeletedBytes += f.file_size;
+      await db.run('DELETE FROM media_files WHERE id = ?', [f.id]);
+    }
+
+    if (totalDeletedBytes > 0) {
+      await db.run(
+        'UPDATE users SET used_storage_bytes = MAX(0, used_storage_bytes - ?) WHERE id = ?',
+        [totalDeletedBytes, req.user.id]
+      );
+    }
+
+    return res.json({ message: `Sampah berhasil dikosongkan (${trashFiles.length} berkas dihapus).` });
+  } catch (err) {
+    console.error('[Empty Trash] Error:', err);
+    return res.status(500).json({ error: 'Gagal mengosongkan sampah.' });
   }
 });
 
@@ -391,7 +482,7 @@ router.get('/vault/list', authMiddleware, vaultAuthMiddleware, async (req, res) 
        FROM media_files m
        LEFT JOIN media_category_rel r ON m.id = r.media_id
        LEFT JOIN categories_folders c ON r.category_id = c.id
-       WHERE m.user_id = ? AND m.is_locked = 1
+       WHERE m.user_id = ? AND m.is_locked = 1 AND m.is_trash = 0
        GROUP BY m.id
        ORDER BY m.created_at DESC`,
       [req.user.id]

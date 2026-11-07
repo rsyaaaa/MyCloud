@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -25,6 +26,9 @@ export default {
           bg: '#FFFBF5',
           surface: '#FFFFFF',
           tint: '#FDF6EC',
+          darkBg: '#171514',
+          darkSurface: '#23201D',
+          darkElevated: '#2E2A26',
         },
         stone: {
           subtle: '#E7E5E4',
@@ -32,6 +36,9 @@ export default {
           dark: '#A8A29E',
           text: '#1C1917',
           muted: '#57534E',
+          darkBorder: '#3E3834',
+          darkText: '#F5F2EB',
+          darkMuted: '#A8A29E'
         },
         status: {
           success: '#22C55E',
@@ -52,12 +59,10 @@ export default {
         'xl': '20px',
       },
       boxShadow: {
-        // MarketNest has NO drop shadows by design, except the modal overlay
         'none': 'none',
-        'modal': '0 8px 24px rgba(28, 25, 23, 0.12)',
+        'modal': '0 8px 24px rgba(0, 0, 0, 0.45)',
       }
     },
   },
   plugins: [],
 }
-

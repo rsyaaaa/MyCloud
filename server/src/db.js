@@ -65,6 +65,7 @@ async function initDb() {
       role VARCHAR(20) DEFAULT 'regular_user',
       storage_quota_bytes BIGINT DEFAULT 16106127360,
       used_storage_bytes BIGINT DEFAULT 0,
+      avatar_url TEXT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -84,6 +85,8 @@ async function initDb() {
       is_portrait BOOLEAN DEFAULT 0,
       is_locked BOOLEAN DEFAULT 0,
       is_favorite BOOLEAN DEFAULT 0,
+      is_trash BOOLEAN DEFAULT 0,
+      deleted_at TIMESTAMP WITH TIME ZONE NULL,
       captured_at TIMESTAMP WITH TIME ZONE NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
@@ -120,7 +123,23 @@ async function initDb() {
     );
   `);
 
-  console.log('Database tables verified/initialized in WAL mode.');
+  // Column Migrations for existing databases
+  try {
+    await exec("ALTER TABLE users ADD COLUMN avatar_url TEXT NULL;");
+  } catch (e) {} // Column already exists
+
+  try {
+    await exec("ALTER TABLE media_files ADD COLUMN is_trash BOOLEAN DEFAULT 0;");
+  } catch (e) {}
+
+  try {
+    await exec("ALTER TABLE media_files ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE NULL;");
+  } catch (e) {}
+
+  console.log('Database tables & migrations verified in WAL mode.');
+
+  // Run expired trash cleanup (> 31 days)
+  await cleanExpiredTrash();
 
   // Seed default admin user if none exists
   const existingAdmin = await get("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
@@ -159,12 +178,43 @@ async function initDb() {
   }
 }
 
+/**
+ * Automatically purge trash files deleted > 31 days ago
+ */
+async function cleanExpiredTrash() {
+  try {
+    const expired = await all(
+      `SELECT id, user_id, file_path, thumbnail_path, file_size 
+       FROM media_files 
+       WHERE is_trash = 1 AND deleted_at <= datetime('now', '-31 days')`
+    );
+
+    for (const item of expired) {
+      if (fs.existsSync(item.file_path)) {
+        try { fs.unlinkSync(item.file_path); } catch (e) {}
+      }
+      if (item.thumbnail_path && fs.existsSync(item.thumbnail_path)) {
+        try { fs.unlinkSync(item.thumbnail_path); } catch (e) {}
+      }
+      await run('DELETE FROM media_files WHERE id = ?', [item.id]);
+      await run('UPDATE users SET used_storage_bytes = MAX(0, used_storage_bytes - ?) WHERE id = ?', [item.file_size, item.user_id]);
+    }
+
+    if (expired.length > 0) {
+      console.log(`[Auto-Trash] Bersihkan ${expired.length} file sampah kadaluwarsa (> 31 hari).`);
+    }
+  } catch (err) {
+    console.warn('[Auto-Trash] Gagal membersihkan sampah kadaluwarsa:', err.message);
+  }
+}
+
 module.exports = {
   db,
   run,
   get,
   all,
   exec,
-  initDb
+  initDb,
+  cleanExpiredTrash
 };
 

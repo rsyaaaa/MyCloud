@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Shield, ShieldAlert, ShieldCheck, Lock, Unlock, KeyRound,
-  Trash2, Eye, EyeOff, AlertTriangle, Clock
+  ShieldAlert, ShieldCheck, Lock, KeyRound, Clock, FolderLock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import MediaCard from '../components/MediaCard';
 import SafePinModal from '../components/SafePinModal';
 import { api } from '../api';
+import { MediaGridSkeleton } from '../components/SkeletonLoader';
 
-export default function VaultPage({ onOpenViewer, onUnlockMedia, onDeleteMedia, onRenameMedia }) {
+export default function VaultPage({
+  onOpenViewer,
+  onUnlockMedia,
+  onDeleteMedia,
+  onRenameMedia,
+  onContextMenu,
+  onShowDetail
+}) {
   const { user } = useAuth();
   const { vaultToken, isUnlocked, remainingSeconds, lockVault } = useVault();
   const [vaultMedia, setVaultMedia] = useState([]);
@@ -24,7 +31,6 @@ export default function VaultPage({ onOpenViewer, onUnlockMedia, onDeleteMedia, 
       setVaultMedia(data.media || []);
     } catch (e) {
       console.error('Failed to load vault media:', e);
-      // If token expired
       lockVault();
     } finally {
       setLoading(false);
@@ -42,15 +48,15 @@ export default function VaultPage({ onOpenViewer, onUnlockMedia, onDeleteMedia, 
   // If vault is locked, show lock screen
   if (!isUnlocked) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center py-24">
-        <div className="w-20 h-20 bg-[#FFFBF5] border-2 border-[#D4A373] rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="p-8 max-w-lg mx-auto text-center py-24 animate-enter">
+        <div className="w-20 h-20 bg-[#FFFBF5] dark:bg-[#2E2A26] border-2 border-[#D4A373] dark:border-[#3E3834] rounded-full flex items-center justify-center mx-auto mb-4">
           <ShieldAlert className="w-10 h-10 text-[#C2410C]" />
         </div>
 
-        <h2 className="font-serif font-bold text-2xl text-[#1C1917] mb-2">
+        <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB] mb-2">
           Brankas Terkunci (Safe Vault)
         </h2>
-        <p className="text-[14px] text-[#57534E] mb-6 leading-relaxed">
+        <p className="text-[14px] text-[#57534E] dark:text-[#A8A29E] mb-6 leading-relaxed">
           Semua file foto & video di dalam brankas ini terisolasi sepenuhnya dan tidak akan muncul di Galeri Utama, Carousel Memori, maupun Video Hub.
         </p>
 
@@ -73,20 +79,20 @@ export default function VaultPage({ onOpenViewer, onUnlockMedia, onDeleteMedia, 
 
   // Vault is UNLOCKED
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto animate-enter">
       {/* Vault Unlocked Header */}
-      <div className="mb-6 p-4 bg-[#F0FDF4] border-2 border-[#22C55E] rounded-[8px] flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 p-4 bg-[#F0FDF4] dark:bg-[#143D14] border-2 border-[#22C55E] rounded-[8px] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#22C55E] text-white flex items-center justify-center">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-serif font-semibold text-lg text-[#166534]">
+            <h3 className="font-serif font-semibold text-lg text-[#166534] dark:text-[#86EFAC]">
               Brankas Aktif (Terbuka)
             </h3>
-            <p className="text-[12px] text-[#166534]/80 flex items-center gap-1.5 mt-0.5">
+            <p className="text-[12px] text-[#166534]/90 dark:text-[#86EFAC]/90 flex items-center gap-1.5 mt-0.5">
               <Clock className="w-3.5 h-3.5" />
-              Auto-lock dalam <strong className="font-mono">{remainingSeconds} detik</strong> (atau saat berpindah jendela).
+              Sesi aktif tanpa batas selama di menu ini. Timer 180s otomatis berjalan jika keluar dari menu.
             </p>
           </div>
         </div>
@@ -102,52 +108,38 @@ export default function VaultPage({ onOpenViewer, onUnlockMedia, onDeleteMedia, 
         </div>
       </div>
 
-      {/* Vault Media List */}
+      {/* Vault Content Feed */}
       {loading ? (
-        <div className="text-center py-20 text-[#A8A29E] font-serif text-lg">
-          Memuat berkas brankas rahasia...
-        </div>
+        <MediaGridSkeleton count={4} />
       ) : vaultMedia.length === 0 ? (
-        <div className="text-center py-20 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-8">
-          <Shield className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917]">
-            Brankas Kosong
+        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
+          <FolderLock className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
+          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+            Belum ada media di brankas
           </h4>
-          <p className="text-[13px] text-[#57534E] mt-1 max-w-sm mx-auto">
-            Untuk memasukkan media ke brankas rahasia, pilih menu titik tiga pada file di Galeri Utama dan klik <strong>Kunci ke Brankas</strong>.
+          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
+            Klik menu 3-titik atau klik kanan pada foto/video mana saja di Galeri Utama, lalu pilih <strong>Kunci ke Brankas</strong>.
           </p>
         </div>
       ) : (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[13px] font-semibold text-[#57534E]">
-              {vaultMedia.length} berkas terlindungi
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {vaultMedia.map((media, idx) => (
-              <MediaCard
-                key={media.id}
-                media={media}
-                isVault={true}
-                vaultToken={vaultToken}
-                onClick={() => onOpenViewer(vaultMedia, idx, true, vaultToken)}
-                onUnlock={async (id) => {
-                  await onUnlockMedia(id, vaultToken);
-                  loadVaultMedia();
-                }}
-                onDelete={async (id) => {
-                  await onDeleteMedia(id, vaultToken);
-                  loadVaultMedia();
-                }}
-                onRename={onRenameMedia}
-              />
-            ))}
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {vaultMedia.map((media, idx) => (
+            <MediaCard
+              key={media.id}
+              media={media}
+              isVault={true}
+              vaultToken={vaultToken}
+              onClick={() => onOpenViewer(vaultMedia, idx, true, vaultToken)}
+              onToggleFavorite={() => {}}
+              onUnlock={onUnlockMedia}
+              onDelete={onDeleteMedia}
+              onRename={onRenameMedia}
+              onContextMenu={onContextMenu}
+              onShowDetail={onShowDetail}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 }
-

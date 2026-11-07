@@ -4,10 +4,17 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+const { execFile } = require('child_process');
 const config = require('./config');
 const db = require('./db');
 
 const router = express.Router();
+
+const avatarUpload = multer({
+  dest: '/tmp',
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for avatar photo
+});
 
 // Helper to create token
 function signToken(user) {
@@ -28,7 +35,7 @@ async function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
-    const user = await db.get('SELECT id, username, role, storage_quota_bytes, used_storage_bytes, (pin_hash IS NOT NULL) as has_pin FROM users WHERE id = ?', [decoded.id]);
+    const user = await db.get('SELECT id, username, role, storage_quota_bytes, used_storage_bytes, avatar_url, (pin_hash IS NOT NULL) as has_pin FROM users WHERE id = ?', [decoded.id]);
     
     if (!user) {
       return res.status(401).json({ error: 'Pengguna tidak ditemukan.' });
@@ -141,7 +148,7 @@ router.post('/login', async (req, res) => {
 
     const cleanUsername = username.trim().toLowerCase();
     const user = await db.get(
-      'SELECT id, username, password_hash, role, storage_quota_bytes, used_storage_bytes, (pin_hash IS NOT NULL) as has_pin FROM users WHERE username = ?',
+      'SELECT id, username, password_hash, role, storage_quota_bytes, used_storage_bytes, avatar_url, (pin_hash IS NOT NULL) as has_pin FROM users WHERE username = ?',
       [cleanUsername]
     );
 
@@ -160,6 +167,7 @@ router.post('/login', async (req, res) => {
       role: user.role,
       storage_quota_bytes: user.storage_quota_bytes,
       used_storage_bytes: user.used_storage_bytes,
+      avatar_url: user.avatar_url,
       has_pin: user.has_pin
     };
 
@@ -254,6 +262,91 @@ router.post('/vault/verify-pin', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Verify PIN error:', err);
     return res.status(500).json({ error: 'Gagal memverifikasi PIN.' });
+  }
+});
+
+// POST /api/auth/avatar (Upload custom avatar)
+router.post('/avatar', authMiddleware, avatarUpload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Tidak ada file foto yang dipilih.' });
+  }
+
+  const tempPath = req.file.path;
+  const userRoot = path.join(config.USERS_DIR, req.user.id);
+  if (!fs.existsSync(userRoot)) fs.mkdirSync(userRoot, { recursive: true });
+
+  const destAvatarPath = path.join(userRoot, 'avatar.jpg');
+
+  try {
+    // Crop & scale to 256x256 square JPG using FFmpeg
+    await new Promise((resolve, reject) => {
+      execFile(config.FFMPEG_PATH, [
+        '-y',
+        '-i', tempPath,
+        '-vf', 'crop=min(iw\\,ih):min(iw\\,ih),scale=256:256',
+        '-q:v', '85',
+        destAvatarPath
+      ], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    try { fs.unlinkSync(tempPath); } catch (e) {}
+
+    const avatarUrl = `/api/auth/avatar/${req.user.id}?t=${Date.now()}`;
+    await db.run('UPDATE users SET avatar_url = ? WHERE id = ?', [avatarUrl, req.user.id]);
+
+    return res.json({ message: 'Foto profil berhasil diperbarui!', avatar_url: avatarUrl });
+  } catch (err) {
+    console.error('[Avatar] Error processing avatar:', err);
+    if (fs.existsSync(tempPath)) {
+      try { fs.unlinkSync(tempPath); } catch (e) {}
+    }
+    return res.status(500).json({ error: 'Gagal memproses foto avatar: ' + err.message });
+  }
+});
+
+// GET /api/auth/avatar/:userId (Serve avatar or default avatar)
+router.get('/avatar/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const userRoot = path.join(config.USERS_DIR, userId);
+    const customAvatar = path.join(userRoot, 'avatar.jpg');
+
+    if (fs.existsSync(customAvatar)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.sendFile(customAvatar);
+    }
+
+    // Fallback to default avatar based on user role
+    const user = await db.get('SELECT role FROM users WHERE id = ?', [userId]);
+    const defaultFile = (user && user.role === 'admin')
+      ? path.join(__dirname, '..', 'public', 'avatars', 'admin_default.jpg')
+      : path.join(__dirname, '..', 'public', 'avatars', 'user_default.jpg');
+
+    if (fs.existsSync(defaultFile)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.sendFile(defaultFile);
+    }
+
+    return res.status(404).send('Avatar tidak ditemukan.');
+  } catch (err) {
+    return res.status(500).send('Error loading avatar');
+  }
+});
+
+// DELETE /api/auth/avatar (Reset custom avatar to default)
+router.delete('/avatar', authMiddleware, async (req, res) => {
+  try {
+    const customAvatar = path.join(config.USERS_DIR, req.user.id, 'avatar.jpg');
+    if (fs.existsSync(customAvatar)) {
+      try { fs.unlinkSync(customAvatar); } catch (e) {}
+    }
+    await db.run('UPDATE users SET avatar_url = NULL WHERE id = ?', [req.user.id]);
+    return res.json({ message: 'Foto profil dikembalikan ke default.' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Gagal mereset foto profil.' });
   }
 });
 

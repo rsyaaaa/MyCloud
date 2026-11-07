@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Play, Heart, MoreVertical, Edit2, Folder, Lock, Unlock, Download, Trash2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Play, Heart, MoreVertical, Edit2, Folder, Lock, Unlock, Download, Trash2, Info } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 
@@ -19,22 +19,59 @@ export default function MobileMediaCard({
   onOrganize,
   onDelete,
   onRename,
+  onLongPress,
+  onShowDetail,
   isVault = false,
   vaultToken = null
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isVideo = media.media_type === 'video';
+  const touchTimerRef = useRef(null);
+  const touchStartPos = useRef({ x: 0, y: 0 });
 
   const thumbSrc = isVault
     ? api.getVaultThumbnailUrl(media.id, vaultToken)
     : api.getThumbnailUrl(media.id);
 
+  const handleTouchStart = (e) => {
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    touchTimerRef.current = setTimeout(() => {
+      if (onLongPress) {
+        if (navigator.vibrate) navigator.vibrate(40);
+        onLongPress(media);
+      }
+    }, 500);
+  };
+
+  const handleTouchMove = (e) => {
+    const diffX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const diffY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (diffX > 10 || diffY > 10) {
+      if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+  };
+
   return (
-    <div className="card-artisan overflow-hidden flex flex-col bg-white relative">
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => {
+        if (onLongPress) {
+          e.preventDefault();
+          onLongPress(media);
+        }
+      }}
+      className="card-artisan overflow-hidden flex flex-col bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] rounded-[8px] relative transition-transform active:scale-[0.98]"
+    >
       {/* Thumbnail Area */}
       <div
         onClick={onClick}
-        className={`relative overflow-hidden bg-[#FAF1E6] flex items-center justify-center cursor-pointer ${
+        className={`relative overflow-hidden bg-[#FAF1E6] dark:bg-[#2E2A26] flex items-center justify-center cursor-pointer ${
           media.is_portrait ? 'aspect-[3/4]' : 'aspect-[4/3]'
         }`}
       >
@@ -59,12 +96,6 @@ export default function MobileMediaCard({
           </div>
         )}
 
-        {media.is_portrait === 1 && (
-          <span className="absolute top-1.5 left-1.5 bg-[#365314] text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded">
-            9:16
-          </span>
-        )}
-
         {/* Favorite Heart Button */}
         <button
           onClick={(e) => {
@@ -81,109 +112,26 @@ export default function MobileMediaCard({
       </div>
 
       {/* Card Info & Menu */}
-      <div className="p-2 flex items-center justify-between gap-1 border-t border-[#E7E5E4] bg-white">
+      <div className="p-2 flex items-center justify-between gap-1 border-t border-[#E7E5E4] dark:border-[#3E3834] bg-white dark:bg-[#23201D]">
         <div className="truncate flex-1 min-w-0" onClick={onClick}>
-          <h4 className="text-[13px] font-semibold text-[#1C1917] truncate leading-tight">
+          <h4 className="text-[13px] font-semibold text-[#1C1917] dark:text-[#F5F2EB] truncate leading-tight">
             {media.display_name}
           </h4>
-          <span className="text-[11px] font-mono text-[#57534E]">
+          <span className="text-[11px] font-mono text-[#57534E] dark:text-[#A8A29E]">
             {formatBytes(media.file_size)}
           </span>
         </div>
 
-        <div className="relative shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
-            className="p-1 text-[#57534E] hover:text-[#1C1917]"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-
-          {menuOpen && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="absolute right-0 bottom-full mb-1 w-44 bg-white border-2 border-[#D6D3D1] rounded-[6px] shadow-modal py-1 z-30 text-[12px] animate-in fade-in duration-100"
-            >
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  onRename(media);
-                }}
-                className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
-              >
-                <Edit2 className="w-3.5 h-3.5 text-[#57534E]" />
-                <span>Ubah Nama</span>
-              </button>
-
-              {!isVault && onOrganize && (
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onOrganize(media);
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
-                >
-                  <Folder className="w-3.5 h-3.5 text-[#57534E]" />
-                  <span>Atur Album</span>
-                </button>
-              )}
-
-              {isVault ? (
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onUnlock(media.id);
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-[#365314] hover:bg-[#FFFBF5] flex items-center gap-2"
-                >
-                  <Unlock className="w-3.5 h-3.5" />
-                  <span>Keluarkan</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onLock(media.id);
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-[#C2410C] hover:bg-[#FFFBF5] flex items-center gap-2"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Kunci Brankas</span>
-                </button>
-              )}
-
-              {!isVault && (
-                <a
-                  href={api.getDownloadUrl(media.id)}
-                  download
-                  onClick={() => setMenuOpen(false)}
-                  className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
-                >
-                  <Download className="w-3.5 h-3.5 text-[#57534E]" />
-                  <span>Unduh</span>
-                </a>
-              )}
-
-              <div className="border-t border-[#E7E5E4] my-1" />
-
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete(media.id);
-                }}
-                className="w-full px-3 py-1.5 text-left text-[#DC2626] hover:bg-[#FEE2E2] flex items-center gap-2"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus</span>
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onLongPress) onLongPress(media);
+          }}
+          className="p-1 text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917] shrink-0"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
 }
-

@@ -4,6 +4,7 @@ import MobileMediaCard from './MobileMediaCard';
 import MobileMediaListItem from './MobileMediaListItem';
 import MobilePagination from './MobilePagination';
 import { api } from '../api';
+import { AlbumsSkeleton, MediaGridSkeleton, MediaListSkeleton } from '../components/SkeletonLoader';
 
 export default function MobileAlbumsView({
   onOpenViewer,
@@ -11,7 +12,8 @@ export default function MobileAlbumsView({
   onLock,
   onOrganize,
   onDelete,
-  onRename
+  onRename,
+  onLongPress
 }) {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -89,36 +91,36 @@ export default function MobileAlbumsView({
   // If viewing a single album
   if (selectedCategory) {
     return (
-      <div className="p-4 pb-24 max-w-md mx-auto">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E5E4]">
+      <div className="p-4 pb-24 max-w-md mx-auto animate-enter">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E5E4] dark:border-[#3E3834]">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedCategory(null)}
-              className="p-1.5 text-[#57534E] hover:text-[#1C1917]"
+              className="p-1.5 text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917]"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="font-serif font-bold text-lg text-[#1C1917] truncate max-w-[180px]">
+                <h2 className="font-serif font-bold text-lg text-[#1C1917] dark:text-[#F5F2EB] truncate max-w-[180px]">
                   {selectedCategory.name}
                 </h2>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 bg-[#FAF1E6] text-[#C2410C] rounded border border-[#D4A373]">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 bg-[#FAF1E6] dark:bg-[#2E2A26] text-[#C2410C] rounded border border-[#D4A373]">
                   {selectedCategory.type}
                 </span>
               </div>
-              <span className="text-[11px] text-[#57534E]">
+              <span className="text-[11px] text-[#57534E] dark:text-[#A8A29E]">
                 {categoryMedia.length} berkas
               </span>
             </div>
           </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center gap-1 bg-[#FFFBF5] p-0.5 rounded-[4px] border border-[#D6D3D1]">
+          <div className="flex items-center gap-1 bg-[#FFFBF5] dark:bg-[#2E2A26] p-0.5 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834]">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-[3px] transition-colors ${
-                viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
+                viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -126,7 +128,7 @@ export default function MobileAlbumsView({
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-[3px] transition-colors ${
-                viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
+                viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -134,13 +136,15 @@ export default function MobileAlbumsView({
           </div>
         </div>
 
-        {paginatedItems.length === 0 ? (
-          <div className="text-center py-16 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-6">
+        {loading ? (
+          viewMode === 'grid' ? <MediaGridSkeleton count={6} /> : <MediaListSkeleton count={6} />
+        ) : paginatedItems.length === 0 ? (
+          <div className="text-center py-16 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-6">
             <Layers className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
-            <h4 className="font-serif font-semibold text-base text-[#1C1917]">
+            <h4 className="font-serif font-semibold text-base text-[#1C1917] dark:text-[#F5F2EB]">
               Album Kosong
             </h4>
-            <p className="text-[12px] text-[#57534E] mt-1">
+            <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
               Tambahkan foto atau video ke album ini dari menu Galeri.
             </p>
           </div>
@@ -160,6 +164,7 @@ export default function MobileAlbumsView({
                       onOrganize={onOrganize}
                       onDelete={onDelete}
                       onRename={onRename}
+                      onLongPress={onLongPress}
                     />
                   );
                 })}
@@ -180,6 +185,7 @@ export default function MobileAlbumsView({
                       onOrganize={onOrganize}
                       onDelete={onDelete}
                       onRename={onRename}
+                      onLongPress={onLongPress}
                     />
                   );
                 })}
@@ -204,16 +210,16 @@ export default function MobileAlbumsView({
 
   // All Albums Overview
   return (
-    <div className="p-4 pb-24 max-w-md mx-auto">
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E5E4]">
+    <div className="p-4 pb-24 max-w-md mx-auto animate-enter">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E5E4] dark:border-[#3E3834]">
         <div>
           <div className="flex items-center gap-2">
             <Folder className="w-5 h-5 text-[#C2410C]" />
-            <h2 className="font-serif font-bold text-xl text-[#1C1917]">
+            <h2 className="font-serif font-bold text-xl text-[#1C1917] dark:text-[#F5F2EB]">
               Album & Folder
             </h2>
           </div>
-          <p className="text-[12px] text-[#57534E] mt-0.5">
+          <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
             Koleksi album dan pengelompokan media Anda.
           </p>
         </div>
@@ -229,7 +235,7 @@ export default function MobileAlbumsView({
 
       {/* Inline Create Album Form */}
       {isCreating && (
-        <form onSubmit={handleCreate} className="mb-4 p-3 bg-white border-2 border-[#D6D3D1] rounded-[8px] space-y-2 animate-in fade-in duration-100">
+        <form onSubmit={handleCreate} className="mb-4 p-3 bg-white dark:bg-[#23201D] border-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] space-y-2 animate-enter">
           <input
             type="text"
             placeholder="Nama album baru..."
@@ -241,7 +247,7 @@ export default function MobileAlbumsView({
             <select
               value={newCatType}
               onChange={(e) => setNewCatType(e.target.value)}
-              className="input-artisan h-[36px] text-[12px] px-2 bg-white flex-1"
+              className="input-artisan h-[36px] text-[12px] px-2 bg-white dark:bg-[#23201D] flex-1"
             >
               <option value="album">Album</option>
               <option value="folder">Folder</option>
@@ -266,13 +272,15 @@ export default function MobileAlbumsView({
       )}
 
       {/* Grid of Albums */}
-      {categories.length === 0 ? (
-        <div className="text-center py-16 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-6">
+      {loading ? (
+        <AlbumsSkeleton count={4} />
+      ) : categories.length === 0 ? (
+        <div className="text-center py-16 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-6">
           <Folder className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
-          <h4 className="font-serif font-semibold text-base text-[#1C1917]">
+          <h4 className="font-serif font-semibold text-base text-[#1C1917] dark:text-[#F5F2EB]">
             Belum ada Album
           </h4>
-          <p className="text-[12px] text-[#57534E] mt-1">
+          <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
             Tekan tombol <strong>Buat</strong> di atas untuk membuat album pertama.
           </p>
         </div>
@@ -282,10 +290,10 @@ export default function MobileAlbumsView({
             <div
               key={cat.id}
               onClick={() => loadCategoryMedia(cat)}
-              className="card-artisan p-3 cursor-pointer hover:border-[#C2410C] transition-all relative flex flex-col justify-between h-28 bg-white"
+              className="card-artisan p-3 cursor-pointer hover:border-[#C2410C] transition-all relative flex flex-col justify-between h-28 bg-white dark:bg-[#23201D]"
             >
               <div className="flex items-start justify-between">
-                <div className="w-8 h-8 rounded-[4px] bg-[#FAF1E6] text-[#C2410C] flex items-center justify-center border border-[#D4A373]">
+                <div className="w-8 h-8 rounded-[4px] bg-[#FAF1E6] dark:bg-[#2E2A26] text-[#C2410C] flex items-center justify-center border border-[#D4A373]">
                   <Folder className="w-4 h-4" />
                 </div>
                 <button
@@ -297,12 +305,12 @@ export default function MobileAlbumsView({
               </div>
 
               <div>
-                <h4 className="font-serif font-semibold text-[14px] text-[#1C1917] truncate leading-tight">
+                <h4 className="font-serif font-semibold text-[14px] text-[#1C1917] dark:text-[#F5F2EB] truncate leading-tight">
                   {cat.name}
                 </h4>
-                <div className="flex items-center justify-between text-[11px] text-[#57534E] mt-1">
+                <div className="flex items-center justify-between text-[11px] text-[#57534E] dark:text-[#A8A29E] mt-1">
                   <span className="font-mono">{cat.media_count || 0} berkas</span>
-                  <span className="text-[9px] uppercase font-bold tracking-wider px-1 bg-[#FFFBF5] border border-[#E7E5E4] rounded">
+                  <span className="text-[9px] uppercase font-bold tracking-wider px-1 bg-[#FFFBF5] dark:bg-[#2E2A26] border border-[#E7E5E4] dark:border-[#3E3834] rounded">
                     {cat.type}
                   </span>
                 </div>
@@ -314,4 +322,3 @@ export default function MobileAlbumsView({
     </div>
   );
 }
-

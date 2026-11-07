@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Play, Heart, Lock, Unlock, MoreVertical, Folder, Trash2, Edit2, Download } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Play, Heart, Lock, Unlock, MoreVertical, Folder, Trash2, Edit2, Download, Info } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 
@@ -19,22 +19,52 @@ export default function MediaCard({
   onOrganize,
   onDelete,
   onRename,
+  onContextMenu,
+  onLongPress,
+  onShowDetail,
   isVault = false,
   vaultToken = null
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isVideo = media.media_type === 'video';
+  const touchTimerRef = useRef(null);
 
   const thumbSrc = isVault
     ? api.getVaultThumbnailUrl(media.id, vaultToken)
     : api.getThumbnailUrl(media.id);
 
+  const handleContextMenu = (e) => {
+    if (onContextMenu) {
+      e.preventDefault();
+      onContextMenu(e, media);
+    }
+  };
+
+  const handleTouchStart = () => {
+    touchTimerRef.current = setTimeout(() => {
+      if (onLongPress) {
+        if (navigator.vibrate) navigator.vibrate(40);
+        onLongPress(media);
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+  };
+
   return (
-    <div className="group relative card-artisan overflow-hidden flex flex-col cursor-pointer bg-white">
+    <div
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
+      className="group relative card-artisan overflow-hidden flex flex-col cursor-pointer bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] transition-all hover:scale-[1.01]"
+    >
       {/* Thumbnail Container */}
       <div
         onClick={onClick}
-        className={`relative overflow-hidden bg-[#FAF1E6] flex items-center justify-center ${
+        className={`relative overflow-hidden bg-[#FAF1E6] dark:bg-[#2E2A26] flex items-center justify-center ${
           media.is_portrait ? 'aspect-[3/4]' : 'aspect-[4/3]'
         }`}
       >
@@ -47,7 +77,7 @@ export default function MediaCard({
 
         {/* Video Overlay Badge */}
         {isVideo && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors">
             <div className="w-10 h-10 rounded-full bg-[#C2410C]/90 text-white flex items-center justify-center shadow-modal group-hover:scale-110 transition-transform">
               <Play className="w-5 h-5 ml-0.5 fill-white" />
             </div>
@@ -60,13 +90,6 @@ export default function MediaCard({
           </div>
         )}
 
-        {/* Portrait indicator */}
-        {media.is_portrait && (
-          <span className="absolute top-2 left-2 bg-[#365314]/90 text-white text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[2px] border border-[#365314]">
-            9:16
-          </span>
-        )}
-
         {/* Quick Favorite Button */}
         <button
           onClick={(e) => {
@@ -75,7 +98,7 @@ export default function MediaCard({
           }}
           className={`absolute top-2 right-2 p-1.5 rounded-full transition-all ${
             media.is_favorite
-              ? 'bg-white text-[#DC2626] opacity-100'
+              ? 'bg-white text-[#DC2626] opacity-100 shadow'
               : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:scale-110'
           }`}
           title="Favorit"
@@ -85,12 +108,12 @@ export default function MediaCard({
       </div>
 
       {/* Media Details Footer */}
-      <div className="p-3 flex items-start justify-between gap-2 border-t border-[#E7E5E4] bg-white">
-        <div className="truncate flex-1" onClick={onClick}>
-          <h4 className="text-[14px] font-semibold text-[#1C1917] truncate hover:text-[#C2410C] transition-colors">
+      <div className="p-2.5 sm:p-3 flex items-start justify-between gap-2 border-t border-[#E7E5E4] dark:border-[#3E3834] bg-white dark:bg-[#23201D]">
+        <div className="truncate flex-1 min-w-0" onClick={onClick}>
+          <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#1C1917] dark:text-[#F5F2EB] truncate hover:text-[#C2410C] transition-colors leading-snug">
             {media.display_name}
           </h4>
-          <div className="flex items-center gap-2 text-[11px] text-[#57534E] mt-0.5">
+          <div className="flex items-center gap-1.5 text-[11px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
             <span className="font-mono">{formatBytes(media.file_size)}</span>
             <span>•</span>
             <span>
@@ -103,13 +126,13 @@ export default function MediaCard({
         </div>
 
         {/* 3-dot dropdown menu */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(!menuOpen);
             }}
-            className="p-1 text-[#57534E] hover:text-[#1C1917] rounded hover:bg-[#FFFBF5] transition-colors"
+            className="p-1 text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917] dark:hover:text-[#F5F2EB] rounded hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] transition-colors"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -117,16 +140,16 @@ export default function MediaCard({
           {menuOpen && (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="absolute right-0 bottom-full mb-1 w-48 bg-white border-2 border-[#D6D3D1] rounded-[6px] shadow-modal py-1 z-30 text-[13px] animate-in fade-in duration-100"
+              className="absolute right-0 bottom-full mb-1 w-48 bg-white dark:bg-[#23201D] border-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-[6px] shadow-modal py-1 z-30 text-[13px] animate-enter select-none"
             >
               <button
                 onClick={() => {
                   setMenuOpen(false);
                   onRename(media);
                 }}
-                className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
+                className="w-full px-3 py-1.5 text-left text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] flex items-center gap-2"
               >
-                <Edit2 className="w-3.5 h-3.5 text-[#57534E]" />
+                <Edit2 className="w-3.5 h-3.5 text-[#57534E] dark:text-[#A8A29E]" />
                 <span>Ubah Nama</span>
               </button>
 
@@ -136,9 +159,9 @@ export default function MediaCard({
                     setMenuOpen(false);
                     onOrganize(media);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] flex items-center gap-2"
                 >
-                  <Folder className="w-3.5 h-3.5 text-[#57534E]" />
+                  <Folder className="w-3.5 h-3.5 text-[#57534E] dark:text-[#A8A29E]" />
                   <span>Atur ke Album</span>
                 </button>
               )}
@@ -149,7 +172,7 @@ export default function MediaCard({
                     setMenuOpen(false);
                     onUnlock(media.id);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] flex items-center gap-2"
                 >
                   <Unlock className="w-3.5 h-3.5 text-[#365314]" />
                   <span>Keluarkan ke Galeri</span>
@@ -160,10 +183,23 @@ export default function MediaCard({
                     setMenuOpen(false);
                     onLock(media.id);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] flex items-center gap-2"
                 >
                   <Lock className="w-3.5 h-3.5 text-[#C2410C]" />
                   <span>Kunci ke Brankas</span>
+                </button>
+              )}
+
+              {onShowDetail && (
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onShowDetail(media);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] flex items-center gap-2"
+                >
+                  <Info className="w-3.5 h-3.5 text-[#3B82F6]" />
+                  <span>Detail Metadata</span>
                 </button>
               )}
 
@@ -172,24 +208,24 @@ export default function MediaCard({
                   href={api.getDownloadUrl(media.id)}
                   download
                   onClick={() => setMenuOpen(false)}
-                  className="w-full px-3 py-1.5 text-left text-[#1C1917] hover:bg-[#FFFBF5] flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] flex items-center gap-2"
                 >
-                  <Download className="w-3.5 h-3.5 text-[#57534E]" />
+                  <Download className="w-3.5 h-3.5 text-[#57534E] dark:text-[#A8A29E]" />
                   <span>Unduh File</span>
                 </a>
               )}
 
-              <div className="border-t border-[#E7E5E4] my-1" />
+              <div className="border-t border-[#E7E5E4] dark:border-[#3E3834] my-1" />
 
               <button
                 onClick={() => {
                   setMenuOpen(false);
                   onDelete(media.id);
                 }}
-                className="w-full px-3 py-1.5 text-left text-[#DC2626] hover:bg-[#FEE2E2] flex items-center gap-2"
+                className="w-full px-3 py-1.5 text-left text-[#DC2626] hover:bg-[#FEF2F2] dark:hover:bg-[#3D1414] flex items-center gap-2"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus File</span>
+                <span>Pindah ke Sampah</span>
               </button>
             </div>
           )}
@@ -198,4 +234,3 @@ export default function MediaCard({
     </div>
   );
 }
-

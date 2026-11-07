@@ -7,6 +7,12 @@
     background-color: #FFFBF5;
     color: #1C1917;
     font-family: 'Open Sans', system-ui, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body, html.dark body {
+    background-color: #171514;
+    color: #F5F2EB;
   }
 
   h1, h2, h3, h4, .font-serif {
@@ -29,6 +35,11 @@
   border-left: 1px solid #E7E5E4;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #171514;
+  border-left: 1px solid #3E3834;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #D4A373;
   border-radius: 4px;
@@ -38,40 +49,86 @@
   background: #C2410C;
 }
 
+/* Button & Interactive Animations */
+button, a, input, select {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active:not(:disabled), a:active {
+  transform: scale(0.97);
+}
+
 /* MarketNest Button & Input Utilities */
 .btn-primary {
-  @apply bg-[#C2410C] text-white font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#9A3412] active:bg-[#7C2D12] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+  @apply bg-[#C2410C] text-white font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#9A3412] active:bg-[#7C2D12] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 shadow-none select-none;
 }
 
 .btn-secondary {
-  @apply bg-transparent text-[#C2410C] border-[1.5px] border-[#C2410C] font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#FDF6EC] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+  @apply bg-transparent text-[#C2410C] border-[1.5px] border-[#C2410C] font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#FDF6EC] dark:hover:bg-[#2E2A26] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-ghost {
-  @apply bg-transparent text-[#57534E] hover:bg-[#FDF6EC] hover:text-[#1C1917] px-3.5 py-2 rounded-[4px] transition-colors inline-flex items-center justify-center gap-2;
+  @apply bg-transparent text-[#57534E] dark:text-[#A8A29E] hover:bg-[#FDF6EC] dark:hover:bg-[#2E2A26] hover:text-[#1C1917] dark:hover:text-[#F5F2EB] px-3.5 py-2 rounded-[4px] transition-all inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-destructive {
-  @apply bg-[#DC2626] text-white font-semibold text-[15px] px-4 py-2 rounded-[4px] hover:bg-[#B91C1C] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+  @apply bg-[#DC2626] text-white font-semibold text-[15px] px-4 py-2 rounded-[4px] hover:bg-[#B91C1C] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .input-artisan {
-  @apply bg-white border-[1.5px] border-[#D6D3D1] text-[#1C1917] placeholder-[#A8A29E] rounded-[4px] px-3.5 h-[42px] text-[15px] focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/20 focus:outline-none transition-all disabled:bg-[#F5F5F4] disabled:opacity-50;
+  @apply bg-white dark:bg-[#23201D] border-[1.5px] border-[#D6D3D1] dark:border-[#3E3834] text-[#1C1917] dark:text-[#F5F2EB] placeholder-[#A8A29E] rounded-[4px] px-3.5 h-[42px] text-[15px] focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/20 focus:outline-none transition-all disabled:bg-[#F5F5F4] dark:disabled:bg-[#1E1B19] disabled:opacity-50;
 }
 
 .chip-filter {
-  @apply h-[32px] px-3.5 rounded-[4px] border border-[#D6D3D1] text-[13px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer bg-white text-[#57534E] hover:bg-[#FDF6EC] hover:text-[#C2410C];
+  @apply h-[32px] px-3.5 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834] text-[13px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-white dark:bg-[#23201D] text-[#57534E] dark:text-[#A8A29E] hover:bg-[#FDF6EC] dark:hover:bg-[#2E2A26] hover:text-[#C2410C] dark:hover:text-[#EA580C] select-none;
 }
 
 .chip-filter-active {
-  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#9A3412] hover:text-white;
+  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#9A3412] hover:text-white dark:bg-[#EA580C] dark:border-[#EA580C];
 }
 
 .card-artisan {
-  @apply bg-white border border-[#E7E5E4] rounded-[8px] transition-colors hover:border-[#D6D3D1];
+  @apply bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] rounded-[8px] transition-all hover:border-[#D6D3D1] dark:hover:border-[#57534E];
 }
 
 .card-elevated {
-  @apply bg-[#FFFBF5] border-2 border-[#D6D3D1] rounded-[8px] hover:border-[#A8A29E];
+  @apply bg-[#FFFBF5] dark:bg-[#2E2A26] border-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] hover:border-[#A8A29E];
 }
 
+/* Fluid Page and Modal Animations */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-enter {
+  animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Shimmer Skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #E7E5E4 25%, #F5F5F4 50%, #E7E5E4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(90deg, #2E2A26 25%, #3E3834 50%, #2E2A26 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}

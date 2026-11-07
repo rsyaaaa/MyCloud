@@ -29,30 +29,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFBF5] flex flex-col justify-center items-center p-6 selection:bg-[#FDF6EC] selection:text-[#C2410C]">
+    <div className="min-h-screen bg-[#FFFBF5] dark:bg-[#171514] flex flex-col justify-center items-center p-6 selection:bg-[#FDF6EC] selection:text-[#C2410C] text-[#1C1917] dark:text-[#F5F2EB] transition-colors">
       {/* Brand Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-[#C2410C] text-white rounded-[10px] flex items-center justify-center mx-auto mb-4 border-2 border-[#9A3412] shadow-modal">
           <Cloud className="w-9 h-9 stroke-[2.2]" />
         </div>
-        <h1 className="font-serif font-bold text-3xl text-[#1C1917] tracking-tight">
+        <h1 className="font-serif font-bold text-3xl tracking-tight">
           Personal Local Cloud & Media Hub
         </h1>
-        <p className="text-[14px] text-[#57534E] mt-1.5 flex items-center justify-center gap-1.5">
+        <p className="text-[14px] text-[#57534E] dark:text-[#A8A29E] mt-1.5 flex items-center justify-center gap-1.5">
           <Wifi className="w-4 h-4 text-[#22C55E]" />
           <span>Local Area Network: <strong>192.168.18.78:8080</strong></span>
         </p>
       </div>
 
       {/* Auth Card */}
-      <div className="bg-white border-2 border-[#D6D3D1] rounded-[8px] max-w-md w-full p-8 shadow-modal">
+      <div className="bg-white dark:bg-[#23201D] border-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] max-w-md w-full p-8 shadow-modal">
         {/* Toggle Login / Register Tabs */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#FFFBF5] border border-[#D6D3D1] rounded-[6px] mb-6">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-[#FFFBF5] dark:bg-[#2E2A26] border border-[#D6D3D1] dark:border-[#3E3834] rounded-[6px] mb-6">
           <button
             type="button"
             onClick={() => { setIsRegister(false); setError(''); }}
             className={`py-2 text-[14px] font-semibold rounded-[4px] transition-all ${
-              !isRegister ? 'bg-[#C2410C] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
+              !isRegister ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
             }`}
           >
             Masuk (Login)
@@ -61,7 +61,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => { setIsRegister(true); setError(''); }}
             className={`py-2 text-[14px] font-semibold rounded-[4px] transition-all ${
-              isRegister ? 'bg-[#C2410C] text-white' : 'text-[#57534E] hover:text-[#1C1917]'
+              isRegister ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
             }`}
           >
             Daftar Akun Baru
@@ -69,7 +69,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-[#FEF2F2] border border-[#DC2626] rounded-[4px] text-[#DC2626] text-[13px] flex items-start gap-2">
+          <div className="mb-4 p-3 bg-[#FEF2F2] dark:bg-[#3D1414] border border-[#DC2626] rounded-[4px] text-[#DC2626] dark:text-[#FCA5A5] text-[13px] flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -77,7 +77,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[13px] font-semibold text-[#1C1917] mb-1">
+            <label className="block text-[13px] font-semibold mb-1">
               Username
             </label>
             <div className="relative">
@@ -95,7 +95,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-[13px] font-semibold text-[#1C1917] mb-1">
+            <label className="block text-[13px] font-semibold mb-1">
               Password
             </label>
             <div className="relative">
@@ -110,7 +110,7 @@ export default function LoginPage() {
               />
             </div>
             {isRegister && (
-              <p className="text-[11px] text-[#57534E] mt-1">
+              <p className="text-[11px] text-[#57534E] dark:text-[#A8A29E] mt-1">
                 Akun baru akan mendapatkan kuota default <strong>15 GB</strong>.
               </p>
             )}
@@ -128,14 +128,14 @@ export default function LoginPage() {
         </form>
 
         {/* Admin Credential Hint */}
-        <div className="mt-6 pt-4 border-t border-[#E7E5E4] text-[12px] text-[#57534E] bg-[#FFFBF5] -mx-4 -mb-4 p-4 rounded-b-[6px]">
+        <div className="mt-6 pt-4 border-t border-[#E7E5E4] dark:border-[#3E3834] text-[12px] text-[#57534E] dark:text-[#A8A29E] bg-[#FFFBF5] dark:bg-[#2E2A26] -mx-4 -mb-4 p-4 rounded-b-[6px]">
           <div className="flex items-center gap-1.5 font-semibold text-[#C2410C] mb-1">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Kredensial Default Administrator:</span>
           </div>
           <p>
-            Username: <strong className="font-mono text-[#1C1917]">admin</strong> / Password:{' '}
-            <strong className="font-mono text-[#1C1917]">admin12345</strong>
+            Username: <strong className="font-mono text-[#1C1917] dark:text-[#F5F2EB]">admin</strong> / Password:{' '}
+            <strong className="font-mono text-[#1C1917] dark:text-[#F5F2EB]">admin12345</strong>
           </p>
           <p className="text-[11px] text-[#A8A29E] mt-0.5">
             Default PIN Brankas Admin: <span className="font-mono">123456</span>
@@ -149,4 +149,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

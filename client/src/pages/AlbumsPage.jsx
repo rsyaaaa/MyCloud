@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Folder, FolderPlus, ArrowLeft, Trash2, Image, Layers } from 'lucide-react';
+import { Folder, FolderPlus, ArrowLeft, Trash2, Layers } from 'lucide-react';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
+import { AlbumsSkeleton, MediaGridSkeleton } from '../components/SkeletonLoader';
 
-export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onOrganize, onDelete, onRename }) {
+export default function AlbumsPage({
+  onOpenViewer,
+  onToggleFavorite,
+  onLock,
+  onOrganize,
+  onDelete,
+  onRename,
+  onContextMenu,
+  onShowDetail
+}) {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryMedia, setCategoryMedia] = useState([]);
@@ -66,8 +76,8 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
 
   if (selectedCategory) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#E7E5E4]">
+      <div className="p-6 max-w-7xl mx-auto animate-enter">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedCategory(null)}
@@ -78,27 +88,29 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
             <div>
               <div className="flex items-center gap-2">
                 <Folder className="w-5 h-5 text-[#C2410C]" />
-                <h2 className="font-serif font-bold text-2xl text-[#1C1917]">
+                <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB]">
                   {selectedCategory.name}
                 </h2>
-                <span className="text-[11px] uppercase tracking-wider font-bold bg-[#FAF1E6] text-[#C2410C] px-2 py-0.5 rounded border border-[#D4A373]">
+                <span className="text-[11px] uppercase tracking-wider font-bold bg-[#FAF1E6] dark:bg-[#2E2A26] text-[#C2410C] px-2 py-0.5 rounded border border-[#D4A373]">
                   {selectedCategory.type}
                 </span>
               </div>
-              <p className="text-[13px] text-[#57534E] mt-0.5">
+              <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
                 {categoryMedia.length} berkas media dalam album ini.
               </p>
             </div>
           </div>
         </div>
 
-        {categoryMedia.length === 0 ? (
-          <div className="text-center py-20 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-8">
+        {loading ? (
+          <MediaGridSkeleton count={6} />
+        ) : categoryMedia.length === 0 ? (
+          <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
             <Layers className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-            <h4 className="font-serif font-semibold text-lg text-[#1C1917]">
+            <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
               Album Masih Kosong
             </h4>
-            <p className="text-[13px] text-[#57534E] mt-1 max-w-sm mx-auto">
+            <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
               Buka Galeri Utama, pilih menu titik tiga pada file dan klik "Atur ke Album" untuk menambahkan file ke album ini.
             </p>
           </div>
@@ -114,6 +126,8 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
                 onOrganize={onOrganize}
                 onDelete={onDelete}
                 onRename={onRename}
+                onContextMenu={onContextMenu}
+                onShowDetail={onShowDetail}
               />
             ))}
           </div>
@@ -123,17 +137,17 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto animate-enter">
       {/* Header & Create Form */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E7E5E4]">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834]">
         <div>
           <div className="flex items-center gap-2">
             <Folder className="w-6 h-6 text-[#C2410C]" />
-            <h2 className="font-serif font-bold text-2xl text-[#1C1917]">
+            <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB]">
               Album & Folder Kategori
             </h2>
           </div>
-          <p className="text-[13px] text-[#57534E] mt-1">
+          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1">
             Organisir foto dan video Anda ke dalam koleksi tema atau genre.
           </p>
         </div>
@@ -149,7 +163,7 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
           <select
             value={newCatType}
             onChange={(e) => setNewCatType(e.target.value)}
-            className="input-artisan h-[38px] text-[13px] px-2 bg-white"
+            className="input-artisan h-[38px] text-[13px] px-2 bg-white dark:bg-[#23201D]"
           >
             <option value="album">Album</option>
             <option value="folder">Folder</option>
@@ -167,13 +181,15 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
       </div>
 
       {/* Grid of Albums */}
-      {categories.length === 0 ? (
-        <div className="text-center py-20 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-8">
+      {loading ? (
+        <AlbumsSkeleton count={4} />
+      ) : categories.length === 0 ? (
+        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
           <Folder className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917]">
+          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
             Belum ada Album atau Folder
           </h4>
-          <p className="text-[13px] text-[#57534E] mt-1">
+          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1">
             Gunakan form di atas untuk membuat album pertama Anda.
           </p>
         </div>
@@ -183,15 +199,15 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
             <div
               key={cat.id}
               onClick={() => loadCategoryMedia(cat)}
-              className="card-artisan p-4 cursor-pointer hover:border-[#C2410C] transition-all group relative flex flex-col justify-between h-36"
+              className="card-artisan p-4 cursor-pointer hover:border-[#C2410C] transition-all group relative flex flex-col justify-between h-36 bg-white dark:bg-[#23201D]"
             >
               <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-[6px] bg-[#FAF1E6] text-[#C2410C] flex items-center justify-center border border-[#D4A373]">
+                <div className="w-10 h-10 rounded-[6px] bg-[#FAF1E6] dark:bg-[#2E2A26] text-[#C2410C] flex items-center justify-center border border-[#D4A373]">
                   <Folder className="w-5 h-5" />
                 </div>
                 <button
                   onClick={(e) => handleDeleteCategory(cat.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-[#57534E] hover:text-[#DC2626] transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-[#57534E] dark:text-[#A8A29E] hover:text-[#DC2626] transition-all"
                   title="Hapus Album"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -199,12 +215,12 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
               </div>
 
               <div>
-                <h4 className="font-serif font-semibold text-[16px] text-[#1C1917] truncate group-hover:text-[#C2410C] transition-colors">
+                <h4 className="font-serif font-semibold text-[16px] text-[#1C1917] dark:text-[#F5F2EB] truncate group-hover:text-[#C2410C] transition-colors">
                   {cat.name}
                 </h4>
-                <div className="flex items-center justify-between text-[12px] text-[#57534E] mt-1">
+                <div className="flex items-center justify-between text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
                   <span className="font-mono">{cat.media_count || 0} berkas</span>
-                  <span className="uppercase text-[10px] font-bold tracking-wider px-1.5 py-0.2 bg-[#FFFBF5] border border-[#E7E5E4] rounded">
+                  <span className="uppercase text-[10px] font-bold tracking-wider px-1.5 py-0.2 bg-[#FFFBF5] dark:bg-[#2E2A26] border border-[#E7E5E4] dark:border-[#3E3834] rounded">
                     {cat.type}
                   </span>
                 </div>
@@ -216,4 +232,3 @@ export default function AlbumsPage({ onOpenViewer, onToggleFavorite, onLock, onO
     </div>
   );
 }
-
