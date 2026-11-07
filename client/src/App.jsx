@@ -1,0 +1,264 @@
+import React, { useState } from 'react';
+import { useAuth } from './context/AuthContext';
+import { useVault } from './context/VaultContext';
+import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import Toast from './components/Toast';
+import UploadModal from './components/UploadModal';
+import RequestQuotaModal from './components/RequestQuotaModal';
+import MediaViewerModal from './components/MediaViewerModal';
+import OrganizeModal from './components/OrganizeModal';
+import SafePinModal from './components/SafePinModal';
+
+import GalleryPage from './pages/GalleryPage';
+import VideoHubPage from './pages/VideoHubPage';
+import VaultPage from './pages/VaultPage';
+import AlbumsPage from './pages/AlbumsPage';
+import AdminPage from './pages/AdminPage';
+import LoginPage from './pages/LoginPage';
+import { api } from './api';
+
+export default function App() {
+  const { user, loading, refreshUser } = useAuth();
+  const { isUnlocked } = useVault();
+
+  // State
+  const [currentTab, setTab] = useState('gallery'); // 'gallery', 'videos', 'albums', 'vault', 'admin'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [toasts, setToasts] = useState([]);
+
+  // Modals
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [quotaModalOpen, setQuotaModalOpen] = useState(false);
+  const [organizeModalOpen, setOrganizeModalOpen] = useState(false);
+  const [organizingMedia, setOrganizingMedia] = useState(null);
+
+  // Viewer Modal
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerMediaList, setViewerMediaList] = useState([]);
+  const [viewerCurrentIndex, setViewerCurrentIndex] = useState(0);
+  const [viewerIsVault, setViewerIsVault] = useState(false);
+  const [viewerVaultToken, setViewerVaultToken] = useState(null);
+
+  const addToast = (message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const handleOpenViewer = (list, index, isVault = false, vaultToken = null) => {
+    setViewerMediaList(list);
+    setViewerCurrentIndex(index);
+    setViewerIsVault(isVault);
+    setViewerVaultToken(vaultToken);
+    setViewerOpen(true);
+  };
+
+  const handleToggleFavorite = async (id, isFavorite) => {
+    try {
+      await api.updateMedia(id, { is_favorite: isFavorite });
+      addToast(isFavorite ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit', 'success');
+      // Update viewer if open
+      setViewerMediaList((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, is_favorite: isFavorite ? 1 : 0 } : m))
+      );
+    } catch (e) {
+      addToast(e.message || 'Gagal mengubah status favorit.', 'error');
+    }
+  };
+
+  const handleLockMedia = async (id) => {
+    try {
+      await api.lockMedia(id);
+      addToast('Foto/video berhasil dipindahkan ke Brankas Rahasia.', 'success');
+      setViewerOpen(false);
+      refreshUser();
+    } catch (e) {
+      addToast(e.message || 'Gagal mengunci media.', 'error');
+    }
+  };
+
+  const handleUnlockMedia = async (id, vaultToken) => {
+    try {
+      await api.unlockMedia(id, vaultToken);
+      addToast('File berhasil dipindahkan kembali ke Galeri Utama.', 'success');
+      setViewerOpen(false);
+      refreshUser();
+    } catch (e) {
+      addToast(e.message || 'Gagal membuka kunci media.', 'error');
+    }
+  };
+
+  const handleRenameMedia = async (idOrMedia, newName) => {
+    const id = typeof idOrMedia === 'object' ? idOrMedia.id : idOrMedia;
+    const name = typeof idOrMedia === 'object'
+      ? prompt('Masukkan nama tampilan baru:', idOrMedia.display_name)
+      : newName;
+
+    if (!name || !name.trim()) return;
+
+    try {
+      await api.updateMedia(id, { display_name: name.trim() });
+      addToast('Nama file berhasil diperbarui.', 'success');
+      setViewerMediaList((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, display_name: name.trim() } : m))
+      );
+    } catch (e) {
+      addToast(e.message || 'Gagal mengubah nama file.', 'error');
+    }
+  };
+
+  const handleDeleteMedia = async (id, vaultToken) => {
+    if (!window.confirm('Yakin ingin menghapus file ini secara permanen dari server?')) return;
+
+    try {
+      await api.deleteMedia(id, vaultToken);
+      addToast('File berhasil dihapus permanen.', 'success');
+      setViewerOpen(false);
+      refreshUser();
+    } catch (e) {
+      addToast(e.message || 'Gagal menghapus file.', 'error');
+    }
+  };
+
+  const handleOrganizeMedia = (media) => {
+    setOrganizingMedia(media);
+    setOrganizeModalOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FFFBF5] flex items-center justify-center font-serif text-xl text-[#C2410C]">
+        Memuat MyCloud...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FFFBF5]">
+      {/* Toast System */}
+      <Toast toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
+
+      {/* Top Navigation */}
+      <Navbar
+        onOpenUpload={() => setUploadModalOpen(true)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onOpenQuotaModal={() => setQuotaModalOpen(true)}
+      />
+
+      <div className="flex flex-1">
+        {/* Left Sidebar */}
+        <Sidebar
+          currentTab={currentTab}
+          setTab={setTab}
+          onRequestIncreaseQuota={() => setQuotaModalOpen(true)}
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto min-h-[calc(100vh-64px)]">
+          {currentTab === 'gallery' && (
+            <GalleryPage
+              searchQuery={searchQuery}
+              onOpenViewer={handleOpenViewer}
+              onToggleFavorite={handleToggleFavorite}
+              onLock={handleLockMedia}
+              onOrganize={handleOrganizeMedia}
+              onDelete={handleDeleteMedia}
+              onRename={handleRenameMedia}
+            />
+          )}
+
+          {currentTab === 'videos' && (
+            <VideoHubPage
+              onOpenViewer={handleOpenViewer}
+              onToggleFavorite={handleToggleFavorite}
+              onLock={handleLockMedia}
+              onOrganize={handleOrganizeMedia}
+              onDelete={handleDeleteMedia}
+              onRename={handleRenameMedia}
+            />
+          )}
+
+          {currentTab === 'albums' && (
+            <AlbumsPage
+              onOpenViewer={handleOpenViewer}
+              onToggleFavorite={handleToggleFavorite}
+              onLock={handleLockMedia}
+              onOrganize={handleOrganizeMedia}
+              onDelete={handleDeleteMedia}
+              onRename={handleRenameMedia}
+            />
+          )}
+
+          {currentTab === 'vault' && (
+            <VaultPage
+              onOpenViewer={handleOpenViewer}
+              onUnlockMedia={handleUnlockMedia}
+              onDeleteMedia={handleDeleteMedia}
+              onRenameMedia={handleRenameMedia}
+            />
+          )}
+
+          {currentTab === 'admin' && user?.role === 'admin' && (
+            <AdminPage />
+          )}
+        </main>
+      </div>
+
+      {/* Modals */}
+      <UploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        user={user}
+        onUploadSuccess={() => {
+          refreshUser();
+          addToast('File berhasil diunggah ke cloud!', 'success');
+        }}
+        onRequestQuota={() => setQuotaModalOpen(true)}
+      />
+
+      <RequestQuotaModal
+        isOpen={quotaModalOpen}
+        onClose={() => setQuotaModalOpen(false)}
+        user={user}
+        onRequested={() => {
+          refreshUser();
+          addToast('Permohonan penambahan kuota berhasil dikirim.', 'success');
+        }}
+      />
+
+      <OrganizeModal
+        isOpen={organizeModalOpen}
+        onClose={() => setOrganizeModalOpen(false)}
+        media={organizingMedia}
+        onUpdated={() => {
+          addToast('Album media berhasil diperbarui.', 'success');
+        }}
+      />
+
+      <MediaViewerModal
+        isOpen={viewerOpen}
+        mediaList={viewerMediaList}
+        currentIndex={viewerCurrentIndex}
+        onClose={() => setViewerOpen(false)}
+        onNavigate={(idx) => setViewerCurrentIndex(idx)}
+        onRename={handleRenameMedia}
+        onOrganize={handleOrganizeMedia}
+        onToggleFavorite={handleToggleFavorite}
+        onLock={handleLockMedia}
+        onUnlock={handleUnlockMedia}
+        onDelete={handleDeleteMedia}
+        isVault={viewerIsVault}
+        vaultToken={viewerVaultToken}
+      />
+    </div>
+  );
+}
+

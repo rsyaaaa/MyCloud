@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FFFBF5;
+    color: #1C1917;
+    font-family: 'Open Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Lora', Georgia, serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'Source Code Pro', monospace;
+  }
+}
+
+/* Custom Artisan Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFFBF5;
+  border-left: 1px solid #E7E5E4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D4A373;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C2410C;
+}
+
+/* MarketNest Button & Input Utilities */
+.btn-primary {
+  @apply bg-[#C2410C] text-white font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#9A3412] active:bg-[#7C2D12] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+}
+
+.btn-secondary {
+  @apply bg-transparent text-[#C2410C] border-[1.5px] border-[#C2410C] font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#FDF6EC] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+}
+
+.btn-ghost {
+  @apply bg-transparent text-[#57534E] hover:bg-[#FDF6EC] hover:text-[#1C1917] px-3.5 py-2 rounded-[4px] transition-colors inline-flex items-center justify-center gap-2;
+}
+
+.btn-destructive {
+  @apply bg-[#DC2626] text-white font-semibold text-[15px] px-4 py-2 rounded-[4px] hover:bg-[#B91C1C] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+}
+
+.input-artisan {
+  @apply bg-white border-[1.5px] border-[#D6D3D1] text-[#1C1917] placeholder-[#A8A29E] rounded-[4px] px-3.5 h-[42px] text-[15px] focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/20 focus:outline-none transition-all disabled:bg-[#F5F5F4] disabled:opacity-50;
+}
+
+.chip-filter {
+  @apply h-[32px] px-3.5 rounded-[4px] border border-[#D6D3D1] text-[13px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer bg-white text-[#57534E] hover:bg-[#FDF6EC] hover:text-[#C2410C];
+}
+
+.chip-filter-active {
+  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#9A3412] hover:text-white;
+}
+
+.card-artisan {
+  @apply bg-white border border-[#E7E5E4] rounded-[8px] transition-colors hover:border-[#D6D3D1];
+}
+
+.card-elevated {
+  @apply bg-[#FFFBF5] border-2 border-[#D6D3D1] rounded-[8px] hover:border-[#A8A29E];
+}
+

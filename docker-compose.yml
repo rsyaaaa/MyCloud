@@ -1,0 +1,19 @@
+services:
+  mycloud:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mycloud-hub
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /home/autofocusxioo/nas_data:/nas_data
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - HOST=0.0.0.0
+      - STORAGE_ROOT=/nas_data
+      - JWT_SECRET=mycloud-nas-super-jwt-key-2026
+      - VAULT_SECRET=mycloud-nas-super-vault-key-2026
+

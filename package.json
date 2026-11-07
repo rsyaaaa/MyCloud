@@ -1,0 +1,15 @@
+{
+  "name": "mycloud-nas",
+  "version": "1.0.0",
+  "description": "Personal Local Cloud & Media Hub (Private NAS Web App)",
+  "scripts": {
+    "build:client": "cd client && npm run build",
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "start": "node server/src/index.js",
+    "dev": "node --watch server/src/index.js"
+  },
+  "keywords": ["nas", "media-hub", "cloud", "local-storage"],
+  "author": "autofocusxioo",
+  "license": "MIT"
+}
+
