@@ -1,30 +1,21 @@
 import React, { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useVault } from './context/VaultContext';
-import Navbar from './components/Navbar';
-import Sidebar from './components/Sidebar';
+import { useIsMobile } from './hooks/useIsMobile';
+import DesktopApp from './desktop/DesktopApp';
+import MobileApp from './mobile/MobileApp';
 import Toast from './components/Toast';
 import UploadModal from './components/UploadModal';
 import RequestQuotaModal from './components/RequestQuotaModal';
 import MediaViewerModal from './components/MediaViewerModal';
 import OrganizeModal from './components/OrganizeModal';
-import SafePinModal from './components/SafePinModal';
-
-import GalleryPage from './pages/GalleryPage';
-import VideoHubPage from './pages/VideoHubPage';
-import VaultPage from './pages/VaultPage';
-import AlbumsPage from './pages/AlbumsPage';
-import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import { api } from './api';
 
 export default function App() {
   const { user, loading, refreshUser } = useAuth();
-  const { isUnlocked } = useVault();
+  const isMobile = useIsMobile(768);
 
-  // State
-  const [currentTab, setTab] = useState('gallery'); // 'gallery', 'videos', 'albums', 'vault', 'admin'
-  const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState([]);
 
   // Modals
@@ -60,7 +51,6 @@ export default function App() {
     try {
       await api.updateMedia(id, { is_favorite: isFavorite });
       addToast(isFavorite ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit', 'success');
-      // Update viewer if open
       setViewerMediaList((prev) =>
         prev.map((m) => (m.id === id ? { ...m, is_favorite: isFavorite ? 1 : 0 } : m))
       );
@@ -140,79 +130,31 @@ export default function App() {
     return <LoginPage />;
   }
 
+  const commonProps = {
+    onOpenUpload: () => setUploadModalOpen(true),
+    onOpenQuotaModal: () => setQuotaModalOpen(true),
+    onOpenViewer: handleOpenViewer,
+    onToggleFavorite: handleToggleFavorite,
+    onLockMedia: handleLockMedia,
+    onUnlockMedia: handleUnlockMedia,
+    onOrganizeMedia: handleOrganizeMedia,
+    onDeleteMedia: handleDeleteMedia,
+    onRenameMedia: handleRenameMedia,
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFFBF5]">
+    <>
       {/* Toast System */}
       <Toast toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
 
-      {/* Top Navigation */}
-      <Navbar
-        onOpenUpload={() => setUploadModalOpen(true)}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onOpenQuotaModal={() => setQuotaModalOpen(true)}
-      />
+      {/* Render Mobile Layout or Desktop Layout cleanly based on screen size */}
+      {isMobile ? (
+        <MobileApp {...commonProps} />
+      ) : (
+        <DesktopApp {...commonProps} />
+      )}
 
-      <div className="flex flex-1">
-        {/* Left Sidebar */}
-        <Sidebar
-          currentTab={currentTab}
-          setTab={setTab}
-          onRequestIncreaseQuota={() => setQuotaModalOpen(true)}
-        />
-
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto min-h-[calc(100vh-64px)]">
-          {currentTab === 'gallery' && (
-            <GalleryPage
-              searchQuery={searchQuery}
-              onOpenViewer={handleOpenViewer}
-              onToggleFavorite={handleToggleFavorite}
-              onLock={handleLockMedia}
-              onOrganize={handleOrganizeMedia}
-              onDelete={handleDeleteMedia}
-              onRename={handleRenameMedia}
-            />
-          )}
-
-          {currentTab === 'videos' && (
-            <VideoHubPage
-              onOpenViewer={handleOpenViewer}
-              onToggleFavorite={handleToggleFavorite}
-              onLock={handleLockMedia}
-              onOrganize={handleOrganizeMedia}
-              onDelete={handleDeleteMedia}
-              onRename={handleRenameMedia}
-            />
-          )}
-
-          {currentTab === 'albums' && (
-            <AlbumsPage
-              onOpenViewer={handleOpenViewer}
-              onToggleFavorite={handleToggleFavorite}
-              onLock={handleLockMedia}
-              onOrganize={handleOrganizeMedia}
-              onDelete={handleDeleteMedia}
-              onRename={handleRenameMedia}
-            />
-          )}
-
-          {currentTab === 'vault' && (
-            <VaultPage
-              onOpenViewer={handleOpenViewer}
-              onUnlockMedia={handleUnlockMedia}
-              onDeleteMedia={handleDeleteMedia}
-              onRenameMedia={handleRenameMedia}
-            />
-          )}
-
-          {currentTab === 'admin' && user?.role === 'admin' && (
-            <AdminPage />
-          )}
-        </main>
-      </div>
-
-      {/* Modals */}
+      {/* Shared Modals */}
       <UploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
@@ -258,7 +200,6 @@ export default function App() {
         isVault={viewerIsVault}
         vaultToken={viewerVaultToken}
       />
-    </div>
+    </>
   );
 }
-

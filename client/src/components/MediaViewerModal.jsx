@@ -68,36 +68,36 @@ export default function MediaViewerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1C1917]/90 backdrop-blur-sm animate-in fade-in duration-150">
       {/* Top Header Bar */}
-      <div className="absolute top-0 inset-x-0 h-16 px-6 flex items-center justify-between z-20 bg-gradient-to-b from-black/80 to-transparent text-white">
-        <div className="flex items-center gap-3 max-w-md truncate">
+      <div className="absolute top-0 inset-x-0 h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between z-20 bg-gradient-to-b from-black/80 to-transparent text-white">
+        <div className="flex items-center gap-2 max-w-[150px] sm:max-w-md truncate">
           {isEditingName ? (
-            <form onSubmit={handleSaveName} className="flex items-center gap-2">
+            <form onSubmit={handleSaveName} className="flex items-center gap-1.5">
               <input
                 type="text"
                 autoFocus
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="bg-white/10 border border-[#D4A373] text-white px-2 py-1 rounded text-[14px] outline-none"
+                className="bg-white/10 border border-[#D4A373] text-white px-2 py-0.5 rounded text-[13px] outline-none w-28 sm:w-auto"
               />
-              <button type="submit" className="text-[12px] bg-[#C2410C] px-2.5 py-1 rounded">
+              <button type="submit" className="text-[11px] bg-[#C2410C] px-2 py-0.5 rounded">
                 Simpan
               </button>
               <button
                 type="button"
                 onClick={() => setIsEditingName(false)}
-                className="text-[12px] text-white/70 hover:text-white"
+                className="text-[11px] text-white/70 hover:text-white"
               >
                 Batal
               </button>
             </form>
           ) : (
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-serif font-medium text-lg truncate">
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="font-serif font-medium text-sm sm:text-lg truncate">
                 {currentMedia.display_name}
               </span>
               <button
                 onClick={() => setIsEditingName(true)}
-                className="text-white/60 hover:text-white p-1 rounded transition-colors"
+                className="text-white/60 hover:text-white p-1 rounded transition-colors shrink-0"
                 title="Ubah Nama Tampilan"
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -107,42 +107,42 @@ export default function MediaViewerModal({
         </div>
 
         {/* Action icons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <button
             onClick={() => onToggleFavorite(currentMedia.id, !currentMedia.is_favorite)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
+            className={`p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors ${
               currentMedia.is_favorite ? 'text-[#DC2626]' : 'text-white/80 hover:text-white'
             }`}
             title="Favorit"
           >
-            <Heart className={`w-5 h-5 ${currentMedia.is_favorite ? 'fill-[#DC2626]' : ''}`} />
+            <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${currentMedia.is_favorite ? 'fill-[#DC2626]' : ''}`} />
           </button>
 
           {!isVault && onOrganize && (
             <button
               onClick={() => onOrganize(currentMedia)}
-              className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+              className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
               title="Atur ke Album"
             >
-              <Folder className="w-5 h-5" />
+              <Folder className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           )}
 
           {isVault ? (
             <button
               onClick={() => onUnlock(currentMedia.id)}
-              className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+              className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
               title="Keluarkan dari Brankas"
             >
-              <Unlock className="w-5 h-5" />
+              <Unlock className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ) : (
             <button
               onClick={() => onLock(currentMedia.id)}
-              className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+              className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
               title="Kunci ke Brankas Rahasia"
             >
-              <Lock className="w-5 h-5" />
+              <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           )}
 
@@ -150,39 +150,39 @@ export default function MediaViewerModal({
             <a
               href={api.getDownloadUrl(currentMedia.id)}
               download
-              className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+              className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
               title="Unduh Asli"
             >
-              <Download className="w-5 h-5" />
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" />
             </a>
           )}
 
           <button
             onClick={() => setShowInfo(!showInfo)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
+            className={`p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors ${
               showInfo ? 'text-[#C2410C] bg-white/20' : 'text-white/80 hover:text-white'
             }`}
             title="Info Metadata"
           >
-            <Info className="w-5 h-5" />
+            <Info className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           <button
             onClick={() => onDelete(currentMedia.id)}
-            className="p-2 rounded-full hover:bg-[#DC2626]/20 text-white/80 hover:text-[#DC2626] transition-colors"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-[#DC2626]/20 text-white/80 hover:text-[#DC2626] transition-colors"
             title="Hapus Media"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          <div className="w-[1px] h-6 bg-white/20 mx-1" />
+          <div className="w-[1px] h-5 bg-white/20 mx-0.5 sm:mx-1" />
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white transition-colors"
             title="Tutup"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
       </div>
@@ -191,23 +191,23 @@ export default function MediaViewerModal({
       {hasPrev && (
         <button
           onClick={() => onNavigate(currentIndex - 1)}
-          className="absolute left-4 z-20 w-12 h-12 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-transform hover:scale-110"
+          className="absolute left-2 sm:left-4 z-20 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-transform hover:scale-110"
         >
-          <ChevronLeft className="w-8 h-8" />
+          <ChevronLeft className="w-5 h-5 sm:w-8 sm:h-8" />
         </button>
       )}
 
       {hasNext && (
         <button
           onClick={() => onNavigate(currentIndex + 1)}
-          className="absolute right-4 z-20 w-12 h-12 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-transform hover:scale-110"
+          className="absolute right-2 sm:right-4 z-20 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-transform hover:scale-110"
         >
-          <ChevronRight className="w-8 h-8" />
+          <ChevronRight className="w-5 h-5 sm:w-8 sm:h-8" />
         </button>
       )}
 
       {/* Main Content Area */}
-      <div className="relative w-full h-full flex items-center justify-center p-8 pt-16">
+      <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-8 pt-16">
         {currentMedia.media_type === 'video' ? (
           <VideoPlayer
             media={currentMedia}

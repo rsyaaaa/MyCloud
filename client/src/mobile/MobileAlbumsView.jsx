@@ -1,0 +1,317 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Folder, FolderPlus, ArrowLeft, Trash2, Layers, LayoutGrid, List } from 'lucide-react';
+import MobileMediaCard from './MobileMediaCard';
+import MobileMediaListItem from './MobileMediaListItem';
+import MobilePagination from './MobilePagination';
+import { api } from '../api';
+
+export default function MobileAlbumsView({
+  onOpenViewer,
+  onToggleFavorite,
+  onLock,
+  onOrganize,
+  onDelete,
+  onRename
+}) {
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryMedia, setCategoryMedia] = useState([]);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatType, setNewCatType] = useState('album');
+  const [isCreating, setIsCreating] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const pageSize = 12;
+
+  const loadCategories = async () => {
+    setLoading(true);
+    try {
+      const data = await api.listCategories();
+      setCategories(data.categories || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCategoryMedia = async (cat) => {
+    setSelectedCategory(cat);
+    setLoading(true);
+    try {
+      const data = await api.listMedia({ category_id: cat.id });
+      setCategoryMedia(data.media || []);
+      setCurrentPage(1);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+
+    try {
+      await api.createCategory(newCatName.trim(), newCatType);
+      setNewCatName('');
+      setIsCreating(false);
+      loadCategories();
+    } catch (e) {}
+  };
+
+  const handleDeleteCategory = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Hapus album ini?')) return;
+
+    try {
+      await api.deleteCategory(id);
+      if (selectedCategory?.id === id) {
+        setSelectedCategory(null);
+      }
+      loadCategories();
+    } catch (e) {}
+  };
+
+  const totalItems = categoryMedia.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return categoryMedia.slice(startIndex, startIndex + pageSize);
+  }, [categoryMedia, currentPage, pageSize]);
+
+  // If viewing a single album
+  if (selectedCategory) {
+    return (
+      <div className="p-4 pb-24 max-w-md mx-auto">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E5E4]">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="p-1.5 text-[#57534E] hover:text-[#1C1917]"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-serif font-bold text-lg text-[#1C1917] truncate max-w-[180px]">
+                  {selectedCategory.name}
+                </h2>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 bg-[#FAF1E6] text-[#C2410C] rounded border border-[#D4A373]">
+                  {selectedCategory.type}
+                </span>
+              </div>
+              <span className="text-[11px] text-[#57534E]">
+                {categoryMedia.length} berkas
+              </span>
+            </div>
+          </div>
+
+          {/* View mode toggle */}
+          <div className="flex items-center gap-1 bg-[#FFFBF5] p-0.5 rounded-[4px] border border-[#D6D3D1]">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-[3px] transition-colors ${
+                viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-[3px] transition-colors ${
+                viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#57534E]'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {paginatedItems.length === 0 ? (
+          <div className="text-center py-16 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-6">
+            <Layers className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
+            <h4 className="font-serif font-semibold text-base text-[#1C1917]">
+              Album Kosong
+            </h4>
+            <p className="text-[12px] text-[#57534E] mt-1">
+              Tambahkan foto atau video ke album ini dari menu Galeri.
+            </p>
+          </div>
+        ) : (
+          <>
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-2 gap-3">
+                {paginatedItems.map((m) => {
+                  const globalIdx = categoryMedia.findIndex((item) => item.id === m.id);
+                  return (
+                    <MobileMediaCard
+                      key={m.id}
+                      media={m}
+                      onClick={() => onOpenViewer(categoryMedia, globalIdx)}
+                      onToggleFavorite={onToggleFavorite}
+                      onLock={onLock}
+                      onOrganize={onOrganize}
+                      onDelete={onDelete}
+                      onRename={onRename}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            {viewMode === 'list' && (
+              <div className="space-y-2.5">
+                {paginatedItems.map((m) => {
+                  const globalIdx = categoryMedia.findIndex((item) => item.id === m.id);
+                  return (
+                    <MobileMediaListItem
+                      key={m.id}
+                      media={m}
+                      onClick={() => onOpenViewer(categoryMedia, globalIdx)}
+                      onToggleFavorite={onToggleFavorite}
+                      onLock={onLock}
+                      onOrganize={onOrganize}
+                      onDelete={onDelete}
+                      onRename={onRename}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            <MobilePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(p) => {
+                setCurrentPage(p);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // All Albums Overview
+  return (
+    <div className="p-4 pb-24 max-w-md mx-auto">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E5E4]">
+        <div>
+          <div className="flex items-center gap-2">
+            <Folder className="w-5 h-5 text-[#C2410C]" />
+            <h2 className="font-serif font-bold text-xl text-[#1C1917]">
+              Album & Folder
+            </h2>
+          </div>
+          <p className="text-[12px] text-[#57534E] mt-0.5">
+            Koleksi album dan pengelompokan media Anda.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsCreating(!isCreating)}
+          className="btn-primary text-[12px] h-[34px] px-3"
+        >
+          <FolderPlus className="w-4 h-4" />
+          <span>Buat</span>
+        </button>
+      </div>
+
+      {/* Inline Create Album Form */}
+      {isCreating && (
+        <form onSubmit={handleCreate} className="mb-4 p-3 bg-white border-2 border-[#D6D3D1] rounded-[8px] space-y-2 animate-in fade-in duration-100">
+          <input
+            type="text"
+            placeholder="Nama album baru..."
+            value={newCatName}
+            onChange={(e) => setNewCatName(e.target.value)}
+            className="input-artisan w-full h-[36px] text-[13px]"
+          />
+          <div className="flex items-center gap-2">
+            <select
+              value={newCatType}
+              onChange={(e) => setNewCatType(e.target.value)}
+              className="input-artisan h-[36px] text-[12px] px-2 bg-white flex-1"
+            >
+              <option value="album">Album</option>
+              <option value="folder">Folder</option>
+              <option value="genre">Genre</option>
+            </select>
+            <button
+              type="submit"
+              disabled={!newCatName.trim()}
+              className="btn-primary h-[36px] px-4 text-[13px]"
+            >
+              Simpan
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCreating(false)}
+              className="btn-ghost h-[36px] px-2 text-[12px]"
+            >
+              Batal
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Grid of Albums */}
+      {categories.length === 0 ? (
+        <div className="text-center py-16 bg-white border-2 border-dashed border-[#D6D3D1] rounded-[8px] p-6">
+          <Folder className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
+          <h4 className="font-serif font-semibold text-base text-[#1C1917]">
+            Belum ada Album
+          </h4>
+          <p className="text-[12px] text-[#57534E] mt-1">
+            Tekan tombol <strong>Buat</strong> di atas untuk membuat album pertama.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {categories.map((cat) => (
+            <div
+              key={cat.id}
+              onClick={() => loadCategoryMedia(cat)}
+              className="card-artisan p-3 cursor-pointer hover:border-[#C2410C] transition-all relative flex flex-col justify-between h-28 bg-white"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-8 h-8 rounded-[4px] bg-[#FAF1E6] text-[#C2410C] flex items-center justify-center border border-[#D4A373]">
+                  <Folder className="w-4 h-4" />
+                </div>
+                <button
+                  onClick={(e) => handleDeleteCategory(cat.id, e)}
+                  className="p-1 text-[#A8A29E] hover:text-[#DC2626]"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div>
+                <h4 className="font-serif font-semibold text-[14px] text-[#1C1917] truncate leading-tight">
+                  {cat.name}
+                </h4>
+                <div className="flex items-center justify-between text-[11px] text-[#57534E] mt-1">
+                  <span className="font-mono">{cat.media_count || 0} berkas</span>
+                  <span className="text-[9px] uppercase font-bold tracking-wider px-1 bg-[#FFFBF5] border border-[#E7E5E4] rounded">
+                    {cat.type}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
