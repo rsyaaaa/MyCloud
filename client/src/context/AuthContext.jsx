@@ -88,6 +88,10 @@ export function AuthProvider({ children }) {
       await api.logout();
     } catch (e) {}
     localStorage.removeItem('mycloud_auth_token');
+    localStorage.removeItem('mycloud_active_tab');
+    localStorage.removeItem('mycloud_active_folder');
+    localStorage.removeItem('mycloud_active_album');
+    localStorage.removeItem('mycloud_gallery_subview');
     setUser(null);
   };
 

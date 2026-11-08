@@ -34,9 +34,20 @@ export default function DesktopApp({
   const { user, refreshUser } = useAuth();
   const { t, lang } = useLanguage();
   const { notifyTabChange } = useVault();
-  const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'albums', 'vault', 'trash', 'admin'
-  const [activeFolder, setActiveFolder] = useState(null);
-  const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
+  const [currentTab, setCurrentTabState] = useState(() => {
+    return localStorage.getItem('mycloud_active_tab') || 'home';
+  });
+  const [activeFolder, setActiveFolder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mycloud_active_folder');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [gallerySubView, setGallerySubView] = useState(() => {
+    return localStorage.getItem('mycloud_gallery_subview') || 'all';
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   // Sidebar toggle state for desktop (persisted in localStorage)
@@ -59,6 +70,7 @@ export default function DesktopApp({
 
   const setTab = (newTab) => {
     setCurrentTabState(newTab);
+    localStorage.setItem('mycloud_active_tab', newTab);
     notifyTabChange(newTab);
   };
 
@@ -67,8 +79,23 @@ export default function DesktopApp({
     document.title = 'MyCloud';
   }, []);
 
+  // Strict role check: admin shouldn't see gallery, user shouldn't see admin/terminal
+  useEffect(() => {
+    if (user?.role === 'admin' && currentTab === 'gallery') {
+      setTab('home');
+    } else if (user?.role !== 'admin' && (currentTab === 'admin' || currentTab === 'terminal')) {
+      setTab('home');
+    }
+  }, [user?.role]);
+
   const handleNavigate = (tab, subView = 'all', folderId = null) => {
-    if (subView) setGallerySubView(subView);
+    if (subView) {
+      setGallerySubView(subView);
+      localStorage.setItem('mycloud_gallery_subview', subView);
+    }
+    if (folderId) {
+      localStorage.setItem('mycloud_active_folder', JSON.stringify({ id: folderId }));
+    }
     setTab(tab);
   };
 

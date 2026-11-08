@@ -29,11 +29,23 @@ export default function AllFilesPage({
   const { t, lang } = useLanguage();
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
-  const [currentFolder, setCurrentFolder] = useState(null);
+  const [currentFolder, setCurrentFolder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mycloud_active_folder');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (onFolderChange) onFolderChange(currentFolder);
+    if (currentFolder) {
+      localStorage.setItem('mycloud_active_folder', JSON.stringify({ id: currentFolder.id, name: currentFolder.name }));
+    } else {
+      localStorage.removeItem('mycloud_active_folder');
+    }
   }, [currentFolder]);
 
   // Preference persistence (Requirement 3)
@@ -70,7 +82,20 @@ export default function AllFilesPage({
   const loadFolders = async () => {
     try {
       const res = await api.listCategories();
-      setFolders(res.categories || []);
+      const catList = res.categories || [];
+      setFolders(catList);
+      if (currentFolder) {
+        const found = catList.find((c) => c.id === currentFolder.id);
+        if (found) {
+          if (found.name !== currentFolder.name) {
+            setCurrentFolder(found);
+            localStorage.setItem('mycloud_active_folder', JSON.stringify({ id: found.id, name: found.name }));
+          }
+        } else if (catList.length > 0) {
+          setCurrentFolder(null);
+          localStorage.removeItem('mycloud_active_folder');
+        }
+      }
     } catch (err) {
       console.warn('Failed to load folders:', err);
     }
@@ -88,6 +113,8 @@ export default function AllFilesPage({
       }
       if (currentFolder) {
         params.category_id = currentFolder.id;
+      } else if (!searchQuery.trim()) {
+        params.root_only = 'true';
       }
 
       const res = await api.listMedia(params);

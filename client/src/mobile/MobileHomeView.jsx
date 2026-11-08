@@ -47,9 +47,17 @@ export default function MobileHomeView({
   const [favoriteItems, setFavoriteItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Terabox style tabbed section: 'recent' or 'favorite' (Starred)
-  const [homeTab, setHomeTab] = useState('recent');
+  // Terabox style tabbed section: 'recent' or 'favorite' (Starred), remembered across sessions & refreshes
+  const [homeTab, setHomeTab] = useState(() => {
+    return localStorage.getItem('mycloud_mobile_home_tab') || 'recent';
+  });
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const switchHomeTab = (tab) => {
+    setHomeTab(tab);
+    localStorage.setItem('mycloud_mobile_home_tab', tab);
+    setIsExpanded(false);
+  };
 
   const loadData = async (silent = false) => {
     if (!user) return;
@@ -221,10 +229,7 @@ export default function MobileHomeView({
           {/* Left Tabs */}
           <div className="flex items-center gap-6">
             <button
-              onClick={() => {
-                setHomeTab('recent');
-                setIsExpanded(false);
-              }}
+              onClick={() => switchHomeTab('recent')}
               className={`text-[15px] pb-1 relative transition-colors ${
                 homeTab === 'recent'
                   ? 'font-bold text-[#0A0A0A] dark:text-white'
@@ -238,10 +243,7 @@ export default function MobileHomeView({
             </button>
 
             <button
-              onClick={() => {
-                setHomeTab('favorite');
-                setIsExpanded(false);
-              }}
+              onClick={() => switchHomeTab('favorite')}
               className={`text-[15px] pb-1 relative transition-colors ${
                 homeTab === 'favorite'
                   ? 'font-bold text-[#0A0A0A] dark:text-white'

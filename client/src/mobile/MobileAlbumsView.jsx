@@ -20,7 +20,14 @@ export default function MobileAlbumsView({
   onLongPress
 }) {
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mycloud_active_album');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [categoryMedia, setCategoryMedia] = useState([]);
   const [newCatName, setNewCatName] = useState('');
   const [newCatType, setNewCatType] = useState('album');
@@ -34,13 +41,31 @@ export default function MobileAlbumsView({
     if (!silent) setLoading(true);
     try {
       const data = await api.listCategories();
-      setCategories(data.categories || []);
+      const list = data.categories || [];
+      setCategories(list);
+      if (selectedCategory) {
+        const found = list.find((c) => c.id === selectedCategory.id);
+        if (found) {
+          loadCategoryMedia(found, true);
+        } else if (list.length > 0) {
+          setSelectedCategory(null);
+          localStorage.removeItem('mycloud_active_album');
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
       if (!silent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (selectedCategory) {
+      localStorage.setItem('mycloud_active_album', JSON.stringify({ id: selectedCategory.id, name: selectedCategory.name }));
+    } else {
+      localStorage.removeItem('mycloud_active_album');
+    }
+  }, [selectedCategory]);
 
   const loadCategoryMedia = async (cat, silent = false) => {
     setSelectedCategory(cat);

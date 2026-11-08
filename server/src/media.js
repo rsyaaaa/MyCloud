@@ -202,7 +202,8 @@ router.get('/', authMiddleware, async (req, res) => {
       is_favorite,
       category_id,
       search,
-      sort = 'newest'
+      sort = 'newest',
+      root_only
     } = req.query;
 
     let query = `
@@ -229,7 +230,14 @@ router.get('/', authMiddleware, async (req, res) => {
       query += ` AND m.is_favorite = 1`;
     }
 
-    if (category_id) {
+    if (root_only === 'true' || root_only === '1' || category_id === 'root') {
+      query += ` AND m.id NOT IN (
+        SELECT r2.media_id
+        FROM media_category_rel r2
+        JOIN categories_folders c2 ON r2.category_id = c2.id
+        WHERE c2.type = 'folder'
+      )`;
+    } else if (category_id) {
       query += ` AND r.category_id = ?`;
       params.push(category_id);
     }
@@ -255,6 +263,13 @@ router.get('/', authMiddleware, async (req, res) => {
       case 'duration_desc':
         query += ` ORDER BY m.duration_seconds DESC`;
         break;
+      case 'name_asc':
+        query += ` ORDER BY LOWER(COALESCE(m.display_name, m.original_name)) ASC`;
+        break;
+      case 'name_desc':
+        query += ` ORDER BY LOWER(COALESCE(m.display_name, m.original_name)) DESC`;
+        break;
+      case 'modified_desc':
       case 'newest':
       default:
         query += ` ORDER BY COALESCE(m.captured_at, m.created_at) DESC`;

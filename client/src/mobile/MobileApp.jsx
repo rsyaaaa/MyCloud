@@ -46,9 +46,20 @@ export default function MobileApp({
   const { isDark, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLanguage();
 
-  const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
-  const [activeFolder, setActiveFolder] = useState(null);
-  const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
+  const [currentTab, setCurrentTabState] = useState(() => {
+    return localStorage.getItem('mycloud_active_tab') || 'home';
+  });
+  const [activeFolder, setActiveFolder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mycloud_active_folder');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [gallerySubView, setGallerySubView] = useState(() => {
+    return localStorage.getItem('mycloud_gallery_subview') || 'all';
+  });
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
@@ -127,6 +138,7 @@ export default function MobileApp({
 
   const setTab = (newTab) => {
     setCurrentTabState(newTab);
+    localStorage.setItem('mycloud_active_tab', newTab);
     notifyTabChange(newTab);
   };
 
@@ -135,8 +147,23 @@ export default function MobileApp({
     document.title = 'MyCloud';
   }, []);
 
+  // Strict role check: admin shouldn't see gallery, user shouldn't see admin/terminal
+  useEffect(() => {
+    if (user?.role === 'admin' && currentTab === 'gallery') {
+      setTab('home');
+    } else if (user?.role !== 'admin' && (currentTab === 'admin' || currentTab === 'terminal')) {
+      setTab('home');
+    }
+  }, [user?.role]);
+
   const handleNavigate = (tab, subView = 'all', folderId = null) => {
-    if (subView) setGallerySubView(subView);
+    if (subView) {
+      setGallerySubView(subView);
+      localStorage.setItem('mycloud_gallery_subview', subView);
+    }
+    if (folderId) {
+      localStorage.setItem('mycloud_active_folder', JSON.stringify({ id: folderId }));
+    }
     setTab(tab);
   };
 
@@ -178,33 +205,35 @@ export default function MobileApp({
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0B0B0E] flex flex-col text-[#0A0A0A] dark:text-[#F4F4F5] selection:bg-[#FFEDD5] selection:text-[#C2410C] transition-colors">
-      {/* Mobile Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
-        {/* Brand */}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
-            <Cloud className="w-4 h-4 stroke-[2.2]" />
+      {/* Mobile Top App Bar (Hidden for allfiles, as MobileAllFilesView has its own Google Drive header) */}
+      {currentTab !== 'allfiles' && (
+        <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
+          {/* Brand */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
+              <Cloud className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
+              MyCloud
+            </h1>
           </div>
-          <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
-            MyCloud
-          </h1>
-        </div>
 
-        {/* Right actions: Profile Avatar */}
-        <div className="flex items-center gap-2">
-          {/* User Avatar Circle */}
-          <button
-            onClick={() => setProfileDrawerOpen(true)}
-            className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] overflow-hidden ml-1 active:scale-95 transition-transform"
-          >
-            <img
-              src={avatarUrl}
-              alt={user?.username}
-              className="w-full h-full object-cover"
-            />
-          </button>
-        </div>
-      </header>
+          {/* Right actions: Profile Avatar */}
+          <div className="flex items-center gap-2">
+            {/* User Avatar Circle */}
+            <button
+              onClick={() => setProfileDrawerOpen(true)}
+              className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] overflow-hidden ml-1 active:scale-95 transition-transform"
+            >
+              <img
+                src={avatarUrl}
+                alt={user?.username}
+                className="w-full h-full object-cover"
+              />
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* Main Mobile Screen View Area */}
       <main className="flex-1 w-full animate-enter">
@@ -253,8 +282,9 @@ export default function MobileApp({
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
             onLongPress={(media) => setContextMenuMedia(media)}
-            onOpenUpload={() => onOpenUpload(activeFolder)}
+            onOpenUpload={onOpenUpload}
             onFolderChange={setActiveFolder}
+            onOpenProfile={() => setProfileDrawerOpen(true)}
           />
         )}
 
@@ -325,8 +355,8 @@ export default function MobileApp({
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Upload (Terabox Simple Arrow Style with Scroll Animation) */}
-      {currentTab !== 'terminal' && currentTab !== 'trash' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
+      {/* Floating Action Button (FAB) - Upload (Terabox Simple Arrow Style with Scroll Animation, disabled on allfiles as it has its own Drive + FAB) */}
+      {currentTab !== 'terminal' && currentTab !== 'trash' && currentTab !== 'allfiles' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
         <button
           onClick={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
           className={`fixed bottom-[84px] right-4 z-40 w-13 h-13 rounded-full bg-gradient-to-tr from-[#C2410C] to-[#EA580C] text-white shadow-[0_8px_25px_rgba(194,65,12,0.45)] flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${
