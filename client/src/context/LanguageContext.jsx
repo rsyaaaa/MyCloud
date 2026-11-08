@@ -105,6 +105,31 @@ export const translations = {
     unlockedBadge: 'Terbuka',
     trashLabel: 'Tempat Sampah (Trash)',
     processing: 'Memproses...',
+
+    // Switch User
+    switchUserTitle: 'Ganti Akun di Perangkat',
+    accounts: 'Akun',
+    noSavedAccounts: 'Belum ada akun lain di perangkat ini.',
+    activeAccount: 'Aktif',
+    userAccount: 'Akun Pengguna',
+    removeAccountFromDevice: 'Hapus akun dari perangkat ini',
+    addOtherAccount: '+ Masuk ke Akun Lain',
+    reauthTitle: 'Konfirmasi Password',
+    reauthSubtitle: 'Sesi login tersimpan telah berakhir. Masukkan password akun',
+    toContinue: 'untuk melanjutkan:',
+    passwordPlaceholder: 'Password',
+    switchNow: 'Beralih Akun',
+    addAccountTitle: 'Masuk ke Akun Lain',
+    addAccountSubtitle: 'Akun yang berhasil masuk akan otomatis tersimpan di perangkat ini untuk kemudahan switch user.',
+    loginAndSave: 'Masuk & Simpan',
+
+    // Saved Accounts on Login Page
+    savedAccountsTitle: 'Pilih Akun Tersimpan',
+    savedAccountsSubtitle: 'Lanjutkan login ke akun yang tersimpan di perangkat ini',
+    loginWithAnother: '+ Masuk dengan Akun Lain',
+    chooseAnotherAccount: 'Pilih akun lain',
+    enterPasswordFor: 'Masukkan password untuk akun',
+    removeAccount: 'Hapus dari perangkat',
   },
   en: {
     // Greetings & Headers
@@ -208,6 +233,31 @@ export const translations = {
     unlockedBadge: 'Unlocked',
     trashLabel: 'Trash Bin',
     processing: 'Processing...',
+
+    // Switch User
+    switchUserTitle: 'Switch Account on Device',
+    accounts: 'Accounts',
+    noSavedAccounts: 'No other accounts saved on this device.',
+    activeAccount: 'Active',
+    userAccount: 'User Account',
+    removeAccountFromDevice: 'Remove account from this device',
+    addOtherAccount: '+ Log in to Another Account',
+    reauthTitle: 'Confirm Password',
+    reauthSubtitle: 'Saved session has expired. Enter password for',
+    toContinue: 'to continue:',
+    passwordPlaceholder: 'Password',
+    switchNow: 'Switch Account',
+    addAccountTitle: 'Log in to Another Account',
+    addAccountSubtitle: 'Accounts logged in here will be remembered on this device for quick switching.',
+    loginAndSave: 'Log in & Save',
+
+    // Saved Accounts on Login Page
+    savedAccountsTitle: 'Saved Accounts on Device',
+    savedAccountsSubtitle: 'Continue logging into an account saved on this device',
+    loginWithAnother: '+ Log in with Another Account',
+    chooseAnotherAccount: 'Choose another account',
+    enterPasswordFor: 'Enter password for account',
+    removeAccount: 'Remove from device',
   }
 };
 

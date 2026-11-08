@@ -12,6 +12,12 @@ export async function apiRequest(endpoint, options = {}) {
     headers['x-vault-token'] = vaultToken;
   }
 
+  // Persistent Session Header
+  const authToken = localStorage.getItem('mycloud_auth_token');
+  if (authToken && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...customOptions,
     headers,
@@ -46,6 +52,11 @@ export function uploadWithProgress(endpoint, formData, { onProgress, signal, vau
 
     if (vaultToken) {
       xhr.setRequestHeader('x-vault-token', vaultToken);
+    }
+
+    const authToken = localStorage.getItem('mycloud_auth_token');
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
     }
 
     if (signal) {
@@ -111,6 +122,7 @@ export const api = {
   // Auth
   login: (username, password) => apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   loginPublic: () => apiRequest('/auth/public-login', { method: 'POST' }),
+  switchUser: (token, userId) => apiRequest('/auth/switch-user', { method: 'POST', body: JSON.stringify({ token, userId }) }),
   register: (username, password) => apiRequest('/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),
   getMe: () => apiRequest('/auth/me'),

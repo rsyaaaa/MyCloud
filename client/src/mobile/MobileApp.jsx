@@ -24,6 +24,7 @@ import MediaContextMenu from '../components/MediaContextMenu';
 import MediaDetailModal from '../components/MediaDetailModal';
 import AvatarModal from '../components/AvatarModal';
 import QuotaBar from '../components/QuotaBar';
+import SwitchUserSection from '../components/SwitchUserSection';
 import { api } from '../api';
 import { recordRecentItem } from '../utils/recentHistory';
 
@@ -475,6 +476,11 @@ export default function MobileApp({
                 <span>{t('hostServer', 'Host Server')}:</span>
               </div>
               <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
+            </div>
+
+            {/* Fitur Switch User di Perangkat (Akun non-admin) */}
+            <div className="border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px] mb-3 bg-[#FAFAFA] dark:bg-[#0A0A0E] overflow-hidden">
+              <SwitchUserSection onAfterSwitch={() => setProfileDrawerOpen(false)} />
             </div>
 
             {/* Logout */}

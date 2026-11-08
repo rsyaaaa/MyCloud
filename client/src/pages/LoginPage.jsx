@@ -1,16 +1,44 @@
-import React, { useState } from 'react';
-import { Cloud, Lock, User, Wifi, AlertCircle, Globe } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  Cloud, Lock, User, Wifi, AlertCircle, Globe, Trash2
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { api } from '../api';
+import { getSavedAccounts, removeAccount } from '../utils/savedAccounts';
 
 export default function LoginPage() {
   const { login, loginPublic, register } = useAuth();
   const { t } = useLanguage();
+
+  const [savedList, setSavedList] = useState(() => {
+    return getSavedAccounts().filter((a) => a.role !== 'admin' && a.username !== 'admin');
+  });
+
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const passwordInputRef = useRef(null);
+
+  const handleSelectAccount = (acc) => {
+    setError('');
+    setUsername(acc.username);
+    setPassword('');
+    // Automatically focus on password field
+    setTimeout(() => {
+      passwordInputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleRemoveAccount = (e, accId) => {
+    e.stopPropagation();
+    const remaining = removeAccount(accId);
+    const filtered = remaining.filter((a) => a.role !== 'admin' && a.username !== 'admin');
+    setSavedList(filtered);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,12 +88,15 @@ export default function LoginPage() {
       </div>
 
       {/* Auth Card */}
-      <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] max-w-md w-full p-8 shadow-modal">
+      <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[14px] max-w-md w-full p-8 shadow-modal animate-enter">
         {/* Toggle Login / Register Tabs */}
         <div className="grid grid-cols-2 gap-1 p-1 bg-[#F4F4F5] dark:bg-[#14141A] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[6px] mb-6">
           <button
             type="button"
-            onClick={() => { setIsRegister(false); setError(''); }}
+            onClick={() => {
+              setIsRegister(false);
+              setError('');
+            }}
             className={`py-2 text-[14px] font-semibold rounded-[4px] transition-all ${
               !isRegister ? 'bg-[#C2410C] text-white shadow-primary-glow' : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
@@ -74,7 +105,10 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setIsRegister(true); setError(''); }}
+            onClick={() => {
+              setIsRegister(true);
+              setError('');
+            }}
             className={`py-2 text-[14px] font-semibold rounded-[4px] transition-all ${
               isRegister ? 'bg-[#C2410C] text-white shadow-primary-glow' : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
@@ -90,6 +124,7 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* Standard Form: Username & Password */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-[13px] font-semibold mb-1 text-[#0A0A0A] dark:text-[#FAFAFA]">
@@ -101,6 +136,7 @@ export default function LoginPage() {
                 type="text"
                 required
                 autoFocus
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input-artisan w-full pl-9 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
@@ -115,8 +151,10 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
+                ref={passwordInputRef}
                 type="password"
                 required
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-artisan w-full pl-9 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
@@ -129,7 +167,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="pt-2">
+          <div className="pt-1">
             <button
               type="submit"
               disabled={loading || !username || !password}
@@ -139,6 +177,67 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        {/* Saved Accounts on this Device (di bawah form username & password) */}
+        {savedList.length > 0 && !isRegister && (
+          <div className="mt-5 pt-4 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold text-[#6B6B6B] dark:text-[#9C9C9C]">
+                {t('savedAccountsTitle', 'Akun di Perangkat Ini')}
+              </span>
+              <span className="text-[10px] text-[#9C9C9C] dark:text-[#6B6B6B]">
+                {savedList.length} {t('accounts', 'Akun')}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 max-h-44 overflow-y-auto scrollbar-thin">
+              {savedList.map((acc) => {
+                const isSelected = username.toLowerCase() === acc.username.toLowerCase();
+                const isPublic = acc.role === 'public' || acc.username === 'public';
+
+                return (
+                  <div
+                    key={acc.id}
+                    onClick={() => handleSelectAccount(acc)}
+                    className={`p-2 rounded-[8px] border transition-all flex items-center justify-between cursor-pointer group ${
+                      isSelected
+                        ? 'bg-[#C2410C]/10 border-[#C2410C] text-[#C2410C]'
+                        : 'bg-[#F4F4F5] dark:bg-[#141418] border-[#E8E8EC] dark:border-[#272733] hover:border-[#C2410C]/60 text-[#0A0A0A] dark:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={api.getAvatarUrl(acc)}
+                        alt={acc.username}
+                        className="w-7 h-7 rounded-full object-cover border border-[#E8E8EC] dark:border-[#272733] shrink-0"
+                      />
+                      <div className="truncate text-left">
+                        <span className="text-[13px] font-medium block truncate">
+                          {isPublic ? t('publicUser', 'Public User') : acc.username}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <span className="text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] hidden sm:inline">
+                        {isSelected ? '✓ Terpilih' : 'Lanjutkan'}
+                      </span>
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemoveAccount(e, acc.id)}
+                        className="p-1 rounded text-[#9C9C9C] hover:text-[#EF4444] hover:bg-red-500/10 transition-colors opacity-70 group-hover:opacity-100"
+                        title={t('removeAccount', 'Hapus dari perangkat')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Divider: Akses User Public */}
         <div className="relative my-6 text-center">

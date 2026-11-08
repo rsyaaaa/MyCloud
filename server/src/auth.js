@@ -16,12 +16,12 @@ const avatarUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for avatar photo
 });
 
-// Helper to create token
+// Helper to create token (1 year persistent session unless explicitly logged out)
 function signToken(user) {
   return jwt.sign(
     { id: user.id, username: user.username, role: user.role },
     config.JWT_SECRET,
-    { expiresIn: '30d' }
+    { expiresIn: '365d' }
   );
 }
 
@@ -42,6 +42,7 @@ async function authMiddleware(req, res, next) {
     }
 
     req.user = user;
+    req.token = token;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Sesi kedaluwarsa atau tidak valid.' });
@@ -124,7 +125,8 @@ router.post('/register', async (req, res) => {
       httpOnly: true,
       secure: false, // Local LAN HTTP
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      path: '/'
     });
 
     return res.status(201).json({
@@ -177,7 +179,8 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      path: '/'
     });
 
     return res.json({
@@ -227,7 +230,8 @@ router.post('/public-login', async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      path: '/'
     });
 
     return res.json({
@@ -241,9 +245,77 @@ router.post('/public-login', async (req, res) => {
   }
 });
 
+// POST /api/auth/switch-user (Beralih ke akun user/public non-admin tersimpan di perangkat)
+router.post('/switch-user', async (req, res) => {
+  try {
+    const { token, userId } = req.body;
+    if (!token && !userId) {
+      return res.status(400).json({ error: 'Token akun diperlukan untuk beralih akun.' });
+    }
+
+    let targetUserId = userId;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, config.JWT_SECRET);
+        targetUserId = decoded.id;
+        // Strictly prevent switching to admin via switch-user
+        if (decoded.role === 'admin' || decoded.username === 'admin') {
+          return res.status(403).json({ error: 'Akun admin tidak diizinkan untuk fitur switch user.' });
+        }
+      } catch (err) {
+        return res.status(401).json({ error: 'Sesi akun tersimpan telah kedaluwarsa. Silakan masukkan password kembali.' });
+      }
+    }
+
+    const user = await db.get(
+      'SELECT id, username, role, storage_quota_bytes, used_storage_bytes, avatar_url, (pin_hash IS NOT NULL) as has_pin FROM users WHERE id = ?',
+      [targetUserId]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'Akun tidak ditemukan di server.' });
+    }
+
+    // STRICT CHECK: Never allow admin account to be switched into
+    if (user.role === 'admin' || user.username === 'admin') {
+      return res.status(403).json({ error: 'Akun admin tidak diizinkan untuk fitur switch user.' });
+    }
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      storage_quota_bytes: user.storage_quota_bytes,
+      used_storage_bytes: user.used_storage_bytes,
+      avatar_url: user.avatar_url,
+      has_pin: user.has_pin
+    };
+
+    const newToken = signToken(userData);
+
+    res.cookie('token', newToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      path: '/'
+    });
+
+    return res.json({
+      message: `Berhasil beralih ke akun ${user.username}`,
+      user: userData,
+      token: newToken
+    });
+  } catch (err) {
+    console.error('Switch user error:', err);
+    return res.status(500).json({ error: 'Gagal beralih akun: ' + err.message });
+  }
+});
+
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', { path: '/' });
   return res.json({ message: 'Logout berhasil.' });
 });
 
@@ -258,7 +330,8 @@ router.get('/me', authMiddleware, async (req, res) => {
     req.user.used_storage_bytes = realUsedBytes;
   }
 
-  return res.json({ user: req.user });
+  const activeToken = req.token || signToken(req.user);
+  return res.json({ user: req.user, token: activeToken });
 });
 
 // POST /api/vault/setup-pin

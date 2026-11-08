@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
+import SwitchUserSection from './SwitchUserSection';
 
 export default function Navbar({
   onOpenUpload,
@@ -87,10 +88,16 @@ export default function Navbar({
           </button>
 
           {userDropdown && (
-            <div
-              onClick={() => setUserDropdown(false)}
-              className="absolute right-0 mt-2 w-72 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px] shadow-modal py-2 z-50 text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] animate-enter select-none"
-            >
+            <>
+              {/* Backdrop to close dropdown on outside click */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setUserDropdown(false)}
+              />
+
+              <div
+                className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px] shadow-modal py-2 z-50 text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] animate-enter select-none"
+              >
               {/* Profile Header */}
               <div className="px-4 py-3 border-b border-[#E8E8EC] dark:border-[#1F1F27] flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -236,15 +243,24 @@ export default function Navbar({
 
               <div className="border-t border-[#E8E8EC] dark:border-[#1F1F27] my-1" />
 
+              {/* Fitur Switch User di Perangkat (Akun non-admin) */}
+              <SwitchUserSection onAfterSwitch={() => setUserDropdown(false)} />
+
+              <div className="border-t border-[#E8E8EC] dark:border-[#1F1F27] my-1" />
+
               {/* Logout Button */}
               <button
-                onClick={logout}
+                onClick={() => {
+                  setUserDropdown(false);
+                  logout();
+                }}
                 className="w-full px-4 py-2 text-left text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#200A0A] flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
                 <span>{t('logout', 'Keluar (Logout)')}</span>
               </button>
             </div>
+            </>
           )}
         </div>
       </div>
