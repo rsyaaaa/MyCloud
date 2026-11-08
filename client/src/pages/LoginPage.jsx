@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Cloud, Lock, User, Wifi, Sparkles, AlertCircle, Globe } from 'lucide-react';
+import { Cloud, Lock, User, Wifi, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function LoginPage() {
   const { login, loginPublic, register } = useAuth();
+  const { t } = useLanguage();
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -68,7 +70,7 @@ export default function LoginPage() {
               !isRegister ? 'bg-[#C2410C] text-white shadow-primary-glow' : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
           >
-            Masuk (Login)
+            {t('loginAction', 'Masuk (Login)')}
           </button>
           <button
             type="button"
@@ -77,7 +79,7 @@ export default function LoginPage() {
               isRegister ? 'bg-[#C2410C] text-white shadow-primary-glow' : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
           >
-            Daftar Akun Baru
+            {t('newAccount', 'Daftar Akun Baru')}
           </button>
         </div>
 
@@ -99,7 +101,6 @@ export default function LoginPage() {
                 type="text"
                 required
                 autoFocus
-                placeholder="misal: autofocus"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input-artisan w-full pl-9 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
@@ -116,7 +117,6 @@ export default function LoginPage() {
               <input
                 type="password"
                 required
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-artisan w-full pl-9 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
@@ -124,7 +124,7 @@ export default function LoginPage() {
             </div>
             {isRegister && (
               <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-                Akun baru akan mendapatkan kuota default <strong>15 GB</strong>.
+                {t('newAccountQuota', 'Akun baru akan mendapatkan kuota default')} <strong>15 GB</strong>.
               </p>
             )}
           </div>
@@ -135,7 +135,7 @@ export default function LoginPage() {
               disabled={loading || !username || !password}
               className="w-full btn-primary h-[44px] text-[15px] justify-center"
             >
-              {loading ? 'Memproses...' : (isRegister ? 'Daftar Akun' : 'Masuk ke MyCloud')}
+              {loading ? t('processing', 'Memproses...') : (isRegister ? t('registerBtn', 'Daftar Akun') : t('enterMyCloud', 'Masuk ke MyCloud'))}
             </button>
           </div>
         </form>
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-[#E8E8EC] dark:border-[#1F1F27]" />
           </div>
           <span className="relative px-3 bg-white dark:bg-[#0A0A0E] text-[11px] text-[#9C9C9C] uppercase font-mono tracking-wider">
-            atau akses publik
+            {t('orPublic', 'atau akses publik')}
           </span>
         </div>
 
@@ -158,31 +158,12 @@ export default function LoginPage() {
           className="w-full p-3.5 rounded-[8px] bg-[#FFF7ED] dark:bg-[#1E1109] hover:bg-[#FFEDD5] dark:hover:bg-[#2A160A] border border-[#C2410C]/30 hover:border-[#C2410C] text-[#C2410C] dark:text-[#FB923C] font-semibold text-[14px] flex items-center justify-center gap-2.5 transition-all shadow-sm active:scale-[0.98] group"
         >
           <Globe className="w-4.5 h-4.5 stroke-[2.2] group-hover:scale-110 transition-transform" />
-          <span>Masuk sebagai User Public (50 GB Shared)</span>
+          <span>{t('publicLoginBtn', 'Masuk sebagai User Public (50 GB Shared)')}</span>
         </button>
-        <p className="text-[11px] text-center text-[#6B6B6B] dark:text-[#9C9C9C] mt-2 mb-1">
-          Tanpa password • Klik langsung untuk ruang berbagi & unduh bersama
+        <p className="text-[11px] text-center text-[#6B6B6B] dark:text-[#9C9C9C] mt-2">
+          {t('publicDesc', 'Tanpa password • Akses bersama untuk berbagi & unduh berkas')}
         </p>
-
-        {/* Admin Credential Hint */}
-        <div className="mt-6 pt-4 border-t border-[#E8E8EC] dark:border-[#1F1F27] text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#FAFAFA] dark:bg-[#14141A] -mx-4 -mb-4 p-4 rounded-b-[12px]">
-          <div className="flex items-center gap-1.5 font-semibold text-[#C2410C] mb-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Kredensial Default Administrator:</span>
-          </div>
-          <p>
-            Username: <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">admin</strong> / Password:{' '}
-            <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">admin12345</strong>
-          </p>
-          <p className="text-[11px] text-[#9C9C9C] mt-0.5">
-            Default PIN Brankas Admin: <span className="font-mono">123456</span>
-          </p>
-        </div>
       </div>
-
-      <p className="text-[12px] text-[#9C9C9C] mt-6">
-        Host: Ubuntu Server (autofocus-server) • Local Wi-Fi Storage Hub
-      </p>
     </div>
   );
 }

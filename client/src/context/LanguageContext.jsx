@@ -83,11 +83,17 @@ export const translations = {
     searchPlaceholder: 'Cari foto, video, atau judul berkas...',
     searchEmpty: 'Tidak ditemukan berkas yang cocok',
 
-    // Public User
+    // Public User & Auth
     publicShared: 'Public Shared (50 GB)',
     publicLoginBtn: 'Masuk sebagai User Public (50 GB Shared)',
     publicDesc: 'Tanpa password • Akses bersama untuk berbagi & unduh berkas',
     publicUser: 'Public User',
+    loginAction: 'Masuk (Login)',
+    newAccount: 'Daftar Akun Baru',
+    orPublic: 'atau akses publik',
+    enterMyCloud: 'Masuk ke MyCloud',
+    registerBtn: 'Daftar Akun',
+    newAccountQuota: 'Akun baru akan mendapatkan kuota default',
 
     // Relative Time
     justNow: 'Baru saja',
@@ -180,11 +186,17 @@ export const translations = {
     searchPlaceholder: 'Search photos, videos, or documents...',
     searchEmpty: 'No matching files found',
 
-    // Public User
+    // Public User & Auth
     publicShared: 'Public Shared (50 GB)',
     publicLoginBtn: 'Log In as Public User (50 GB Shared)',
     publicDesc: 'No password needed • Shared space to upload & download files',
     publicUser: 'Public User',
+    loginAction: 'Log In',
+    newAccount: 'Register New Account',
+    orPublic: 'or public access',
+    enterMyCloud: 'Log In to MyCloud',
+    registerBtn: 'Register Account',
+    newAccountQuota: 'New accounts receive a default quota of',
 
     // Relative Time
     justNow: 'Just now',
