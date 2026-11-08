@@ -120,11 +120,11 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFFBF5] dark:bg-[#171514] flex flex-col items-center justify-center p-6 text-center animate-pulse">
-        <div className="w-16 h-16 rounded-[8px] bg-[#C2410C] text-white flex items-center justify-center font-serif text-2xl font-bold mb-4 shadow-modal">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#000000] flex flex-col items-center justify-center p-6 text-center animate-pulse">
+        <div className="w-16 h-16 rounded-[12px] bg-[#C2410C] text-white flex items-center justify-center font-display text-2xl font-bold mb-4 shadow-lg shadow-[#C2410C]/25">
           MC
         </div>
-        <p className="font-serif font-bold text-xl text-[#C2410C]">
+        <p className="font-display font-bold text-xl text-[#C2410C] tracking-tight">
           Memuat MyCloud...
         </p>
       </div>
@@ -166,7 +166,7 @@ export default function App() {
         user={user}
         onUploadSuccess={() => {
           refreshUser();
-          addToast('File berhasil diunggah ke cloud!', 'success');
+          addToast('File berhasil diupload ke cloud!', 'success');
         }}
         onRequestQuota={() => setQuotaModalOpen(true)}
       />

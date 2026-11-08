@@ -117,13 +117,13 @@ export default function MobileGalleryView({
       </div>
 
       {/* Second Line Toolbar: Sort & View Mode Switcher */}
-      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white dark:bg-[#23201D] rounded-[6px] border border-[#E7E5E4] dark:border-[#3E3834]">
+      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white dark:bg-[#0A0A0E] rounded-[8px] border border-[#E8E8EC] dark:border-[#1F1F27]">
         <div className="flex items-center gap-1 flex-1">
-          <span className="text-[11px] text-[#57534E] dark:text-[#A8A29E]">Urut:</span>
+          <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">Urut:</span>
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="input-artisan h-7 py-0 text-[11px] px-2 bg-transparent border-none"
+            className="input-artisan h-7 py-0 text-[11px] px-2 bg-transparent border-none text-[#0A0A0A] dark:text-[#FAFAFA]"
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
@@ -133,13 +133,13 @@ export default function MobileGalleryView({
         </div>
 
         {/* View Mode Toggle: Grid vs Page List */}
-        <div className="flex items-center gap-1 bg-[#FFFBF5] dark:bg-[#2E2A26] p-1 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834]">
+        <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#14141A] p-1 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
           <button
             onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-[3px] transition-colors ${
+            className={`p-1.5 rounded-[4px] transition-colors ${
               viewMode === 'grid'
-                ? 'bg-[#C2410C] text-white'
-                : 'text-[#57534E] dark:text-[#A8A29E]'
+                ? 'bg-[#C2410C] text-white shadow-primary-glow'
+                : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
             title="Grid View"
           >
@@ -147,10 +147,10 @@ export default function MobileGalleryView({
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-[3px] transition-colors ${
+            className={`p-1.5 rounded-[4px] transition-colors ${
               viewMode === 'list'
-                ? 'bg-[#C2410C] text-white'
-                : 'text-[#57534E] dark:text-[#A8A29E]'
+                ? 'bg-[#C2410C] text-white shadow-primary-glow'
+                : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
             title="Page List View"
           >
@@ -163,13 +163,13 @@ export default function MobileGalleryView({
       {loading ? (
         viewMode === 'grid' ? <MediaGridSkeleton count={6} /> : <MediaListSkeleton count={6} />
       ) : paginatedItems.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-6">
-          <Image className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
-          <h4 className="font-serif font-semibold text-base text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="text-center py-16 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-6">
+          <Image className="w-10 h-10 text-[#C2410C] mx-auto mb-2" />
+          <h4 className="font-serif font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
             Belum ada berkas media
           </h4>
-          <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
-            Gunakan tombol <strong>+ Unggah</strong> di atas untuk menambahkan foto/video.
+          <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
+            Gunakan tombol floating <strong>Upload</strong> di kanan bawah untuk menambahkan foto/video.
           </p>
         </div>
       ) : (

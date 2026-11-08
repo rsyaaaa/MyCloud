@@ -73,17 +73,17 @@ export default function AdminPage() {
   const diskPercent = diskTotal > 0 ? Math.round((diskUsed / diskTotal) * 100) : 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-enter">
       {/* Admin Title */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#E7E5E4]">
+      <div className="flex items-center justify-between pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
         <div>
           <div className="flex items-center gap-2">
             <Server className="w-6 h-6 text-[#C2410C]" />
-            <h2 className="font-serif font-bold text-2xl text-[#1C1917]">
+            <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA]">
               Panel Administrator & Monitoring Server
             </h2>
           </div>
-          <p className="text-[13px] text-[#57534E] mt-1">
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
             Monitoring fisik 500 GB Local HDD, pengelolaan pengguna, dan permohonan kuota penyimpanan.
           </p>
         </div>
@@ -101,89 +101,89 @@ export default function AdminPage() {
       {/* Physical HDD 500GB Monitor Card */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Drive Widget */}
-        <div className="md:col-span-2 card-elevated p-5">
+        <div className="md:col-span-2 card-artisan p-5 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 font-serif font-semibold text-lg text-[#1C1917]">
+            <div className="flex items-center gap-2 font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
               <HardDrive className="w-5 h-5 text-[#C2410C]" />
               <span>Ruang HDD Fisik Host (500 GB)</span>
             </div>
-            <span className="text-[12px] font-mono font-bold bg-[#FDF6EC] text-[#C2410C] px-2 py-0.5 rounded border border-[#D4A373]">
+            <span className="text-[12px] font-mono font-bold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] px-2 py-0.5 rounded border border-[#C2410C]/20">
               {diskPercent}% Terpakai
             </span>
           </div>
 
-          <div className="w-full bg-[#E7E5E4] h-3.5 rounded-full overflow-hidden mb-3">
+          <div className="w-full bg-[#E8E8EC] dark:bg-[#1F1F27] h-3.5 rounded-full overflow-hidden mb-3">
             <div
               className={`h-full transition-all duration-500 ${
-                diskPercent > 90 ? 'bg-[#DC2626]' : diskPercent > 75 ? 'bg-[#F59E0B]' : 'bg-[#C2410C]'
+                diskPercent > 90 ? 'bg-[#EF4444]' : diskPercent > 75 ? 'bg-[#F59E0B]' : 'bg-[#C2410C]'
               }`}
               style={{ width: `${diskPercent}%` }}
             />
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center text-[12px] pt-1">
-            <div className="p-2 bg-white rounded border border-[#E7E5E4]">
-              <span className="text-[#57534E] block">Total Fisik</span>
-              <strong className="font-mono text-[#1C1917]">{formatBytes(diskTotal)}</strong>
+            <div className="p-2 bg-[#FAFAFA] dark:bg-[#000000] rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block">Total Fisik</span>
+              <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(diskTotal)}</strong>
             </div>
-            <div className="p-2 bg-white rounded border border-[#E7E5E4]">
-              <span className="text-[#57534E] block">Terpakai (OS + App)</span>
+            <div className="p-2 bg-[#FAFAFA] dark:bg-[#000000] rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block">Terpakai (OS + App)</span>
               <strong className="font-mono text-[#C2410C]">{formatBytes(diskUsed)}</strong>
             </div>
-            <div className="p-2 bg-white rounded border border-[#E7E5E4]">
-              <span className="text-[#57534E] block">Sisa Bebas</span>
-              <strong className="font-mono text-[#22C55E]">{formatBytes(diskFree)}</strong>
+            <div className="p-2 bg-[#FAFAFA] dark:bg-[#000000] rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block">Sisa Bebas</span>
+              <strong className="font-mono text-[#10B981]">{formatBytes(diskFree)}</strong>
             </div>
           </div>
         </div>
 
         {/* Total Users Widget */}
-        <div className="card-artisan p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#57534E]">
+        <div className="card-artisan p-5 flex flex-col justify-between bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+          <div className="flex items-center justify-between text-[#6B6B6B] dark:text-[#9C9C9C]">
             <span className="text-[13px] font-semibold">Total Pengguna</span>
-            <Users className="w-5 h-5 text-[#365314]" />
+            <Users className="w-5 h-5 text-[#C2410C]" />
           </div>
           <div>
-            <div className="font-serif font-bold text-3xl text-[#1C1917] mt-2">
+            <div className="font-serif font-bold text-3xl text-[#1C1917] dark:text-white mt-2">
               {stats?.users || 0}
             </div>
-            <span className="text-[12px] text-[#57534E]">Akun terdaftar di NAS</span>
+            <span className="text-[12px] text-[#57534E] dark:text-[#A1A1AA]">Akun terdaftar di NAS</span>
           </div>
         </div>
 
         {/* Media & Request Widget */}
-        <div className="card-artisan p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#57534E]">
+        <div className="card-artisan p-5 flex flex-col justify-between dark:bg-[#0A0A0A] dark:border-[#1F1F1F]">
+          <div className="flex items-center justify-between text-[#57534E] dark:text-[#A1A1AA]">
             <span className="text-[13px] font-semibold">Pengajuan Menunggu</span>
             <ArrowUpCircle className="w-5 h-5 text-[#F59E0B]" />
           </div>
           <div>
-            <div className="font-serif font-bold text-3xl text-[#1C1917] mt-2">
+            <div className="font-serif font-bold text-3xl text-[#1C1917] dark:text-white mt-2">
               {stats?.pending_requests || 0}
             </div>
-            <span className="text-[12px] text-[#57534E]">Perlu persetujuan admin</span>
+            <span className="text-[12px] text-[#57534E] dark:text-[#A1A1AA]">Perlu persetujuan admin</span>
           </div>
         </div>
       </div>
 
       {/* Storage Requests Management Section */}
-      <section className="card-artisan p-6">
-        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#E7E5E4]">
+      <section className="card-artisan p-6 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
           <ArrowUpCircle className="w-5 h-5 text-[#C2410C]" />
-          <h3 className="font-serif font-semibold text-lg text-[#1C1917]">
+          <h3 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Daftar Permohonan Tambah Kuota
           </h3>
         </div>
 
         {requests.length === 0 ? (
-          <p className="text-[13px] text-[#A8A29E] text-center py-6">
+          <p className="text-[13px] text-[#9C9C9C] text-center py-6">
             Tidak ada permohonan penambahan kuota saat ini.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px]">
               <thead>
-                <tr className="border-b border-[#E7E5E4] text-[#57534E]">
+                <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] text-[#6B6B6B] dark:text-[#9C9C9C]">
                   <th className="py-2.5 px-3">Pengguna</th>
                   <th className="py-2.5 px-3">Permintaan</th>
                   <th className="py-2.5 px-3">Alasan</th>
@@ -191,34 +191,34 @@ export default function AdminPage() {
                   <th className="py-2.5 px-3 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E7E5E4]">
+              <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27]">
                 {requests.map((r) => (
-                  <tr key={r.id} className="hover:bg-[#FFFBF5]">
-                    <td className="py-3 px-3 font-semibold text-[#1C1917]">
+                  <tr key={r.id} className="hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] transition-colors">
+                    <td className="py-3 px-3 font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
                       {r.username}
-                      <span className="block text-[11px] font-normal text-[#57534E] font-mono">
+                      <span className="block text-[11px] font-normal text-[#6B6B6B] dark:text-[#9C9C9C] font-mono">
                         Saat ini: {formatBytes(r.used_storage_bytes)} / {formatBytes(r.storage_quota_bytes)}
                       </span>
                     </td>
                     <td className="py-3 px-3 font-mono font-bold text-[#C2410C]">
                       +{formatBytes(r.requested_bytes)}
                     </td>
-                    <td className="py-3 px-3 text-[#57534E] max-w-xs truncate">
+                    <td className="py-3 px-3 text-[#6B6B6B] dark:text-[#9C9C9C] max-w-xs truncate">
                       {r.reason || '-'}
                     </td>
                     <td className="py-3 px-3">
                       {r.status === 'pending' && (
-                        <span className="chip-filter bg-[#FEF3C7] text-[#92400E] border-[#F59E0B] text-[11px] h-6 px-2">
+                        <span className="chip-filter bg-[#FEF3C7] dark:bg-[#2E1D05] text-[#92400E] dark:text-[#FBBF24] border-[#F59E0B]/30 text-[11px] h-6 px-2">
                           <Clock className="w-3 h-3" /> Menunggu
                         </span>
                       )}
                       {r.status === 'approved' && (
-                        <span className="chip-filter bg-[#DCFCE7] text-[#166534] border-[#22C55E] text-[11px] h-6 px-2">
+                        <span className="chip-filter bg-[#ECFDF5] dark:bg-[#062817] text-[#059669] dark:text-[#10B981] border-[#10B981]/30 text-[11px] h-6 px-2">
                           <CheckCircle className="w-3 h-3" /> Disetujui
                         </span>
                       )}
                       {r.status === 'rejected' && (
-                        <span className="chip-filter bg-[#FEE2E2] text-[#991B1B] border-[#DC2626] text-[11px] h-6 px-2">
+                        <span className="chip-filter bg-[#FEF2F2] dark:bg-[#200A0A] text-[#991B1B] dark:text-[#FCA5A5] border-[#EF4444]/30 text-[11px] h-6 px-2">
                           <XCircle className="w-3 h-3" /> Ditolak
                         </span>
                       )}
@@ -242,7 +242,7 @@ export default function AdminPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="text-[12px] text-[#A8A29E] italic">Selesai diproses</span>
+                        <span className="text-[12px] text-[#9C9C9C] italic">Selesai diproses</span>
                       )}
                     </td>
                   </tr>
@@ -254,10 +254,10 @@ export default function AdminPage() {
       </section>
 
       {/* Users List & Manual Quota Adjustment */}
-      <section className="card-artisan p-6">
-        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#E7E5E4]">
-          <Users className="w-5 h-5 text-[#365314]" />
-          <h3 className="font-serif font-semibold text-lg text-[#1C1917]">
+      <section className="card-artisan p-6 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+          <Users className="w-5 h-5 text-[#C2410C]" />
+          <h3 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Daftar Seluruh Pengguna NAS
           </h3>
         </div>
@@ -265,7 +265,7 @@ export default function AdminPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[13px]">
             <thead>
-              <tr className="border-b border-[#E7E5E4] text-[#57534E]">
+              <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] text-[#6B6B6B] dark:text-[#9C9C9C]">
                 <th className="py-2.5 px-3">Username</th>
                 <th className="py-2.5 px-3">Role</th>
                 <th className="py-2.5 px-3">Total File</th>
@@ -273,33 +273,33 @@ export default function AdminPage() {
                 <th className="py-2.5 px-3 text-right">Atur Kuota</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E7E5E4]">
+            <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27]">
               {users.map((u) => {
                 const isEditing = editingUserId === u.id;
                 const percent = Math.min(100, Math.round((u.used_storage_bytes / u.storage_quota_bytes) * 100)) || 0;
 
                 return (
-                  <tr key={u.id} className="hover:bg-[#FFFBF5]">
-                    <td className="py-3 px-3 font-semibold text-[#1C1917]">
+                  <tr key={u.id} className="hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] transition-colors">
+                    <td className="py-3 px-3 font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
                       {u.username}
                     </td>
                     <td className="py-3 px-3">
-                      <span className="text-[11px] uppercase tracking-wider font-bold bg-[#FFFBF5] text-[#1C1917] px-2 py-0.5 rounded border border-[#D6D3D1]">
+                      <span className="text-[11px] uppercase tracking-wider font-bold bg-[#F4F4F5] dark:bg-[#14141A] text-[#0A0A0A] dark:text-[#FAFAFA] px-2 py-0.5 rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-3 px-3 font-mono">
+                    <td className="py-3 px-3 font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">
                       {u.total_files || 0} file
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-[#E7E5E4] h-2 rounded-full overflow-hidden">
+                        <div className="w-24 bg-[#E8E8EC] dark:bg-[#1F1F27] h-2 rounded-full overflow-hidden">
                           <div
                             className="bg-[#C2410C] h-full"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
-                        <span className="font-mono text-[12px] text-[#57534E]">
+                        <span className="font-mono text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
                           {formatBytes(u.used_storage_bytes)} / {formatBytes(u.storage_quota_bytes)} ({percent}%)
                         </span>
                       </div>
@@ -312,7 +312,7 @@ export default function AdminPage() {
                             placeholder="GB"
                             value={newQuotaGb}
                             onChange={(e) => setNewQuotaGb(e.target.value)}
-                            className="input-artisan h-7 w-20 text-[12px] font-mono px-2"
+                            className="input-artisan h-7 w-20 text-[12px] font-mono px-2 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
                           />
                           <button
                             onClick={() => handleUpdateQuota(u.id)}
@@ -322,7 +322,7 @@ export default function AdminPage() {
                           </button>
                           <button
                             onClick={() => setEditingUserId(null)}
-                            className="text-[11px] text-[#57534E] hover:text-[#1C1917] px-1.5"
+                            className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white px-1.5"
                           >
                             Batal
                           </button>

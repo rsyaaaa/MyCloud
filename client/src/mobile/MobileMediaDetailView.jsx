@@ -59,7 +59,7 @@ export default function MobileMediaDetailView({
         <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
           <button
             onClick={onClose}
-            className="p-1.5 -ml-1 text-white hover:text-[#D4A373] flex items-center gap-1 text-[13px] font-semibold"
+            className="p-1.5 -ml-1 text-white hover:text-[#C2410C] flex items-center gap-1 text-[13px] font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Kembali</span>
@@ -72,7 +72,7 @@ export default function MobileMediaDetailView({
                 autoFocus
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="bg-white/20 border border-[#D4A373] text-white px-2 py-0.5 rounded text-[12px] outline-none w-full"
+                className="bg-white/20 border border-[#C2410C] text-white px-2 py-0.5 rounded text-[12px] outline-none w-full"
               />
               <button type="submit" className="text-[11px] bg-[#C2410C] px-2 py-0.5 rounded font-semibold">
                 OK
@@ -120,6 +120,7 @@ export default function MobileMediaDetailView({
               isVault={isVault}
               vaultToken={vaultToken}
               onToggleFavorite={onToggleFavorite}
+              autoPlay={true}
             />
           </div>
         ) : (
@@ -159,10 +160,10 @@ export default function MobileMediaDetailView({
         <button
           onClick={() => onToggleFavorite(currentMedia.id, !currentMedia.is_favorite)}
           className={`flex flex-col items-center justify-center gap-1 ${
-            currentMedia.is_favorite ? 'text-[#DC2626]' : 'text-white/80 active:text-white'
+            currentMedia.is_favorite ? 'text-[#EF4444]' : 'text-white/80 active:text-white'
           }`}
         >
-          <Heart className={`w-5 h-5 ${currentMedia.is_favorite ? 'fill-[#DC2626]' : ''}`} />
+          <Heart className={`w-5 h-5 ${currentMedia.is_favorite ? 'fill-[#EF4444]' : ''}`} />
           <span className="text-[10px]">Favorit</span>
         </button>
 
@@ -170,7 +171,7 @@ export default function MobileMediaDetailView({
         {isVault ? (
           <button
             onClick={() => onUnlock(currentMedia.id)}
-            className="flex flex-col items-center justify-center gap-1 text-[#4ADE80] active:text-white"
+            className="flex flex-col items-center justify-center gap-1 text-[#10B981] active:text-white"
           >
             <Unlock className="w-5 h-5" />
             <span className="text-[10px]">Keluarkan</span>
@@ -211,7 +212,7 @@ export default function MobileMediaDetailView({
         {/* Delete (Move to Trash) */}
         <button
           onClick={() => onDelete(currentMedia.id)}
-          className="flex flex-col items-center justify-center gap-1 text-[#DC2626] active:opacity-70"
+          className="flex flex-col items-center justify-center gap-1 text-[#EF4444] active:opacity-70"
         >
           <Trash2 className="w-5 h-5" />
           <span className="text-[10px]">Sampah</span>
@@ -227,3 +228,4 @@ export default function MobileMediaDetailView({
     </div>
   );
 }
+

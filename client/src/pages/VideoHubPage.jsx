@@ -50,15 +50,15 @@ export default function VideoHubPage({
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Video Hub Header */}
-      <div className="mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834] flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27] flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <Film className="w-6 h-6 text-[#C2410C]" />
-            <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB]">
+            <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA]">
               Video Streaming Hub
             </h2>
           </div>
-          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1">
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
             Streaming instan lokal dengan HTTP Range seekable dan aspect-ratio native.
           </p>
         </div>
@@ -68,7 +68,7 @@ export default function VideoHubPage({
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="input-artisan h-[36px] py-0 text-[13px] bg-white dark:bg-[#23201D]"
+            className="input-artisan h-[36px] py-0 text-[13px] bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#1F1F27]"
           >
             <option value="newest">Upload Terbaru</option>
             <option value="oldest">Upload Terlama</option>
@@ -81,8 +81,8 @@ export default function VideoHubPage({
       {/* Genre Tag Chips */}
       {genres.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6">
-          <span className="text-[12px] font-semibold text-[#57534E] dark:text-[#A8A29E] flex items-center gap-1 shrink-0">
-            <Tag className="w-3.5 h-3.5 text-[#365314]" /> Genre:
+          <span className="text-[12px] font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center gap-1 shrink-0">
+            <Tag className="w-3.5 h-3.5 text-[#C2410C]" /> Genre:
           </span>
           <button
             onClick={() => setSelectedGenreId(null)}
@@ -106,13 +106,13 @@ export default function VideoHubPage({
       {loading ? (
         <MediaGridSkeleton count={8} />
       ) : videos.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
-          <Video className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
+          <Video className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Belum ada video di perpustakaan
           </h4>
-          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
-            Unggah file video MP4, MKV, MOV melalui tombol Unggah Media untuk menikmati streaming native.
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
+            Upload file video MP4, MKV, MOV melalui tombol floating Upload untuk menikmati streaming native.
           </p>
         </div>
       ) : (

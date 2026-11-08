@@ -75,37 +75,37 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1C1917]/20 backdrop-blur-[2px]">
-      <div className="bg-white border-2 border-[#D6D3D1] rounded-[8px] max-w-md w-full p-6 shadow-modal animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E7E5E4]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
+      <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] max-w-md w-full p-6 shadow-modal animate-in fade-in zoom-in-95 duration-150 text-[#0A0A0A] dark:text-[#FAFAFA]">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
           <div className="flex items-center gap-2">
             <Folder className="w-5 h-5 text-[#C2410C]" />
-            <h3 className="text-xl font-serif font-semibold text-[#1C1917]">
+            <h3 className="text-xl font-serif font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
               Atur ke Album & Folder
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-[#57534E] hover:text-[#1C1917] p-1 rounded transition-colors"
+            className="text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] p-1 rounded transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <p className="text-[13px] text-[#57534E] mb-3 truncate">
-          Media: <strong className="text-[#1C1917]">{media.display_name}</strong>
+        <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-3 truncate">
+          Media: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{media.display_name}</strong>
         </p>
 
         {error && (
-          <div className="mb-3 p-2 bg-[#FEF2F2] border border-[#DC2626] rounded text-[#DC2626] text-[12px]">
+          <div className="mb-3 p-2 bg-[#FEF2F2] dark:bg-[#200A0A] border border-[#EF4444]/40 rounded-[6px] text-[#EF4444] dark:text-[#FCA5A5] text-[12px]">
             {error}
           </div>
         )}
 
         {/* Existing Categories Checklist */}
-        <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 border border-[#E7E5E4] rounded-[4px] p-2 bg-[#FFFBF5]">
+        <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[8px] p-2 bg-[#FAFAFA] dark:bg-[#0A0A0E]">
           {categories.length === 0 ? (
-            <p className="text-[13px] text-[#A8A29E] text-center py-4">
+            <p className="text-[13px] text-[#9C9C9C] text-center py-4">
               Belum ada album atau folder. Buat yang baru di bawah.
             </p>
           ) : (
@@ -115,10 +115,10 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
                 <label
                   key={cat.id}
                   onClick={() => toggleCategory(cat.id)}
-                  className={`flex items-center justify-between p-2 rounded-[4px] cursor-pointer text-[13px] transition-colors ${
+                  className={`flex items-center justify-between p-2 rounded-[6px] cursor-pointer text-[13px] transition-colors ${
                     isChecked
-                      ? 'bg-[#FDF6EC] text-[#C2410C] border border-[#D4A373]'
-                      : 'hover:bg-white text-[#1C1917] border border-transparent'
+                      ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] border border-[#C2410C]/30'
+                      : 'hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[#0A0A0A] dark:text-[#FAFAFA] border border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -126,14 +126,14 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
                       className={`w-4 h-4 rounded-[3px] border flex items-center justify-center transition-colors ${
                         isChecked
                           ? 'bg-[#C2410C] border-[#C2410C] text-white'
-                          : 'border-[#D6D3D1] bg-white'
+                          : 'border-[#E8E8EC] dark:border-[#1F1F27] bg-white dark:bg-[#000000]'
                       }`}
                     >
                       {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
                     <span className="font-medium">{cat.name}</span>
                   </div>
-                  <span className="text-[11px] uppercase tracking-wider text-[#57534E] bg-white px-1.5 py-0.5 rounded border border-[#E7E5E4]">
+                  <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] dark:text-[#9C9C9C] bg-white dark:bg-[#14141A] px-1.5 py-0.5 rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
                     {cat.type}
                   </span>
                 </label>
@@ -143,19 +143,19 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
         </div>
 
         {/* Create new album form */}
-        <form onSubmit={handleCreateCategory} className="mt-4 pt-3 border-t border-[#E7E5E4]">
+        <form onSubmit={handleCreateCategory} className="mt-4 pt-3 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Nama album / folder baru..."
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
-              className="input-artisan flex-1 h-[36px] text-[13px]"
+              className="input-artisan flex-1 h-[36px] text-[13px] dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
             />
             <select
               value={newCatType}
               onChange={(e) => setNewCatType(e.target.value)}
-              className="input-artisan h-[36px] text-[12px] px-2 bg-white"
+              className="input-artisan h-[36px] text-[12px] px-2 bg-white dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
             >
               <option value="album">Album</option>
               <option value="folder">Folder</option>
@@ -171,7 +171,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
           </div>
         </form>
 
-        <div className="flex items-center justify-end gap-3 mt-6 pt-3 border-t border-[#E7E5E4]">
+        <div className="flex items-center justify-end gap-3 mt-6 pt-3 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
           <button
             type="button"
             onClick={onClose}

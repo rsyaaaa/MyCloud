@@ -16,7 +16,14 @@ function formatSeconds(sec) {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function VideoPlayer({ media, src, isVault = false, vaultToken = null, onToggleFavorite }) {
+export default function VideoPlayer({
+  media,
+  src,
+  isVault = false,
+  vaultToken = null,
+  onToggleFavorite,
+  autoPlay = false
+}) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const lastTapRef = useRef({ time: 0, x: 0 });
@@ -31,6 +38,43 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
   const [seekFeedback, setSeekFeedback] = useState(null); // { side: 'left' | 'right', text: string }
 
   const isPortrait = media?.is_portrait || (media?.height && media?.width && media.height > media.width);
+
+  // Auto-play trigger function
+  const attemptPlay = () => {
+    if (!videoRef.current) return;
+    const promise = videoRef.current.play();
+    if (promise !== undefined) {
+      promise
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          // If unmuted autoplay blocked by browser, retry muted
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+            videoRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch((e) => console.log('Autoplay blocked:', e));
+          }
+        });
+    }
+  };
+
+  // Immediate autoplay effect when src or autoPlay prop changes
+  useEffect(() => {
+    if (autoPlay && videoRef.current) {
+      if (videoRef.current.readyState >= 2) {
+        attemptPlay();
+      } else {
+        const handler = () => attemptPlay();
+        videoRef.current.addEventListener('loadeddata', handler, { once: true });
+        return () => {
+          videoRef.current?.removeEventListener('loadeddata', handler);
+        };
+      }
+    }
+  }, [src, autoPlay]);
 
   // Check saved progress on load
   useEffect(() => {
@@ -204,8 +248,8 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
     <div className="flex flex-col items-center w-full">
       {/* Resume Watch Notification Banner */}
       {resumePrompt && (
-        <div className="w-full max-w-2xl mb-3 p-3 bg-[#FFFBF5] dark:bg-[#23201D] border-2 border-[#D4A373] dark:border-[#3E3834] rounded-[6px] flex items-center justify-between text-[13px] animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2 text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="w-full max-w-2xl mb-3 p-3 bg-[#FAFAFA] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[6px] flex items-center justify-between text-[13px] animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 text-[#0A0A0A] dark:text-[#FAFAFA]">
             <Clock className="w-4 h-4 text-[#C2410C]" />
             <span>
               Lanjutkan menonton dari <strong>{formatSeconds(resumePrompt)}</strong>?
@@ -214,7 +258,7 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
           <div className="flex items-center gap-2">
             <button
               onClick={handleRestart}
-              className="px-2.5 py-1 text-[12px] font-semibold text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917] rounded transition-colors"
+              className="px-2.5 py-1 text-[12px] font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] rounded transition-colors"
             >
               Mulai Awal
             </button>
@@ -232,7 +276,7 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
       <div
         ref={containerRef}
         onClick={handleContainerClick}
-        className={`relative group bg-black rounded-[8px] overflow-hidden flex items-center justify-center border-2 border-[#D6D3D1] dark:border-[#3E3834] select-none ${
+        className={`relative group bg-black rounded-[12px] overflow-hidden flex items-center justify-center border border-[#E8E8EC] dark:border-[#1F1F27] select-none ${
           isPortrait
             ? 'w-auto max-w-[360px] aspect-[9/16] h-[70vh]'
             : 'w-full max-w-4xl aspect-[16/9]'
@@ -241,6 +285,7 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
         <video
           ref={videoRef}
           src={src}
+          autoPlay={autoPlay}
           playsInline
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
@@ -257,9 +302,9 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
             }`}
           >
             {seekFeedback.side === 'left' ? (
-              <RotateCcw className="w-6 h-6 animate-spin text-[#D4A373]" />
+              <RotateCcw className="w-6 h-6 animate-spin text-[#C2410C]" />
             ) : (
-              <RotateCw className="w-6 h-6 animate-spin text-[#D4A373]" />
+              <RotateCw className="w-6 h-6 animate-spin text-[#C2410C]" />
             )}
             <span className="text-[12px] font-mono font-bold mt-1">{seekFeedback.text}</span>
           </div>
@@ -272,7 +317,7 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
               e.stopPropagation();
               togglePlay();
             }}
-            className="absolute inset-0 m-auto w-16 h-16 bg-[#C2410C]/90 hover:bg-[#C2410C] text-white rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-modal"
+            className="absolute inset-0 m-auto w-16 h-16 bg-[#C2410C]/90 hover:bg-[#C2410C] text-white rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-primary-glow"
           >
             <Play className="w-8 h-8 ml-1 fill-white" />
           </button>
@@ -299,7 +344,7 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={togglePlay}
-                className="hover:text-[#D4A373] p-1 transition-colors"
+                className="hover:text-[#C2410C] p-1 transition-colors"
                 title={isPlaying ? 'Jeda' : 'Putar'}
               >
                 {isPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white" />}
@@ -310,7 +355,7 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
                 <button
                   onClick={toggleMute}
                   className={`p-1 rounded hover:bg-white/10 transition-colors ${
-                    isMuted || volume === 0 ? 'text-[#DC2626]' : 'text-white hover:text-[#D4A373]'
+                    isMuted || volume === 0 ? 'text-[#EF4444]' : 'text-white hover:text-[#C2410C]'
                   }`}
                   title={isMuted ? 'Nyalakan Audio' : 'Mute Audio'}
                 >
@@ -364,17 +409,17 @@ export default function VideoPlayer({ media, src, isVault = false, vaultToken = 
                 <button
                   onClick={() => onToggleFavorite(media.id, !media.is_favorite)}
                   className={`p-1 hover:scale-110 transition-transform ${
-                    media.is_favorite ? 'text-[#DC2626]' : 'text-white'
+                    media.is_favorite ? 'text-[#EF4444]' : 'text-white'
                   }`}
                   title="Favorit"
                 >
-                  <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${media.is_favorite ? 'fill-[#DC2626]' : ''}`} />
+                  <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${media.is_favorite ? 'fill-[#EF4444]' : ''}`} />
                 </button>
               )}
 
               <button
                 onClick={toggleFullscreen}
-                className="p-1 hover:text-[#D4A373] transition-colors"
+                className="p-1 hover:text-[#C2410C] transition-colors"
                 title="Layar Penuh"
               >
                 <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />

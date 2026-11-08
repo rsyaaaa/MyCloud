@@ -66,11 +66,11 @@ export default function MobileVideoHubView({
       <div className="mb-3">
         <div className="flex items-center gap-2">
           <Film className="w-5 h-5 text-[#C2410C]" />
-          <h2 className="font-serif font-bold text-xl text-[#1C1917] dark:text-[#F5F2EB]">
+          <h2 className="font-serif font-bold text-xl text-[#0A0A0A] dark:text-[#FAFAFA]">
             Video Streaming Hub
           </h2>
         </div>
-        <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
+        <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
           Pemutar video native aspect-ratio & HTTP range streaming seekable.
         </p>
       </div>
@@ -101,11 +101,11 @@ export default function MobileVideoHubView({
       )}
 
       {/* Controls Bar: Sort & View Mode */}
-      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white dark:bg-[#23201D] rounded-[6px] border border-[#E7E5E4] dark:border-[#3E3834]">
+      <div className="flex items-center justify-between gap-2 mb-4 p-2 bg-white dark:bg-[#0A0A0E] rounded-[8px] border border-[#E8E8EC] dark:border-[#1F1F27]">
         <select
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value)}
-          className="input-artisan h-8 text-[12px] py-0 px-2 bg-transparent border-none flex-1"
+          className="input-artisan h-8 text-[12px] py-0 px-2 bg-transparent border-none flex-1 text-[#0A0A0A] dark:text-[#FAFAFA]"
         >
           <option value="newest">Terbaru</option>
           <option value="oldest">Terlama</option>
@@ -114,11 +114,11 @@ export default function MobileVideoHubView({
         </select>
 
         {/* View Switcher: Grid vs Page List */}
-        <div className="flex items-center gap-1 bg-[#FFFBF5] dark:bg-[#2E2A26] p-0.5 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834]">
+        <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#14141A] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
           <button
             onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-[3px] transition-colors ${
-              viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
+            className={`p-1.5 rounded-[4px] transition-colors ${
+              viewMode === 'grid' ? 'bg-[#C2410C] text-white shadow-primary-glow' : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
             title="Grid View"
           >
@@ -126,8 +126,8 @@ export default function MobileVideoHubView({
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-[3px] transition-colors ${
-              viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#57534E] dark:text-[#A8A29E]'
+            className={`p-1.5 rounded-[4px] transition-colors ${
+              viewMode === 'list' ? 'bg-[#C2410C] text-white shadow-primary-glow' : 'text-[#6B6B6B] dark:text-[#9C9C9C]'
             }`}
             title="Page List View"
           >
@@ -140,13 +140,13 @@ export default function MobileVideoHubView({
       {loading ? (
         viewMode === 'grid' ? <MediaGridSkeleton count={6} /> : <MediaListSkeleton count={6} />
       ) : paginatedItems.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-6">
-          <Video className="w-10 h-10 text-[#D4A373] mx-auto mb-2" />
-          <h4 className="font-serif font-semibold text-base text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="text-center py-16 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-6">
+          <Video className="w-10 h-10 text-[#C2410C] mx-auto mb-2" />
+          <h4 className="font-serif font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
             Belum ada video
           </h4>
-          <p className="text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
-            Unggah file video MP4/MKV untuk mulai streaming.
+          <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
+            Upload file video MP4/MKV melalui tombol Upload di kanan bawah untuk mulai streaming.
           </p>
         </div>
       ) : (

@@ -101,7 +101,7 @@ export default function MediaContextMenu({
             id: 'organize',
             label: 'Pindah ke Folder/Album',
             icon: Folder,
-            iconColor: 'text-[#D4A373]',
+            iconColor: 'text-[#C2410C]',
             onClick: () => {
               onOrganize(media);
               onClose();
@@ -113,7 +113,7 @@ export default function MediaContextMenu({
       id: 'rename',
       label: 'Ubah Nama Berkas',
       icon: Edit2,
-      iconColor: 'text-[#57534E] dark:text-[#A8A29E]',
+      iconColor: 'text-[#6B6B6B] dark:text-[#9C9C9C]',
       onClick: () => {
         onRename(media);
         onClose();
@@ -125,7 +125,7 @@ export default function MediaContextMenu({
             id: 'download',
             label: 'Unduh File Asli',
             icon: Download,
-            iconColor: 'text-[#57534E] dark:text-[#A8A29E]',
+            iconColor: 'text-[#6B6B6B] dark:text-[#9C9C9C]',
             href: api.getDownloadUrl(media.id),
             isLink: true
           }
@@ -135,7 +135,7 @@ export default function MediaContextMenu({
       id: 'detail',
       label: 'Detail Metadata',
       icon: Info,
-      iconColor: 'text-[#3B82F6]',
+      iconColor: 'text-[#C2410C]',
       onClick: () => {
         onShowDetail(media);
         onClose();
@@ -157,23 +157,23 @@ export default function MediaContextMenu({
   if (isMobile) {
     return (
       <div
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-[2px] animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-[2px] animate-in fade-in duration-150"
         onClick={onClose}
       >
         <div
           ref={menuRef}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-[#23201D] border-t-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-t-[16px] p-4 pb-8 shadow-modal animate-in slide-in-from-bottom duration-200"
+          className="bg-white dark:bg-[#0A0A0E] border-t border-[#E8E8EC] dark:border-[#1F1F27] rounded-t-[16px] p-4 pb-8 shadow-modal animate-in slide-in-from-bottom duration-200"
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-[#E7E5E4] dark:border-[#3E3834] mb-2">
+          <div className="flex items-center justify-between pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27] mb-2">
             <div className="truncate flex-1 pr-2">
-              <h4 className="font-semibold text-[14px] text-[#1C1917] dark:text-[#F5F2EB] truncate">
+              <h4 className="font-semibold text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
                 {media.display_name}
               </h4>
-              <span className="text-[11px] text-[#57534E] dark:text-[#A8A29E]">Opsi Tindakan Media</span>
+              <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">Opsi Tindakan Media</span>
             </div>
-            <button onClick={onClose} className="p-1 text-[#57534E] dark:text-[#A8A29E]">
+            <button onClick={onClose} className="p-1 text-[#6B6B6B] dark:text-[#9C9C9C]">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -189,7 +189,7 @@ export default function MediaContextMenu({
                     href={item.href}
                     download
                     onClick={onClose}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[6px] text-[14px] text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] transition-colors"
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[6px] text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] transition-colors"
                   >
                     <Icon className={`w-5 h-5 ${item.iconColor}`} />
                     <span>{item.label}</span>
@@ -203,8 +203,8 @@ export default function MediaContextMenu({
                   onClick={item.onClick}
                   className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-[6px] text-[14px] transition-colors ${
                     item.isDestructive
-                      ? 'text-[#DC2626] hover:bg-[#FEF2F2] dark:hover:bg-[#3D1414]'
-                      : 'text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26]'
+                      ? 'text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#2A0808]'
+                      : 'text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A]'
                   }`}
                 >
                   <Icon className={`w-5 h-5 ${item.iconColor}`} />
@@ -223,10 +223,10 @@ export default function MediaContextMenu({
     <div
       ref={menuRef}
       style={{ top: `${posY}px`, left: `${posX}px` }}
-      className="fixed z-50 w-56 bg-white dark:bg-[#23201D] border-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] shadow-modal py-1.5 text-[13px] animate-enter select-none"
+      className="fixed z-50 w-56 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[8px] shadow-lg py-1.5 text-[13px] animate-enter select-none"
     >
-      <div className="px-3 py-1 border-b border-[#E7E5E4] dark:border-[#3E3834] mb-1">
-        <p className="font-semibold text-[#1C1917] dark:text-[#F5F2EB] truncate text-[12px]">
+      <div className="px-3 py-1 border-b border-[#E8E8EC] dark:border-[#1F1F27] mb-1">
+        <p className="font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate text-[12px]">
           {media.display_name}
         </p>
       </div>
@@ -240,7 +240,7 @@ export default function MediaContextMenu({
               href={item.href}
               download
               onClick={onClose}
-              className="flex items-center gap-2.5 px-3 py-1.5 text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] transition-colors"
+              className="flex items-center gap-2.5 px-3 py-1.5 text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] transition-colors"
             >
               <Icon className={`w-4 h-4 ${item.iconColor}`} />
               <span>{item.label}</span>
@@ -254,8 +254,8 @@ export default function MediaContextMenu({
             onClick={item.onClick}
             className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors ${
               item.isDestructive
-                ? 'text-[#DC2626] hover:bg-[#FEF2F2] dark:hover:bg-[#3D1414] font-semibold border-t border-[#E7E5E4] dark:border-[#3E3834] mt-1 pt-1.5'
-                : 'text-[#1C1917] dark:text-[#F5F2EB] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26]'
+                ? 'text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#2A0808] font-semibold border-t border-[#E8E8EC] dark:border-[#1F1F27] mt-1 pt-1.5'
+                : 'text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A]'
             }`}
           >
             <Icon className={`w-4 h-4 ${item.iconColor}`} />

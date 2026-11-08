@@ -24,7 +24,6 @@ export default function MobileMediaCard({
   isVault = false,
   vaultToken = null
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const isVideo = media.media_type === 'video';
   const touchTimerRef = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
@@ -66,14 +65,12 @@ export default function MobileMediaCard({
           onLongPress(media);
         }
       }}
-      className="card-artisan overflow-hidden flex flex-col bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] rounded-[8px] relative transition-transform active:scale-[0.98]"
+      className="card-artisan overflow-hidden flex flex-col bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] relative transition-transform active:scale-[0.98]"
     >
-      {/* Thumbnail Area */}
+      {/* Thumbnail Area: Uniform Square Aspect Ratio */}
       <div
         onClick={onClick}
-        className={`relative overflow-hidden bg-[#FAF1E6] dark:bg-[#2E2A26] flex items-center justify-center cursor-pointer ${
-          media.is_portrait ? 'aspect-[3/4]' : 'aspect-[4/3]'
-        }`}
+        className="relative overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] flex items-center justify-center cursor-pointer aspect-square"
       >
         <img
           src={thumbSrc}
@@ -83,8 +80,8 @@ export default function MobileMediaCard({
         />
 
         {isVideo && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/15">
-            <div className="w-9 h-9 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-modal">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+            <div className="w-9 h-9 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-primary-glow">
               <Play className="w-4 h-4 ml-0.5 fill-white" />
             </div>
 
@@ -103,21 +100,21 @@ export default function MobileMediaCard({
             onToggleFavorite(media.id, !media.is_favorite);
           }}
           className={`absolute top-1.5 right-1.5 p-1.5 rounded-full ${
-            media.is_favorite ? 'bg-white text-[#DC2626]' : 'bg-black/40 text-white'
+            media.is_favorite ? 'bg-white text-[#EF4444]' : 'bg-black/50 text-white'
           }`}
           title="Favorit"
         >
-          <Heart className={`w-3.5 h-3.5 ${media.is_favorite ? 'fill-[#DC2626]' : ''}`} />
+          <Heart className={`w-3.5 h-3.5 ${media.is_favorite ? 'fill-[#EF4444]' : ''}`} />
         </button>
       </div>
 
       {/* Card Info & Menu */}
-      <div className="p-2 flex items-center justify-between gap-1 border-t border-[#E7E5E4] dark:border-[#3E3834] bg-white dark:bg-[#23201D]">
+      <div className="p-2 flex items-center justify-between gap-1 border-t border-[#E8E8EC] dark:border-[#1F1F27] bg-white dark:bg-[#0A0A0E]">
         <div className="truncate flex-1 min-w-0" onClick={onClick}>
-          <h4 className="text-[13px] font-semibold text-[#1C1917] dark:text-[#F5F2EB] truncate leading-tight">
+          <h4 className="text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate leading-tight">
             {media.display_name}
           </h4>
-          <span className="text-[11px] font-mono text-[#57534E] dark:text-[#A8A29E]">
+          <span className="text-[11px] font-mono text-[#6B6B6B] dark:text-[#9C9C9C]">
             {formatBytes(media.file_size)}
           </span>
         </div>
@@ -127,7 +124,7 @@ export default function MobileMediaCard({
             e.stopPropagation();
             if (onLongPress) onLongPress(media);
           }}
-          className="p-1 text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917] shrink-0"
+          className="p-1 text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] shrink-0"
         >
           <MoreVertical className="w-4 h-4" />
         </button>

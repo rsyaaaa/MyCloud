@@ -79,18 +79,18 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
   return (
     <div className="pb-24 p-3 animate-enter">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#E7E5E4] dark:border-[#3E3834]">
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#E7E5E4] dark:border-[#1F1F1F]">
         <div className="flex items-center gap-2">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-1 rounded text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917]"
+              className="p-1 rounded text-[#57534E] dark:text-[#A1A1AA] hover:text-[#1C1917] dark:hover:text-white"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          <Trash2 className="w-5 h-5 text-[#DC2626]" />
-          <h2 className="font-serif font-bold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+          <Trash2 className="w-5 h-5 text-[#EF4444]" />
+          <h2 className="font-serif font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Tempat Sampah
           </h2>
         </div>
@@ -106,7 +106,7 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
         )}
       </div>
 
-      <div className="mb-3 p-2.5 bg-[#FFFBF5] dark:bg-[#23201D] border border-[#D4A373] dark:border-[#3E3834] rounded-[6px] text-[11px] text-[#57534E] dark:text-[#A8A29E]">
+      <div className="mb-3 p-2.5 bg-[#FAFAFA] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[8px] text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">
         Dihapus otomatis permanen setelah <strong>31 hari</strong> sejak dipindahkan ke sini.
       </div>
 
@@ -114,8 +114,8 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
         <div
           className={`mb-3 p-2 rounded text-[12px] flex items-center gap-1.5 border ${
             msg.type === 'success'
-              ? 'bg-[#F0FDF4] dark:bg-[#143D14] text-[#166534] dark:text-[#86EFAC] border-[#22C55E]'
-              : 'bg-[#FEF2F2] dark:bg-[#3D1414] text-[#DC2626] dark:text-[#FCA5A5] border-[#DC2626]'
+              ? 'bg-[#ECFDF5] dark:bg-[#062817] text-[#065F46] dark:text-[#34D399] border-[#10B981]/40'
+              : 'bg-[#FEF2F2] dark:bg-[#200A0A] text-[#EF4444] dark:text-[#FCA5A5] border-[#EF4444]/40'
           }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
@@ -126,9 +126,9 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
       {loading ? (
         <TrashListSkeleton count={4} />
       ) : trashItems.length === 0 ? (
-        <div className="p-8 text-center card-artisan bg-white dark:bg-[#23201D] border border-dashed border-[#D6D3D1] dark:border-[#3E3834]">
-          <Trash2 className="w-10 h-10 text-[#A8A29E] mx-auto mb-2 opacity-50" />
-          <p className="text-[13px] font-semibold text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="p-8 text-center card-artisan bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+          <Trash2 className="w-10 h-10 text-[#9C9C9C] mx-auto mb-2 opacity-50" />
+          <p className="text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
             Tempat Sampah Bersih
           </p>
         </div>
@@ -137,22 +137,22 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
           {trashItems.map((item) => (
             <div
               key={item.id}
-              className="card-artisan p-2.5 bg-white dark:bg-[#23201D] flex items-center justify-between gap-2"
+              className="card-artisan p-2.5 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] flex items-center justify-between gap-2"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <img
                   src={api.getThumbnailUrl(item.id)}
                   alt={item.display_name}
-                  className="w-12 h-12 object-cover rounded-[4px] bg-[#FAF1E6] shrink-0"
+                  className="w-12 h-12 object-cover rounded-[6px] bg-[#F4F4F5] dark:bg-[#14141A] shrink-0 border border-[#E8E8EC] dark:border-[#1F1F27]"
                 />
                 <div className="truncate flex-1">
-                  <h4 className="font-semibold text-[13px] text-[#1C1917] dark:text-[#F5F2EB] truncate">
+                  <h4 className="font-semibold text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
                     {item.display_name}
                   </h4>
-                  <div className="flex items-center gap-1.5 text-[11px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
                     <span className="font-mono">{formatBytes(item.file_size)}</span>
                     <span>•</span>
-                    <span className="text-[#DC2626] font-medium">
+                    <span className="text-[#EF4444] font-medium">
                       {item.days_left !== undefined ? `${item.days_left} hari` : '0 hari'}
                     </span>
                   </div>
@@ -184,3 +184,4 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
     </div>
   );
 }
+

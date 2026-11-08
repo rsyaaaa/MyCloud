@@ -77,7 +77,7 @@ export default function AlbumsPage({
   if (selectedCategory) {
     return (
       <div className="p-6 max-w-7xl mx-auto animate-enter">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834]">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedCategory(null)}
@@ -88,14 +88,14 @@ export default function AlbumsPage({
             <div>
               <div className="flex items-center gap-2">
                 <Folder className="w-5 h-5 text-[#C2410C]" />
-                <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB]">
+                <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA]">
                   {selectedCategory.name}
                 </h2>
-                <span className="text-[11px] uppercase tracking-wider font-bold bg-[#FAF1E6] dark:bg-[#2E2A26] text-[#C2410C] px-2 py-0.5 rounded border border-[#D4A373]">
+                <span className="text-[11px] uppercase tracking-wider font-bold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] px-2 py-0.5 rounded border border-[#C2410C]/20">
                   {selectedCategory.type}
                 </span>
               </div>
-              <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
+              <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
                 {categoryMedia.length} berkas media dalam album ini.
               </p>
             </div>
@@ -105,12 +105,12 @@ export default function AlbumsPage({
         {loading ? (
           <MediaGridSkeleton count={6} />
         ) : categoryMedia.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
-            <Layers className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-            <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+          <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
+            <Layers className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+            <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
               Album Masih Kosong
             </h4>
-            <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
+            <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
               Buka Galeri Utama, pilih menu titik tiga pada file dan klik "Atur ke Album" untuk menambahkan file ke album ini.
             </p>
           </div>
@@ -139,15 +139,15 @@ export default function AlbumsPage({
   return (
     <div className="p-6 max-w-7xl mx-auto animate-enter">
       {/* Header & Create Form */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834]">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
         <div>
           <div className="flex items-center gap-2">
             <Folder className="w-6 h-6 text-[#C2410C]" />
-            <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB]">
+            <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA]">
               Album & Folder Kategori
             </h2>
           </div>
-          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1">
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
             Organisir foto dan video Anda ke dalam koleksi tema atau genre.
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function AlbumsPage({
           <select
             value={newCatType}
             onChange={(e) => setNewCatType(e.target.value)}
-            className="input-artisan h-[38px] text-[13px] px-2 bg-white dark:bg-[#23201D]"
+            className="input-artisan h-[38px] text-[13px] px-2 bg-white dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
           >
             <option value="album">Album</option>
             <option value="folder">Folder</option>
@@ -184,12 +184,12 @@ export default function AlbumsPage({
       {loading ? (
         <AlbumsSkeleton count={4} />
       ) : categories.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
-          <Folder className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
+          <Folder className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Belum ada Album atau Folder
           </h4>
-          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1">
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
             Gunakan form di atas untuk membuat album pertama Anda.
           </p>
         </div>
@@ -199,15 +199,15 @@ export default function AlbumsPage({
             <div
               key={cat.id}
               onClick={() => loadCategoryMedia(cat)}
-              className="card-artisan p-4 cursor-pointer hover:border-[#C2410C] transition-all group relative flex flex-col justify-between h-36 bg-white dark:bg-[#23201D]"
+              className="card-artisan p-4 cursor-pointer hover:border-[#C2410C] transition-all group relative flex flex-col justify-between h-36 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]"
             >
               <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-[6px] bg-[#FAF1E6] dark:bg-[#2E2A26] text-[#C2410C] flex items-center justify-center border border-[#D4A373]">
+                <div className="w-10 h-10 rounded-[8px] bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] flex items-center justify-center border border-[#C2410C]/20">
                   <Folder className="w-5 h-5" />
                 </div>
                 <button
                   onClick={(e) => handleDeleteCategory(cat.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-[#57534E] dark:text-[#A8A29E] hover:text-[#DC2626] transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#EF4444] transition-all"
                   title="Hapus Album"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -215,12 +215,12 @@ export default function AlbumsPage({
               </div>
 
               <div>
-                <h4 className="font-serif font-semibold text-[16px] text-[#1C1917] dark:text-[#F5F2EB] truncate group-hover:text-[#C2410C] transition-colors">
+                <h4 className="font-serif font-semibold text-[16px] text-[#0A0A0A] dark:text-[#FAFAFA] truncate group-hover:text-[#C2410C] transition-colors">
                   {cat.name}
                 </h4>
-                <div className="flex items-center justify-between text-[12px] text-[#57534E] dark:text-[#A8A29E] mt-1">
+                <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
                   <span className="font-mono">{cat.media_count || 0} berkas</span>
-                  <span className="uppercase text-[10px] font-bold tracking-wider px-1.5 py-0.2 bg-[#FFFBF5] dark:bg-[#2E2A26] border border-[#E7E5E4] dark:border-[#3E3834] rounded">
+                  <span className="uppercase text-[10px] font-bold tracking-wider px-1.5 py-0.2 bg-[#FAFAFA] dark:bg-[#14141A] border border-[#E8E8EC] dark:border-[#1F1F27] rounded">
                     {cat.type}
                   </span>
                 </div>

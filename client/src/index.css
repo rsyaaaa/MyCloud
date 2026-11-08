@@ -4,48 +4,57 @@
 
 @layer base {
   body {
-    background-color: #FFFBF5;
-    color: #1C1917;
-    font-family: 'Open Sans', system-ui, sans-serif;
+    background-color: #FAFAFA;
+    color: #0A0A0A;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   .dark body, html.dark body {
-    background-color: #171514;
-    color: #F5F2EB;
+    background-color: #000000;
+    color: #FAFAFA;
   }
 
-  h1, h2, h3, h4, .font-serif {
-    font-family: 'Lora', Georgia, serif;
+  h1, h2, h3, h4, .font-serif, .font-display {
+    font-family: 'General Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.03em;
   }
 
   code, pre, .font-mono {
-    font-family: 'Source Code Pro', monospace;
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
-/* Custom Artisan Scrollbar */
+/* Genesis Precision Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FFFBF5;
-  border-left: 1px solid #E7E5E4;
+  background: #FAFAFA;
+  border-left: 1px solid #E8E8EC;
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #171514;
-  border-left: 1px solid #3E3834;
+  background: #000000;
+  border-left: 1px solid #1F1F27;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D4A373;
-  border-radius: 4px;
+  background: #D4D4D8;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #272733;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: #C2410C;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: #C2410C;
 }
 
@@ -55,51 +64,51 @@ button, a, input, select {
 }
 
 button:active:not(:disabled), a:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
-/* MarketNest Button & Input Utilities */
+/* Genesis Component Classes */
 .btn-primary {
-  @apply bg-[#C2410C] text-white font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#9A3412] active:bg-[#7C2D12] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 shadow-none select-none;
+  @apply bg-[#C2410C] text-white font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#EA580C] hover:shadow-[0_4px_12px_rgba(194,65,12,0.35)] hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-secondary {
-  @apply bg-transparent text-[#C2410C] border-[1.5px] border-[#C2410C] font-semibold text-[15px] px-5 py-2.5 rounded-[4px] hover:bg-[#FDF6EC] dark:hover:bg-[#2E2A26] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-transparent text-[#0A0A0A] dark:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#272733] font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-ghost {
-  @apply bg-transparent text-[#57534E] dark:text-[#A8A29E] hover:bg-[#FDF6EC] dark:hover:bg-[#2E2A26] hover:text-[#1C1917] dark:hover:text-[#F5F2EB] px-3.5 py-2 rounded-[4px] transition-all inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-transparent text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] px-3 py-2 rounded-[6px] transition-all inline-flex items-center justify-center gap-2 select-none text-[14px];
 }
 
 .btn-destructive {
-  @apply bg-[#DC2626] text-white font-semibold text-[15px] px-4 py-2 rounded-[4px] hover:bg-[#B91C1C] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-[#EF4444] text-white font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#DC2626] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .input-artisan {
-  @apply bg-white dark:bg-[#23201D] border-[1.5px] border-[#D6D3D1] dark:border-[#3E3834] text-[#1C1917] dark:text-[#F5F2EB] placeholder-[#A8A29E] rounded-[4px] px-3.5 h-[42px] text-[15px] focus:border-[#C2410C] focus:ring-2 focus:ring-[#C2410C]/20 focus:outline-none transition-all disabled:bg-[#F5F5F4] dark:disabled:bg-[#1E1B19] disabled:opacity-50;
+  @apply bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#272733] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C] rounded-[6px] px-3.5 h-[38px] text-[14px] focus:border-[#C2410C] focus:ring-[3px] focus:ring-[#C2410C]/15 focus:outline-none transition-all disabled:bg-[#F4F4F5] dark:disabled:bg-[#0A0A0E] disabled:opacity-50;
 }
 
 .chip-filter {
-  @apply h-[32px] px-3.5 rounded-[4px] border border-[#D6D3D1] dark:border-[#3E3834] text-[13px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-white dark:bg-[#23201D] text-[#57534E] dark:text-[#A8A29E] hover:bg-[#FDF6EC] dark:hover:bg-[#2E2A26] hover:text-[#C2410C] dark:hover:text-[#EA580C] select-none;
+  @apply h-[30px] px-3 rounded-full border border-[#E8E8EC] dark:border-[#272733] text-[12px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[#F4F4F5] dark:bg-[#121218] text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#E8E8EC] dark:hover:bg-[#1F1F27] hover:text-[#0A0A0A] dark:hover:text-white select-none;
 }
 
 .chip-filter-active {
-  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#9A3412] hover:text-white dark:bg-[#EA580C] dark:border-[#EA580C];
+  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#EA580C] hover:text-white dark:bg-[#C2410C] dark:border-[#C2410C];
 }
 
 .card-artisan {
-  @apply bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] rounded-[8px] transition-all hover:border-[#D6D3D1] dark:hover:border-[#57534E];
+  @apply bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] transition-all duration-200 hover:-translate-y-[2px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:border-[#33333F];
 }
 
 .card-elevated {
-  @apply bg-[#FFFBF5] dark:bg-[#2E2A26] border-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] hover:border-[#A8A29E];
+  @apply bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#272733] rounded-[12px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all;
 }
 
 /* Fluid Page and Modal Animations */
 @keyframes fadeInScale {
   0% {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
   100% {
     opacity: 1;
@@ -111,7 +120,7 @@ button:active:not(:disabled), a:active {
   animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Shimmer Skeleton animation */
+/* Shimmer Skeleton animation - Genesis subtle modern cool gray */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -122,13 +131,13 @@ button:active:not(:disabled), a:active {
 }
 
 .skeleton-shimmer {
-  background: linear-gradient(90deg, #E7E5E4 25%, #F5F5F4 50%, #E7E5E4 75%);
+  background: linear-gradient(90deg, #E8E8EC 25%, #F4F4F5 50%, #E8E8EC 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
 .dark .skeleton-shimmer {
-  background: linear-gradient(90deg, #2E2A26 25%, #3E3834 50%, #2E2A26 75%);
+  background: linear-gradient(90deg, #0A0A0E 25%, #181822 50%, #0A0A0E 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }

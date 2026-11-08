@@ -96,7 +96,7 @@ export default function GalleryPage({
       )}
 
       {/* Filter Chips & Sorting Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E7E5E4] dark:border-[#3E3834]">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setFilterType('all')}
@@ -125,11 +125,11 @@ export default function GalleryPage({
         </div>
 
         <div className="flex items-center gap-2 text-[13px]">
-          <span className="text-[#57534E] dark:text-[#A8A29E]">Urutkan:</span>
+          <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">Urutkan:</span>
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="input-artisan h-[34px] py-0 text-[13px] bg-white dark:bg-[#23201D]"
+            className="input-artisan h-[34px] py-0 text-[13px] bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#1F1F27]"
           >
             <option value="newest">Terbaru</option>
             <option value="oldest">Terlama</option>
@@ -144,13 +144,13 @@ export default function GalleryPage({
       {loading ? (
         <MediaGridSkeleton count={10} />
       ) : mediaList.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
-          <Image className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
+          <Image className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Belum ada foto atau video
           </h4>
-          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
-            Mulai simpan kenangan Anda di Personal Cloud lokal ini dengan menekan tombol <strong>Unggah Media</strong> di atas.
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
+            Mulai simpan kenangan Anda di Personal Cloud lokal ini dengan menekan tombol floating <strong>Upload</strong> di sudut kanan bawah.
           </p>
         </div>
       ) : (
@@ -158,13 +158,13 @@ export default function GalleryPage({
           {Object.entries(groupedMedia).map(([dateGroup, items]) => (
             <section key={dateGroup}>
               <div className="flex items-center gap-3 mb-4">
-                <h3 className="font-serif font-semibold text-xl text-[#1C1917] dark:text-[#F5F2EB]">
+                <h3 className="font-serif font-semibold text-xl text-[#0A0A0A] dark:text-[#FAFAFA]">
                   {dateGroup}
                 </h3>
-                <span className="text-[12px] font-mono text-[#57534E] dark:text-[#A8A29E] bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] px-2 py-0.5 rounded-[3px]">
+                <span className="text-[12px] font-mono text-[#6B6B6B] dark:text-[#9C9C9C] bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] px-2 py-0.5 rounded-[4px]">
                   {items.length} item
                 </span>
-                <div className="flex-1 h-[1px] bg-[#E7E5E4] dark:bg-[#3E3834]" />
+                <div className="flex-1 h-[1px] bg-[#E7E5E4] dark:bg-[#1F1F1F]" />
               </div>
 
               {/* Responsive Dynamic Grid */}

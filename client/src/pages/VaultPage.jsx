@@ -49,14 +49,14 @@ export default function VaultPage({
   if (!isUnlocked) {
     return (
       <div className="p-8 max-w-lg mx-auto text-center py-24 animate-enter">
-        <div className="w-20 h-20 bg-[#FFFBF5] dark:bg-[#2E2A26] border-2 border-[#D4A373] dark:border-[#3E3834] rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="w-20 h-20 bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/30 rounded-full flex items-center justify-center mx-auto mb-4">
           <ShieldAlert className="w-10 h-10 text-[#C2410C]" />
         </div>
 
-        <h2 className="font-serif font-bold text-2xl text-[#1C1917] dark:text-[#F5F2EB] mb-2">
+        <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA] mb-2">
           Brankas Terkunci (Safe Vault)
         </h2>
-        <p className="text-[14px] text-[#57534E] dark:text-[#A8A29E] mb-6 leading-relaxed">
+        <p className="text-[14px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-6 leading-relaxed">
           Semua file foto & video di dalam brankas ini terisolasi sepenuhnya dan tidak akan muncul di Galeri Utama, Carousel Memori, maupun Video Hub.
         </p>
 
@@ -81,16 +81,16 @@ export default function VaultPage({
   return (
     <div className="p-6 max-w-7xl mx-auto animate-enter">
       {/* Vault Unlocked Header */}
-      <div className="mb-6 p-4 bg-[#F0FDF4] dark:bg-[#143D14] border-2 border-[#22C55E] rounded-[8px] flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 p-4 bg-[#ECFDF5] dark:bg-[#062817] border border-[#10B981]/40 rounded-[12px] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#22C55E] text-white flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-[#10B981] text-white flex items-center justify-center">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-serif font-semibold text-lg text-[#166534] dark:text-[#86EFAC]">
+            <h3 className="font-serif font-semibold text-lg text-[#065F46] dark:text-[#34D399]">
               Brankas Aktif (Terbuka)
             </h3>
-            <p className="text-[12px] text-[#166534]/90 dark:text-[#86EFAC]/90 flex items-center gap-1.5 mt-0.5">
+            <p className="text-[12px] text-[#065F46]/90 dark:text-[#34D399]/90 flex items-center gap-1.5 mt-0.5">
               <Clock className="w-3.5 h-3.5" />
               Sesi aktif tanpa batas selama di menu ini. Timer 180s otomatis berjalan jika keluar dari menu.
             </p>
@@ -112,12 +112,12 @@ export default function VaultPage({
       {loading ? (
         <MediaGridSkeleton count={4} />
       ) : vaultMedia.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-[#23201D] border-2 border-dashed border-[#D6D3D1] dark:border-[#3E3834] rounded-[8px] p-8">
-          <FolderLock className="w-12 h-12 text-[#D4A373] mx-auto mb-3" />
-          <h4 className="font-serif font-semibold text-lg text-[#1C1917] dark:text-[#F5F2EB]">
+        <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
+          <FolderLock className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
             Belum ada media di brankas
           </h4>
-          <p className="text-[13px] text-[#57534E] dark:text-[#A8A29E] mt-1 max-w-sm mx-auto">
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
             Klik menu 3-titik atau klik kanan pada foto/video mana saja di Galeri Utama, lalu pilih <strong>Kunci ke Brankas</strong>.
           </p>
         </div>

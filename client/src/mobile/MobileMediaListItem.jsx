@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Play, Heart, MoreVertical, Edit2, Folder, Lock, Unlock, Download, Trash2, Film, Image } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Play, Heart, MoreVertical } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 
@@ -65,12 +65,12 @@ export default function MobileMediaListItem({
           onLongPress(media);
         }
       }}
-      className="card-artisan p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-[#23201D] border border-[#E7E5E4] dark:border-[#3E3834] rounded-[8px] active:scale-[0.99] transition-transform relative"
+      className="card-artisan p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] active:scale-[0.99] transition-transform relative"
     >
       {/* Thumbnail + Play Badge */}
       <div
         onClick={onClick}
-        className="relative w-16 h-16 shrink-0 rounded-[6px] overflow-hidden bg-[#FAF1E6] dark:bg-[#2E2A26] border border-[#E7E5E4] dark:border-[#3E3834] cursor-pointer flex items-center justify-center"
+        className="relative w-16 h-16 shrink-0 rounded-[8px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] border border-[#E8E8EC] dark:border-[#1F1F27] cursor-pointer flex items-center justify-center"
       >
         <img
           src={thumbSrc}
@@ -81,11 +81,11 @@ export default function MobileMediaListItem({
 
         {isVideo && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow">
+            <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-primary-glow">
               <Play className="w-3 h-3 ml-0.5 fill-white" />
             </div>
             {media.duration_seconds > 0 && (
-              <span className="absolute bottom-0.5 right-0.5 bg-black/75 text-white text-[8px] font-mono px-1 py-0.2 rounded">
+              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white text-[8px] font-mono px-1 py-0.2 rounded">
                 {formatSeconds(media.duration_seconds)}
               </span>
             )}
@@ -95,11 +95,11 @@ export default function MobileMediaListItem({
 
       {/* Middle: Title, Meta Info */}
       <div className="flex-1 min-w-0" onClick={onClick}>
-        <h4 className="font-semibold text-[13px] text-[#1C1917] dark:text-[#F5F2EB] line-clamp-1 leading-snug">
+        <h4 className="font-semibold text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] line-clamp-1 leading-snug">
           {media.display_name}
         </h4>
 
-        <div className="flex items-center gap-2 text-[11px] text-[#57534E] dark:text-[#A8A29E] mt-0.5">
+        <div className="flex items-center gap-2 text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
           <span className="font-mono">{formatBytes(media.file_size)}</span>
           <span>•</span>
           <span>
@@ -111,11 +111,11 @@ export default function MobileMediaListItem({
         </div>
 
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-[#FFFBF5] dark:bg-[#2E2A26] text-[#57534E] dark:text-[#A8A29E] border border-[#E7E5E4] dark:border-[#3E3834]">
+          <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-[#F4F4F5] dark:bg-[#14141A] text-[#6B6B6B] dark:text-[#9C9C9C] border border-[#E8E8EC] dark:border-[#1F1F27]">
             {isVideo ? 'Video' : 'Foto'}
           </span>
           {media.category_names && (
-            <span className="text-[9px] font-medium text-[#C2410C] bg-[#FDF6EC] dark:bg-[#2E2A26] px-1.5 py-0.2 rounded border border-[#D4A373] truncate max-w-[100px]">
+            <span className="text-[9px] font-medium text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-1.5 py-0.5 rounded border border-[#C2410C]/20 truncate max-w-[100px]">
               {media.category_names.split(',')[0]}
             </span>
           )}
@@ -130,11 +130,11 @@ export default function MobileMediaListItem({
             onToggleFavorite(media.id, !media.is_favorite);
           }}
           className={`p-1 rounded-full ${
-            media.is_favorite ? 'text-[#DC2626]' : 'text-[#A8A29E] hover:text-[#1C1917]'
+            media.is_favorite ? 'text-[#EF4444]' : 'text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA]'
           }`}
           title="Favorit"
         >
-          <Heart className={`w-4 h-4 ${media.is_favorite ? 'fill-[#DC2626]' : ''}`} />
+          <Heart className={`w-4 h-4 ${media.is_favorite ? 'fill-[#EF4444]' : ''}`} />
         </button>
 
         <button
@@ -142,7 +142,7 @@ export default function MobileMediaListItem({
             e.stopPropagation();
             if (onLongPress) onLongPress(media);
           }}
-          className="p-1 text-[#57534E] dark:text-[#A8A29E] hover:text-[#1C1917]"
+          className="p-1 text-[#57534E] dark:text-[#A1A1AA] hover:text-[#1C1917] dark:hover:text-white"
         >
           <MoreVertical className="w-4 h-4" />
         </button>

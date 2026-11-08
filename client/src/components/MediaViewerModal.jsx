@@ -66,7 +66,7 @@ export default function MediaViewerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1C1917]/90 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm animate-in fade-in duration-150">
       {/* Top Header Bar */}
       <div className="absolute top-0 inset-x-0 h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between z-20 bg-gradient-to-b from-black/80 to-transparent text-white">
         <div className="flex items-center gap-2 max-w-[150px] sm:max-w-md truncate">
@@ -77,7 +77,7 @@ export default function MediaViewerModal({
                 autoFocus
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="bg-white/10 border border-[#D4A373] text-white px-2 py-0.5 rounded text-[13px] outline-none w-28 sm:w-auto"
+                className="bg-white/10 border border-[#C2410C] text-white px-2 py-0.5 rounded text-[13px] outline-none w-28 sm:w-auto"
               />
               <button type="submit" className="text-[11px] bg-[#C2410C] px-2 py-0.5 rounded">
                 Simpan
@@ -111,11 +111,11 @@ export default function MediaViewerModal({
           <button
             onClick={() => onToggleFavorite(currentMedia.id, !currentMedia.is_favorite)}
             className={`p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors ${
-              currentMedia.is_favorite ? 'text-[#DC2626]' : 'text-white/80 hover:text-white'
+              currentMedia.is_favorite ? 'text-[#EF4444]' : 'text-white/80 hover:text-white'
             }`}
             title="Favorit"
           >
-            <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${currentMedia.is_favorite ? 'fill-[#DC2626]' : ''}`} />
+            <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${currentMedia.is_favorite ? 'fill-[#EF4444]' : ''}`} />
           </button>
 
           {!isVault && onOrganize && (
@@ -169,7 +169,7 @@ export default function MediaViewerModal({
 
           <button
             onClick={() => onDelete(currentMedia.id)}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-[#DC2626]/20 text-white/80 hover:text-[#DC2626] transition-colors"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-[#EF4444]/20 text-white/80 hover:text-[#EF4444] transition-colors"
             title="Hapus Media"
           >
             <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -227,43 +227,43 @@ export default function MediaViewerModal({
 
       {/* Sidebar Info Drawer */}
       {showInfo && (
-        <div className="absolute right-0 top-16 bottom-0 w-80 bg-[#FFFBF5] border-l-2 border-[#D6D3D1] p-6 overflow-y-auto text-[#1C1917] z-30 shadow-modal animate-in slide-in-from-right duration-200">
-          <h4 className="font-serif font-semibold text-lg mb-4 text-[#1C1917] pb-2 border-b border-[#E7E5E4]">
+        <div className="absolute right-0 top-16 bottom-0 w-80 bg-white dark:bg-[#0A0A0E] border-l border-[#E8E8EC] dark:border-[#1F1F27] p-6 overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA] z-30 shadow-modal animate-in slide-in-from-right duration-200">
+          <h4 className="font-serif font-semibold text-lg mb-4 text-[#0A0A0A] dark:text-[#FAFAFA] pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
             Detail File Media
           </h4>
 
           <div className="space-y-4 text-[13px]">
             <div>
-              <span className="text-[#57534E] block mb-0.5">Nama Tampilan</span>
-              <span className="font-medium">{currentMedia.display_name}</span>
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Nama Tampilan</span>
+              <span className="font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.display_name}</span>
             </div>
 
             <div>
-              <span className="text-[#57534E] block mb-0.5">Nama File Asli</span>
-              <span className="font-mono text-[12px] break-all">{currentMedia.original_name}</span>
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Nama File Asli</span>
+              <span className="font-mono text-[12px] break-all text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.original_name}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-[#57534E] block mb-0.5">Ukuran File</span>
-                <span className="font-mono font-medium">{formatBytes(currentMedia.file_size)}</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Ukuran File</span>
+                <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(currentMedia.file_size)}</span>
               </div>
               <div>
-                <span className="text-[#57534E] block mb-0.5">Tipe Media</span>
-                <span className="uppercase font-semibold text-[#365314]">{currentMedia.media_type}</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Tipe Media</span>
+                <span className="uppercase font-semibold text-[#C2410C] dark:text-[#FB923C]">{currentMedia.media_type}</span>
               </div>
             </div>
 
             {currentMedia.width && currentMedia.height && (
               <div>
-                <span className="text-[#57534E] block mb-0.5">Resolusi & Rasio</span>
-                <span className="font-mono">{currentMedia.width} × {currentMedia.height}</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Resolusi & Rasio</span>
+                <span className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.width} × {currentMedia.height}</span>
                 {currentMedia.is_portrait ? (
-                  <span className="ml-2 text-[11px] bg-[#365314] text-white px-1.5 py-0.5 rounded">
+                  <span className="ml-2 text-[11px] bg-[#FFF7ED] text-[#C2410C] dark:bg-[#2A1208] dark:text-[#FB923C] px-1.5 py-0.5 rounded border border-[#C2410C]/20">
                     Portrait 9:16
                   </span>
                 ) : (
-                  <span className="ml-2 text-[11px] bg-[#D4A373] text-[#1C1917] px-1.5 py-0.5 rounded">
+                  <span className="ml-2 text-[11px] bg-[#F4F4F5] text-[#0A0A0A] dark:bg-[#1F1F27] dark:text-[#FAFAFA] px-1.5 py-0.5 rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
                     Landscape
                   </span>
                 )}
@@ -272,14 +272,14 @@ export default function MediaViewerModal({
 
             {currentMedia.duration_seconds > 0 && (
               <div>
-                <span className="text-[#57534E] block mb-0.5">Durasi Video</span>
-                <span className="font-mono font-medium">{currentMedia.duration_seconds} Detik</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Durasi Video</span>
+                <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.duration_seconds} Detik</span>
               </div>
             )}
 
             <div>
-              <span className="text-[#57534E] block mb-0.5">Waktu Momen</span>
-              <span className="text-[12px]">
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Waktu Momen</span>
+              <span className="text-[12px] text-[#0A0A0A] dark:text-[#FAFAFA]">
                 {new Date(currentMedia.captured_at || currentMedia.created_at).toLocaleString('id-ID', {
                   dateStyle: 'full',
                   timeStyle: 'short'
@@ -289,12 +289,12 @@ export default function MediaViewerModal({
 
             {currentMedia.category_names && (
               <div>
-                <span className="text-[#57534E] block mb-1">Album / Tag</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-1">Album / Tag</span>
                 <div className="flex flex-wrap gap-1.5">
                   {currentMedia.category_names.split(',').map((cat, i) => (
                     <span
                       key={i}
-                      className="bg-[#FFFBF5] border border-[#D6D3D1] text-[#365314] px-2 py-0.5 rounded-[3px] text-[12px] font-medium"
+                      className="bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/20 text-[#C2410C] dark:text-[#FB923C] px-2 py-0.5 rounded-[4px] text-[12px] font-medium"
                     >
                       {cat}
                     </span>

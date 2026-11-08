@@ -12,9 +12,9 @@ export function formatBytes(bytes) {
 export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncrease, compact = false }) {
   const percentage = Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) || 0;
 
-  let progressColor = 'bg-[#C2410C]'; // primary terracotta
+  let progressColor = 'bg-[#C2410C]'; // primary orange
   if (percentage >= 90) {
-    progressColor = 'bg-[#DC2626]'; // error
+    progressColor = 'bg-[#EF4444]'; // error
   } else if (percentage >= 75) {
     progressColor = 'bg-[#F59E0B]'; // warning
   }
@@ -22,13 +22,13 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
   if (compact) {
     return (
       <div className="flex items-center gap-3 text-[13px]">
-        <div className="w-24 bg-[#E7E5E4] h-2 rounded-full overflow-hidden">
+        <div className="w-24 bg-[#E8E8EC] dark:bg-[#1F1F27] h-2 rounded-full overflow-hidden">
           <div
             className={`h-full ${progressColor} transition-all duration-300`}
             style={{ width: `${percentage}%` }}
           />
         </div>
-        <span className="text-[#57534E] font-medium font-mono">
+        <span className="text-[#6B6B6B] dark:text-[#9C9C9C] font-medium font-mono">
           {formatBytes(usedBytes)} / {formatBytes(quotaBytes)}
         </span>
       </div>
@@ -36,27 +36,27 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
   }
 
   return (
-    <div className="p-4 bg-[#FFFBF5] border border-[#D6D3D1] rounded-[8px]">
+    <div className="p-4 bg-[#FAFAFA] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-[#1C1917] font-semibold text-[14px]">
+        <div className="flex items-center gap-2 text-[#0A0A0A] dark:text-[#FAFAFA] font-semibold text-[14px]">
           <HardDrive className="w-4 h-4 text-[#C2410C]" />
           <span>Kapasitas Penyimpanan</span>
         </div>
-        <span className="text-[12px] font-bold text-[#C2410C] bg-[#FDF6EC] px-2 py-0.5 rounded-[4px] border border-[#D4A373]">
+        <span className="text-[12px] font-bold text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-2 py-0.5 rounded-[4px] border border-[#C2410C]/20">
           {percentage}%
         </span>
       </div>
 
-      <div className="w-full bg-[#E7E5E4] h-2.5 rounded-full overflow-hidden mb-2">
+      <div className="w-full bg-[#E8E8EC] dark:bg-[#1F1F27] h-2.5 rounded-full overflow-hidden mb-2">
         <div
           className={`h-full ${progressColor} transition-all duration-500`}
           style={{ width: `${percentage}%` }}
         />
       </div>
 
-      <div className="flex items-center justify-between text-[12px] text-[#57534E] mb-3">
-        <span>Terpakai: <strong className="text-[#1C1917] font-mono">{formatBytes(usedBytes)}</strong></span>
-        <span>Batas: <strong className="text-[#1C1917] font-mono">{formatBytes(quotaBytes)}</strong></span>
+      <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-3">
+        <span>Terpakai: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(usedBytes)}</strong></span>
+        <span>Batas: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(quotaBytes)}</strong></span>
       </div>
 
       {onRequestIncrease && (

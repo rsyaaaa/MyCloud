@@ -20,7 +20,7 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota }) 
   }
 
   return (
-    <aside className="w-64 bg-[#FFFBF5] dark:bg-[#1E1B19] border-r-2 border-[#D6D3D1] dark:border-[#3E3834] flex flex-col justify-between shrink-0 min-h-[calc(100vh-64px)] p-4 transition-colors">
+    <aside className="w-64 bg-white dark:bg-[#000000] border-r border-[#E8E8EC] dark:border-[#1F1F27] flex flex-col justify-between shrink-0 min-h-[calc(100vh-56px)] p-4 transition-colors">
       {/* Navigation Links */}
       <nav className="space-y-1">
         {navItems.map((item) => {
@@ -31,14 +31,14 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota }) 
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[4px] text-[14px] font-medium transition-colors ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[6px] text-[14px] font-medium transition-all ${
                 isActive
-                  ? 'bg-[#FDF6EC] dark:bg-[#2E2A26] text-[#C2410C] font-semibold border border-[#D4A373]'
-                  : 'text-[#57534E] dark:text-[#A8A29E] hover:bg-white dark:hover:bg-[#23201D] hover:text-[#1C1917] dark:hover:text-[#F5F2EB]'
+                  ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] dark:text-[#FB923C] font-semibold border border-[#C2410C]/20 shadow-sm'
+                  : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#121218] hover:text-[#0A0A0A] dark:hover:text-white'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#C2410C]' : 'text-[#57534E] dark:text-[#A8A29E]'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#C2410C] dark:text-[#FB923C]' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'}`} />
                 <span>{item.label}</span>
               </div>
             </button>
@@ -47,7 +47,7 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota }) 
       </nav>
 
       {/* Quota bar at bottom */}
-      <div className="pt-4 border-t border-[#E7E5E4] dark:border-[#3E3834]">
+      <div className="pt-4 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
         <QuotaBar
           usedBytes={user?.used_storage_bytes || 0}
           quotaBytes={user?.storage_quota_bytes || 1}

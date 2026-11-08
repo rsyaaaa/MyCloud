@@ -83,49 +83,35 @@ export default function MobileApp({
   const avatarUrl = api.getAvatarUrl(user);
 
   return (
-    <div className="min-h-screen bg-[#FFFBF5] dark:bg-[#171514] flex flex-col text-[#1C1917] dark:text-[#F5F2EB] selection:bg-[#FDF6EC] selection:text-[#C2410C] transition-colors">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#000000] flex flex-col text-[#0A0A0A] dark:text-[#FAFAFA] selection:bg-[#FFEDD5] selection:text-[#C2410C] transition-colors">
       {/* Mobile Top App Bar */}
-      <header className="sticky top-0 z-40 bg-[#FFFBF5] dark:bg-[#1E1B19] border-b-2 border-[#D6D3D1] dark:border-[#3E3834] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1F1F27] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
         {/* Brand */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center border border-[#9A3412]">
+          <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
             <Cloud className="w-4 h-4 stroke-[2.2]" />
           </div>
-          <div>
-            <h1 className="font-serif font-bold text-lg text-[#1C1917] dark:text-[#F5F2EB] tracking-tight leading-none">
-              MyCloud
-            </h1>
-            <span className="text-[9px] uppercase font-bold tracking-wider text-[#D4A373]">
-              Private NAS
-            </span>
-          </div>
+          <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
+            MyCloud
+          </h1>
         </div>
 
-        {/* Right actions: Search toggle, Upload, Profile Avatar */}
-        <div className="flex items-center gap-1.5">
+        {/* Right actions: Search toggle & Profile Avatar */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className={`p-2 rounded-[4px] transition-colors ${
-              showSearch ? 'bg-[#FDF6EC] dark:bg-[#2E2A26] text-[#C2410C]' : 'text-[#57534E] dark:text-[#A8A29E]'
+            className={`p-2 rounded-[6px] transition-colors ${
+              showSearch ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
             }`}
             title="Cari"
           >
             <Search className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={onOpenUpload}
-            className="btn-primary h-8 px-2.5 text-[12px]"
-            title="Unggah Media"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Unggah</span>
-          </button>
-
           {/* User Avatar Circle */}
           <button
             onClick={() => setProfileDrawerOpen(true)}
-            className="w-8 h-8 rounded-full border border-[#D4A373] overflow-hidden ml-1 active:scale-95 transition-transform"
+            className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] overflow-hidden ml-1 active:scale-95 transition-transform"
           >
             <img
               src={avatarUrl}
@@ -138,9 +124,9 @@ export default function MobileApp({
 
       {/* Expandable Search Input on Mobile */}
       {showSearch && (
-        <div className="p-3 bg-white dark:bg-[#23201D] border-b border-[#D6D3D1] dark:border-[#3E3834] animate-enter">
+        <div className="p-3 bg-white dark:bg-[#0A0A0E] border-b border-[#E8E8EC] dark:border-[#1F1F27] animate-enter">
           <div className="relative">
-            <Search className="w-4 h-4 text-[#A8A29E] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               autoFocus
@@ -222,8 +208,18 @@ export default function MobileApp({
         )}
       </main>
 
+      {/* Floating Action Button (FAB) - Upload */}
+      <button
+        onClick={onOpenUpload}
+        className="fixed bottom-20 right-4 z-40 btn-primary h-12 px-4 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-[13px] font-medium"
+        title="Upload Media"
+      >
+        <Upload className="w-4 h-4 stroke-[2.2]" />
+        <span>Upload</span>
+      </button>
+
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 inset-x-0 h-16 bg-[#FFFBF5] dark:bg-[#1E1B19] border-t-2 border-[#D6D3D1] dark:border-[#3E3834] z-40 flex items-center justify-around px-2 transition-colors">
+      <nav className="fixed bottom-0 inset-x-0 h-16 bg-white/95 dark:bg-black/95 backdrop-blur-md border-t border-[#E8E8EC] dark:border-[#1F1F27] z-40 flex items-center justify-around px-2 transition-colors">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
@@ -236,11 +232,11 @@ export default function MobileApp({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${
-                isActive ? 'text-[#C2410C]' : 'text-[#57534E] dark:text-[#A8A29E]'
+                isActive ? 'text-[#C2410C]' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
-              <span className={`text-[11px] mt-1 ${isActive ? 'font-bold' : 'font-medium'}`}>
+              <span className={`text-[11px] mt-1 ${isActive ? 'font-semibold' : 'font-normal'}`}>
                 {item.label}
               </span>
             </button>
@@ -251,15 +247,15 @@ export default function MobileApp({
       {/* User Profile & Avatar Menu Bottom Sheet (Drawer) */}
       {profileDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-[2px] animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-[2px] animate-in fade-in duration-150"
           onClick={() => setProfileDrawerOpen(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-[#23201D] border-t-2 border-[#D6D3D1] dark:border-[#3E3834] rounded-t-[16px] p-5 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#1C1917] dark:text-[#F5F2EB]"
+            className="bg-white dark:bg-[#0A0A0E] border-t border-[#E8E8EC] dark:border-[#1F1F27] rounded-t-[16px] p-5 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA]"
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E7E5E4] dark:border-[#3E3834]">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
               <div className="flex items-center gap-3">
                 <div
                   className="relative group cursor-pointer"
@@ -271,9 +267,9 @@ export default function MobileApp({
                   <img
                     src={avatarUrl}
                     alt={user?.username}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-[#D4A373]"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-[#C2410C]"
                   />
-                  <div className="absolute inset-0 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute inset-0 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera className="w-4 h-4" />
                   </div>
                 </div>
@@ -281,7 +277,7 @@ export default function MobileApp({
                   <h3 className="font-semibold text-base leading-none">
                     {user?.username}
                   </h3>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#C2410C] bg-[#FAF1E6] dark:bg-[#2E2A26] px-1.5 py-0.2 rounded border border-[#D4A373] mt-1 inline-block">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-1.5 py-0.5 rounded border border-[#C2410C]/20 mt-1 inline-block">
                     {user?.role === 'admin' ? 'Administrator' : 'User'}
                   </span>
                 </div>
@@ -289,7 +285,7 @@ export default function MobileApp({
 
               <button
                 onClick={() => setProfileDrawerOpen(false)}
-                className="p-1.5 text-[#57534E] dark:text-[#A8A29E]"
+                className="p-1.5 text-[#6B6B6B] dark:text-[#9C9C9C]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -320,17 +316,17 @@ export default function MobileApp({
             </div>
 
             {/* Menu Options Inside Profile Drawer */}
-            <div className="space-y-1 mb-4 border-t border-b border-[#E7E5E4] dark:border-[#3E3834] py-2">
+            <div className="space-y-1 mb-4 border-t border-b border-[#E8E8EC] dark:border-[#1F1F27] py-2">
               {/* Dark Mode Switch */}
               <button
                 onClick={toggleTheme}
-                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] text-[13px]"
+                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
               >
                 <div className="flex items-center gap-2.5">
-                  {isDark ? <Sun className="w-4 h-4 text-[#F59E0B]" /> : <Moon className="w-4 h-4 text-[#57534E]" />}
-                  <span>{isDark ? 'Mode Terang' : 'Mode Gelap (Dark)'}</span>
+                  {isDark ? <Sun className="w-4 h-4 text-[#F59E0B]" /> : <Moon className="w-4 h-4 text-[#6B6B6B]" />}
+                  <span>{isDark ? 'Mode Terang' : 'Mode Gelap (AMOLED)'}</span>
                 </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#FAF1E6] dark:bg-[#3E3834] text-[#C2410C]">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
                   {isDark ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -341,22 +337,22 @@ export default function MobileApp({
                   setProfileDrawerOpen(false);
                   setTab('vault');
                 }}
-                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] text-[13px]"
+                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
               >
                 <div className="flex items-center gap-2.5">
                   {isUnlocked ? (
-                    <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
+                    <ShieldCheck className="w-4 h-4 text-[#10B981]" />
                   ) : (
                     <Shield className="w-4 h-4 text-[#C2410C]" />
                   )}
                   <span>Brankas Terkunci</span>
                 </div>
                 {isUnlocked ? (
-                  <span className="text-[10px] font-mono font-bold bg-[#DCFCE7] text-[#166534] dark:bg-[#143D14] dark:text-[#86EFAC] px-1.5 py-0.2 rounded">
+                  <span className="text-[10px] font-mono font-bold bg-[#ECFDF5] text-[#059669] dark:bg-[#062817] dark:text-[#10B981] px-1.5 py-0.5 rounded border border-[#10B981]/20">
                     Terbuka {remainingSeconds}s
                   </span>
                 ) : (
-                  <span className="text-[11px] text-[#A8A29E]">Terkunci</span>
+                  <span className="text-[11px] text-[#9C9C9C]">Terkunci</span>
                 )}
               </button>
 
@@ -366,9 +362,9 @@ export default function MobileApp({
                   setProfileDrawerOpen(false);
                   setTab('trash');
                 }}
-                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#FFFBF5] dark:hover:bg-[#2E2A26] text-[13px]"
+                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
               >
-                <div className="flex items-center gap-2.5 text-[#DC2626]">
+                <div className="flex items-center gap-2.5 text-[#EF4444]">
                   <Trash2 className="w-4 h-4" />
                   <span>Tempat Sampah (Trash)</span>
                 </div>
@@ -376,12 +372,12 @@ export default function MobileApp({
             </div>
 
             {/* Server IP Info */}
-            <div className="p-3 bg-[#FFFBF5] dark:bg-[#2E2A26] border border-[#E7E5E4] dark:border-[#3E3834] rounded-[6px] mb-3 text-[12px] text-[#57534E] dark:text-[#A8A29E] flex items-center justify-between">
+            <div className="p-3 bg-[#FAFAFA] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[6px] mb-3 text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Wifi className="w-4 h-4 text-[#22C55E]" />
+                <Wifi className="w-4 h-4 text-[#10B981]" />
                 <span>Host Server:</span>
               </div>
-              <strong className="font-mono text-[#1C1917] dark:text-[#F5F2EB]">192.168.18.78:8080</strong>
+              <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
             </div>
 
             {/* Logout */}

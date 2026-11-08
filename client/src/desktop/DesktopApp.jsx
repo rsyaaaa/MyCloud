@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import Navbar from '../components/Navbar';
@@ -52,7 +53,7 @@ export default function DesktopApp({
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFFBF5] dark:bg-[#171514] text-[#1C1917] dark:text-[#F5F2EB] transition-colors">
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA] dark:bg-[#000000] text-[#0A0A0A] dark:text-[#FAFAFA] transition-colors">
       {/* Top Navbar */}
       <Navbar
         onOpenUpload={onOpenUpload}
@@ -164,6 +165,16 @@ export default function DesktopApp({
         onClose={() => setAvatarModalOpen(false)}
         onUpdated={refreshUser}
       />
+
+      {/* Floating Action Button (FAB) - Upload */}
+      <button
+        onClick={onOpenUpload}
+        className="fixed bottom-8 right-8 z-40 btn-primary h-12 px-5 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all text-[14px] font-medium"
+        title="Upload Media"
+      >
+        <Upload className="w-5 h-5 stroke-[2.2]" />
+        <span>Upload</span>
+      </button>
     </div>
   );
 }

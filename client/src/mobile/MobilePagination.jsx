@@ -11,11 +11,11 @@ export default function MobilePagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="mt-6 mb-8 pt-4 border-t border-[#E7E5E4] flex flex-col items-center gap-3">
-      <div className="text-[12px] text-[#57534E]">
-        Halaman <strong className="text-[#1C1917] font-mono">{currentPage}</strong> dari{' '}
-        <strong className="text-[#1C1917] font-mono">{totalPages}</strong>{' '}
-        <span className="text-[#A8A29E]">({totalItems} berkas)</span>
+    <div className="mt-6 mb-8 pt-4 border-t border-[#E8E8EC] dark:border-[#1F1F27] flex flex-col items-center gap-3">
+      <div className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
+        Halaman <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{currentPage}</strong> dari{' '}
+        <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{totalPages}</strong>{' '}
+        <span className="text-[#9C9C9C]">({totalItems} berkas)</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -35,14 +35,14 @@ export default function MobilePagination({
             .map((p, idx, arr) => (
               <React.Fragment key={p}>
                 {idx > 0 && arr[idx - 1] !== p - 1 && (
-                  <span className="text-[#A8A29E] text-[11px] px-0.5">…</span>
+                  <span className="text-[#9C9C9C] text-[11px] px-0.5">…</span>
                 )}
                 <button
                   onClick={() => onPageChange(p)}
-                  className={`w-7 h-7 rounded-[4px] text-[12px] font-mono font-semibold transition-colors flex items-center justify-center ${
+                  className={`w-7 h-7 rounded-[6px] text-[12px] font-mono font-semibold transition-colors flex items-center justify-center ${
                     p === currentPage
-                      ? 'bg-[#C2410C] text-white border border-[#C2410C]'
-                      : 'bg-white text-[#57534E] border border-[#D6D3D1] hover:bg-[#FDF6EC]'
+                      ? 'bg-[#C2410C] text-white border border-[#C2410C] shadow-primary-glow'
+                      : 'bg-white dark:bg-[#0A0A0E] text-[#6B6B6B] dark:text-[#9C9C9C] border border-[#E8E8EC] dark:border-[#1F1F27] hover:bg-[#FFF7ED] dark:hover:bg-[#2A1208]'
                   }`}
                 >
                   {p}
