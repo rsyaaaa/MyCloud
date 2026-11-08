@@ -3,6 +3,7 @@ import { Trash2, RotateCcw, AlertTriangle, HardDrive, RefreshCw, CheckCircle2 } 
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 import { TrashListSkeleton } from '../components/SkeletonLoader';
+import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function TrashPage({ onRefreshQuota }) {
   const [trashItems, setTrashItems] = useState([]);
@@ -10,15 +11,15 @@ export default function TrashPage({ onRefreshQuota }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [msg, setMsg] = useState(null);
 
-  const fetchTrash = async () => {
-    setLoading(true);
+  const fetchTrash = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.listTrash();
       setTrashItems(data.trash || []);
     } catch (e) {
       console.error('Failed to load trash:', e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -26,11 +27,22 @@ export default function TrashPage({ onRefreshQuota }) {
     fetchTrash();
   }, []);
 
+  // Listen for delete events to instantly add items to trash
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'delete') {
+        fetchTrash(true);
+      }
+    });
+    return unsub;
+  }, []);
+
   const handleRestore = async (id) => {
     setActionLoading(id);
     try {
       await api.restoreFromTrash(id);
       setTrashItems((prev) => prev.filter((item) => item.id !== id));
+      triggerMediaEvent({ type: 'restore', id });
       setMsg({ type: 'success', text: 'Berkas berhasil dipulihkan ke Galeri Utama!' });
       if (onRefreshQuota) onRefreshQuota();
       setTimeout(() => setMsg(null), 3000);
@@ -48,6 +60,7 @@ export default function TrashPage({ onRefreshQuota }) {
     try {
       await api.deletePermanently(id);
       setTrashItems((prev) => prev.filter((item) => item.id !== id));
+      triggerMediaEvent({ type: 'permanent_delete', id });
       setMsg({ type: 'success', text: 'Berkas dihapus permanen dari server.' });
       if (onRefreshQuota) onRefreshQuota();
       setTimeout(() => setMsg(null), 3000);
@@ -66,6 +79,7 @@ export default function TrashPage({ onRefreshQuota }) {
     try {
       const res = await api.emptyTrash();
       setTrashItems([]);
+      triggerMediaEvent({ type: 'empty_trash' });
       setMsg({ type: 'success', text: res.message || 'Tempat sampah berhasil dikosongkan.' });
       if (onRefreshQuota) onRefreshQuota();
       setTimeout(() => setMsg(null), 3000);

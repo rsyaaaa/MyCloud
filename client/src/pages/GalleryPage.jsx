@@ -7,6 +7,7 @@ import MediaCard from '../components/MediaCard';
 import { api } from '../api';
 import { MediaGridSkeleton, MemoriesSkeleton } from '../components/SkeletonLoader';
 import { getRecentHistory, recordRecentItem } from '../utils/recentHistory';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 
 function groupMediaByDate(mediaList) {
   const groups = {};
@@ -83,8 +84,8 @@ export default function GalleryPage({
     if (initialSubView) setSubView(initialSubView);
   }, [initialSubView]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = { sort: sortOption };
 
@@ -136,12 +137,35 @@ export default function GalleryPage({
     } catch (err) {
       console.error('Failed to load gallery:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
+  }, [subView, selectedCatId, orientationFilter, aspectFilter, sortOption, onlyFavorite, searchQuery]);
+
+  // Real-time reactive media listener for 0ms refresh-free UI
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setMediaList((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m))
+        );
+        if (onlyFavorite && event.is_favorite === 0) {
+          setMediaList((prev) => prev.filter((m) => m.id !== event.id));
+        }
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setMediaList((prev) => prev.filter((m) => m.id !== event.id));
+      } else if (event.type === 'rename') {
+        setMediaList((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
+        );
+      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
+        loadData(true);
+      }
+    });
+    return unsub;
   }, [subView, selectedCatId, orientationFilter, aspectFilter, sortOption, onlyFavorite, searchQuery]);
 
   const handleMediaClick = (items, index) => {

@@ -6,6 +6,7 @@ import MobilePagination from './MobilePagination';
 import { api } from '../api';
 import { AlbumsSkeleton, MediaGridSkeleton, MediaListSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
+import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function MobileAlbumsView({
   onOpenViewer,
@@ -27,32 +28,32 @@ export default function MobileAlbumsView({
   const [loading, setLoading] = useState(true);
   const pageSize = 12;
 
-  const loadCategories = async () => {
-    setLoading(true);
+  const loadCategories = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.listCategories();
       setCategories(data.categories || []);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const loadCategoryMedia = async (cat) => {
+  const loadCategoryMedia = async (cat, silent = false) => {
     setSelectedCategory(cat);
     if (cat) {
       recordRecentItem({ folder_id: cat.id, name: cat.name, is_folder: true });
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const data = await api.listMedia({ category_id: cat.id });
       setCategoryMedia(data.media || []);
-      setCurrentPage(1);
+      if (!silent) setCurrentPage(1);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -60,12 +61,35 @@ export default function MobileAlbumsView({
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setCategoryMedia((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m))
+        );
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setCategoryMedia((prev) => prev.filter((m) => m.id !== event.id));
+      } else if (event.type === 'rename') {
+        setCategoryMedia((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
+        );
+      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
+        loadCategories(true);
+        if (selectedCategory) {
+          loadCategoryMedia(selectedCategory, true);
+        }
+      }
+    });
+    return unsub;
+  }, [selectedCategory]);
+
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
 
     try {
       await api.createCategory(newCatName.trim(), newCatType);
+      triggerMediaEvent({ type: 'folder' });
       setNewCatName('');
       setIsCreating(false);
       loadCategories();
@@ -78,6 +102,7 @@ export default function MobileAlbumsView({
 
     try {
       await api.deleteCategory(id);
+      triggerMediaEvent({ type: 'folder' });
       if (selectedCategory?.id === id) {
         setSelectedCategory(null);
       }

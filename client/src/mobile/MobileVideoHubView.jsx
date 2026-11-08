@@ -5,6 +5,7 @@ import MobileMediaListItem from './MobileMediaListItem';
 import MobilePagination from './MobilePagination';
 import { api } from '../api';
 import { MediaGridSkeleton, MediaListSkeleton } from '../components/SkeletonLoader';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function MobileVideoHubView({
   onOpenViewer,
@@ -23,8 +24,8 @@ export default function MobileVideoHubView({
   const [loading, setLoading] = useState(true);
   const pageSize = 12;
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = {
         media_type: 'video',
@@ -41,16 +42,35 @@ export default function MobileVideoHubView({
 
       setVideos(videosRes.media || []);
       setGenres(catsRes.categories || []);
-      setCurrentPage(1);
+      if (!silent) setCurrentPage(1);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
+  }, [selectedGenreId, sortOption]);
+
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === event.id ? { ...v, is_favorite: event.is_favorite } : v))
+        );
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setVideos((prev) => prev.filter((v) => v.id !== event.id));
+      } else if (event.type === 'rename') {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === event.id ? { ...v, display_name: event.name } : v))
+        );
+      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
+        loadData(true);
+      }
+    });
+    return unsub;
   }, [selectedGenreId, sortOption]);
 
   const totalItems = videos.length;

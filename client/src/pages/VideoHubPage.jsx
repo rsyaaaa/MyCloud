@@ -3,6 +3,7 @@ import { Video, Film, Tag } from 'lucide-react';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function VideoHubPage({
   onOpenViewer,
@@ -18,8 +19,8 @@ export default function VideoHubPage({
   const [sortOption, setSortOption] = useState('newest');
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = {
         media_type: 'video',
@@ -39,12 +40,31 @@ export default function VideoHubPage({
     } catch (e) {
       console.error('Failed to load video hub:', e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
+  }, [selectedGenreId, sortOption]);
+
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === event.id ? { ...v, is_favorite: event.is_favorite } : v))
+        );
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setVideos((prev) => prev.filter((v) => v.id !== event.id));
+      } else if (event.type === 'rename') {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === event.id ? { ...v, display_name: event.name } : v))
+        );
+      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
+        loadData(true);
+      }
+    });
+    return unsub;
   }, [selectedGenreId, sortOption]);
 
   return (

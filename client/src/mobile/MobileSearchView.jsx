@@ -7,6 +7,7 @@ import MobileMediaListItem from './MobileMediaListItem';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function MobileSearchView({
   onOpenViewer,
@@ -48,6 +49,23 @@ export default function MobileSearchView({
 
     return () => clearTimeout(timer);
   }, [query, filterType]);
+
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setResults((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m))
+        );
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setResults((prev) => prev.filter((m) => m.id !== event.id));
+      } else if (event.type === 'rename') {
+        setResults((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
+        );
+      }
+    });
+    return unsub;
+  }, []);
 
   const handleItemClick = (item, idx) => {
     recordRecentItem(item);

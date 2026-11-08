@@ -23,6 +23,7 @@ import MobileMediaDetailView from './MobileMediaDetailView';
 import MediaContextMenu from '../components/MediaContextMenu';
 import MediaDetailModal from '../components/MediaDetailModal';
 import AvatarModal from '../components/AvatarModal';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 import QuotaBar from '../components/QuotaBar';
 import SwitchUserSection from '../components/SwitchUserSection';
 import { api } from '../api';
@@ -73,6 +74,33 @@ export default function MobileApp({
   // Long-press Context Menu & Metadata Modal
   const [contextMenuMedia, setContextMenuMedia] = useState(null);
   const [detailModalMedia, setDetailModalMedia] = useState(null);
+
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setDetailViewer((prev) => ({
+          ...prev,
+          mediaList: (prev.mediaList || []).map((m) =>
+            m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m
+          )
+        }));
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setDetailViewer((prev) => ({
+          ...prev,
+          isOpen: false,
+          mediaList: (prev.mediaList || []).filter((m) => m.id !== event.id)
+        }));
+      } else if (event.type === 'rename') {
+        setDetailViewer((prev) => ({
+          ...prev,
+          mediaList: (prev.mediaList || []).map((m) =>
+            m.id === event.id ? { ...m, display_name: event.name } : m
+          )
+        }));
+      }
+    });
+    return unsub;
+  }, []);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
   const setTab = (newTab) => {

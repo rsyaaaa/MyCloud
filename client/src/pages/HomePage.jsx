@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from '../components/QuotaBar';
 import { getRecentHistory, clearRecentHistory, recordRecentItem } from '../utils/recentHistory';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 import AdminHomeDashboard from '../components/AdminHomeDashboard';
 
 function formatRelativeTime(isoString, lang = 'id') {
@@ -61,9 +62,9 @@ export default function HomePage({
   const [selectedDocFilter, setSelectedDocFilter] = useState(false);
   const [documentFiles, setDocumentFiles] = useState([]);
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const statsRes = await api.getMediaStats().catch(() => null);
       if (statsRes) {
@@ -86,12 +87,37 @@ export default function HomePage({
     } catch (err) {
       console.error('Failed to load Home data:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
+  }, [user?.id]);
+
+  // Real-time reactive listener for instant updates on Home
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setFallbackRecent((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m))
+        );
+        if (event.is_favorite === 1) {
+          loadData(true);
+        } else {
+          setFavoriteItems((prev) => prev.filter((m) => m.id !== event.id));
+        }
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setFallbackRecent((prev) => prev.filter((m) => m.id !== event.id));
+        setFavoriteItems((prev) => prev.filter((m) => m.id !== event.id));
+        setRecentItems((prev) => prev.filter((m) => m.id !== event.id));
+        setDocumentFiles((prev) => prev.filter((m) => m.id !== event.id));
+        loadData(true);
+      } else if (['upload', 'restore', 'unlock', 'rename', 'folder', 'organize'].includes(event.type)) {
+        loadData(true);
+      }
+    });
+    return unsub;
   }, [user?.id]);
 
   const handleClearHistory = () => {

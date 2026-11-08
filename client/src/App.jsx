@@ -11,6 +11,7 @@ import MediaViewerModal from './components/MediaViewerModal';
 import OrganizeModal from './components/OrganizeModal';
 import LoginPage from './pages/LoginPage';
 import { api } from './api';
+import { triggerMediaEvent } from './utils/mediaEvents';
 
 export default function App() {
   const { user, loading, refreshUser } = useAuth();
@@ -48,6 +49,8 @@ export default function App() {
   };
 
   const handleToggleFavorite = async (id, isFavorite) => {
+    // 1. Optimistically fire real-time event immediately (0ms delay)
+    triggerMediaEvent({ type: 'favorite', id, is_favorite: isFavorite ? 1 : 0 });
     try {
       await api.updateMedia(id, { is_favorite: isFavorite });
       addToast(isFavorite ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit', 'success');
@@ -55,17 +58,22 @@ export default function App() {
         prev.map((m) => (m.id === id ? { ...m, is_favorite: isFavorite ? 1 : 0 } : m))
       );
     } catch (e) {
+      // Rollback on network failure
+      triggerMediaEvent({ type: 'favorite', id, is_favorite: isFavorite ? 0 : 1 });
       addToast(e.message || 'Gagal mengubah status favorit.', 'error');
     }
   };
 
   const handleLockMedia = async (id) => {
+    // Optimistic removal from main galleries
+    triggerMediaEvent({ type: 'lock', id });
     try {
       await api.lockMedia(id);
       addToast('Foto/video berhasil dipindahkan ke Brankas Rahasia.', 'success');
       setViewerOpen(false);
       refreshUser();
     } catch (e) {
+      triggerMediaEvent({ type: 'unlock', id });
       addToast(e.message || 'Gagal mengunci media.', 'error');
     }
   };
@@ -73,6 +81,7 @@ export default function App() {
   const handleUnlockMedia = async (id, vaultToken) => {
     try {
       await api.unlockMedia(id, vaultToken);
+      triggerMediaEvent({ type: 'unlock', id });
       addToast('File berhasil dipindahkan kembali ke Galeri Utama.', 'success');
       setViewerOpen(false);
       refreshUser();
@@ -89,6 +98,8 @@ export default function App() {
 
     if (!name || !name.trim()) return;
 
+    // Optimistic rename
+    triggerMediaEvent({ type: 'rename', id, name: name.trim() });
     try {
       await api.updateMedia(id, { display_name: name.trim() });
       addToast('Nama file berhasil diperbarui.', 'success');
@@ -96,6 +107,7 @@ export default function App() {
         prev.map((m) => (m.id === id ? { ...m, display_name: name.trim() } : m))
       );
     } catch (e) {
+      triggerMediaEvent({ type: 'rename_rollback', id });
       addToast(e.message || 'Gagal mengubah nama file.', 'error');
     }
   };
@@ -103,12 +115,15 @@ export default function App() {
   const handleDeleteMedia = async (id, vaultToken) => {
     if (!window.confirm('Pindahkan file ini ke Tempat Sampah (akan dihapus permanen dalam 31 hari)?')) return;
 
+    // 1. Optimistically remove item from UI immediately
+    triggerMediaEvent({ type: 'delete', id });
     try {
       await api.deleteMedia(id, vaultToken);
       addToast('File dipindahkan ke Tempat Sampah.', 'success');
       setViewerOpen(false);
       refreshUser();
     } catch (e) {
+      triggerMediaEvent({ type: 'restore', id });
       addToast(e.message || 'Gagal menghapus file.', 'error');
     }
   };
@@ -166,6 +181,7 @@ export default function App() {
         user={user}
         onUploadSuccess={() => {
           refreshUser();
+          triggerMediaEvent({ type: 'upload' });
           addToast('File berhasil diupload ke cloud!', 'success');
         }}
         onRequestQuota={() => setQuotaModalOpen(true)}
@@ -186,6 +202,7 @@ export default function App() {
         onClose={() => setOrganizeModalOpen(false)}
         media={organizingMedia}
         onUpdated={() => {
+          triggerMediaEvent({ type: 'organize' });
           addToast('Album media berhasil diperbarui.', 'success');
         }}
       />

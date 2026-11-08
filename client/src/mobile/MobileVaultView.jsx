@@ -10,6 +10,7 @@ import MobilePagination from './MobilePagination';
 import SafePinModal from '../components/SafePinModal';
 import { api } from '../api';
 import { MediaGridSkeleton, MediaListSkeleton } from '../components/SkeletonLoader';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function MobileVaultView({
   onOpenViewer,
@@ -27,17 +28,17 @@ export default function MobileVaultView({
   const [loading, setLoading] = useState(false);
   const pageSize = 12;
 
-  const loadVaultMedia = async () => {
+  const loadVaultMedia = async (silent = false) => {
     if (!vaultToken) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const data = await api.listVaultMedia(vaultToken);
       setVaultMedia(data.media || []);
-      setCurrentPage(1);
+      if (!silent) setCurrentPage(1);
     } catch (e) {
       lockVault();
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -47,6 +48,22 @@ export default function MobileVaultView({
     } else {
       setVaultMedia([]);
     }
+  }, [isUnlocked, vaultToken]);
+
+  useEffect(() => {
+    if (!isUnlocked || !vaultToken) return;
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'lock') {
+        loadVaultMedia(true);
+      } else if (event.type === 'unlock' || event.type === 'delete') {
+        setVaultMedia((prev) => prev.filter((m) => m.id !== event.id));
+      } else if (event.type === 'rename') {
+        setVaultMedia((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
+        );
+      }
+    });
+    return unsub;
   }, [isUnlocked, vaultToken]);
 
   const totalItems = vaultMedia.length;

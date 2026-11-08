@@ -8,6 +8,7 @@ import MediaCard from '../components/MediaCard';
 import SafePinModal from '../components/SafePinModal';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
+import { subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function VaultPage({
   onOpenViewer,
@@ -23,9 +24,9 @@ export default function VaultPage({
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const loadVaultMedia = async () => {
+  const loadVaultMedia = async (silent = false) => {
     if (!vaultToken) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const data = await api.listVaultMedia(vaultToken);
       setVaultMedia(data.media || []);
@@ -33,7 +34,7 @@ export default function VaultPage({
       console.error('Failed to load vault media:', e);
       lockVault();
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -43,6 +44,22 @@ export default function VaultPage({
     } else {
       setVaultMedia([]);
     }
+  }, [isUnlocked, vaultToken]);
+
+  useEffect(() => {
+    if (!isUnlocked || !vaultToken) return;
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'lock') {
+        loadVaultMedia(true);
+      } else if (event.type === 'unlock' || event.type === 'delete') {
+        setVaultMedia((prev) => prev.filter((m) => m.id !== event.id));
+      } else if (event.type === 'rename') {
+        setVaultMedia((prev) =>
+          prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
+        );
+      }
+    });
+    return unsub;
   }, [isUnlocked, vaultToken]);
 
   // If vault is locked, show lock screen

@@ -10,6 +10,7 @@ import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
+import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function MobileAllFilesView({
   onOpenViewer,
@@ -58,8 +59,8 @@ export default function MobileAllFilesView({
     }
   };
 
-  const loadFiles = async () => {
-    setLoading(true);
+  const loadFiles = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = { sort: sortOption };
       if (filterType !== 'all') {
@@ -74,11 +75,11 @@ export default function MobileAllFilesView({
 
       const res = await api.listMedia(params);
       setFiles(res.media || []);
-      setCurrentPage(1);
+      if (!silent) setCurrentPage(1);
     } catch (err) {
       console.error('Failed to load mobile all files:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -90,12 +91,34 @@ export default function MobileAllFilesView({
     loadFiles();
   }, [filterType, sortOption, searchQuery, currentFolder]);
 
+  // Real-time reactive media event listener
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'favorite') {
+        setFiles((prev) =>
+          prev.map((f) => (f.id === event.id ? { ...f, is_favorite: event.is_favorite } : f))
+        );
+      } else if (event.type === 'delete' || event.type === 'lock') {
+        setFiles((prev) => prev.filter((f) => f.id !== event.id));
+      } else if (event.type === 'rename') {
+        setFiles((prev) =>
+          prev.map((f) => (f.id === event.id ? { ...f, display_name: event.name } : f))
+        );
+      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
+        loadFiles(true);
+        loadFolders();
+      }
+    });
+    return unsub;
+  }, [filterType, sortOption, searchQuery, currentFolder]);
+
   const handleCreateFolder = async (e) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
     setSubmittingFolder(true);
     try {
       await api.createCategory(newFolderName.trim(), 'folder');
+      triggerMediaEvent({ type: 'folder' });
       setNewFolderName('');
       setCreateModalOpen(false);
       await loadFolders();
@@ -110,6 +133,7 @@ export default function MobileAllFilesView({
     if (!window.confirm(`Hapus folder "${folderName}"? File di dalam folder tidak akan terhapus.`)) return;
     try {
       await api.deleteCategory(folderId);
+      triggerMediaEvent({ type: 'folder' });
       if (currentFolder?.id === folderId) {
         setCurrentFolder(null);
       }

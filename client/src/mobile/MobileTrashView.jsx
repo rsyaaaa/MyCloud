@@ -3,6 +3,7 @@ import { Trash2, RotateCcw, AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucid
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 import { TrashListSkeleton } from '../components/SkeletonLoader';
+import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
 
 export default function MobileTrashView({ onBack, onRefreshQuota }) {
   const [trashItems, setTrashItems] = useState([]);
@@ -10,15 +11,15 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [msg, setMsg] = useState(null);
 
-  const fetchTrash = async () => {
-    setLoading(true);
+  const fetchTrash = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.listTrash();
       setTrashItems(data.trash || []);
     } catch (e) {
       console.error('Failed to load trash on mobile:', e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -26,11 +27,22 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
     fetchTrash();
   }, []);
 
+  // Listen for delete events to instantly add items to trash
+  useEffect(() => {
+    const unsub = subscribeMediaEvent((event) => {
+      if (event.type === 'delete') {
+        fetchTrash(true);
+      }
+    });
+    return unsub;
+  }, []);
+
   const handleRestore = async (id) => {
     setActionLoading(id);
     try {
       await api.restoreFromTrash(id);
       setTrashItems((prev) => prev.filter((item) => item.id !== id));
+      triggerMediaEvent({ type: 'restore', id });
       setMsg({ type: 'success', text: 'Berkas dipulihkan!' });
       if (onRefreshQuota) onRefreshQuota();
       setTimeout(() => setMsg(null), 2500);
@@ -48,6 +60,7 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
     try {
       await api.deletePermanently(id);
       setTrashItems((prev) => prev.filter((item) => item.id !== id));
+      triggerMediaEvent({ type: 'permanent_delete', id });
       setMsg({ type: 'success', text: 'Dihapus permanen.' });
       if (onRefreshQuota) onRefreshQuota();
       setTimeout(() => setMsg(null), 2500);
@@ -66,6 +79,7 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
     try {
       await api.emptyTrash();
       setTrashItems([]);
+      triggerMediaEvent({ type: 'empty_trash' });
       setMsg({ type: 'success', text: 'Sampah berhasil dikosongkan.' });
       if (onRefreshQuota) onRefreshQuota();
       setTimeout(() => setMsg(null), 2500);
