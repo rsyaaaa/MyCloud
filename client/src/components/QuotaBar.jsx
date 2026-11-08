@@ -65,7 +65,7 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
           className="w-full btn-secondary text-[13px] py-1.5 h-[34px] justify-center"
         >
           <ArrowUpCircle className="w-4 h-4" />
-          <span>Request Storage Increase</span>
+          <span>Add Storage</span>
         </button>
       )}
     </div>

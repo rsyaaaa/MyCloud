@@ -33,6 +33,19 @@ export default function DesktopApp({
   const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Sidebar toggle state for desktop (persisted in localStorage)
+  const [isSidebarHidden, setIsSidebarHidden] = useState(() => {
+    return localStorage.getItem('desktop_sidebar_hidden') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarHidden((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem('desktop_sidebar_hidden', String(nextVal));
+      return nextVal;
+    });
+  };
+
   // Context Menu & Modals
   const [contextMenu, setContextMenu] = useState({ isOpen: false, media: null, position: { x: 0, y: 0 } });
   const [detailModalMedia, setDetailModalMedia] = useState(null);
@@ -70,18 +83,23 @@ export default function DesktopApp({
         onOpenQuotaModal={onOpenQuotaModal}
         onSelectTab={setTab}
         onOpenAvatarModal={() => setAvatarModalOpen(true)}
+        isSidebarHidden={isSidebarHidden}
+        onToggleSidebar={toggleSidebar}
       />
 
-      <div className="flex flex-1">
-        {/* Left Sidebar */}
-        <Sidebar
-          currentTab={currentTab}
-          setTab={setTab}
-          onRequestIncreaseQuota={onOpenQuotaModal}
-        />
+      <div className="flex flex-1 relative">
+        {/* Left Sidebar (Pagelist) - Sticky & Collapsible */}
+        {!isSidebarHidden && (
+          <Sidebar
+            currentTab={currentTab}
+            setTab={setTab}
+            onRequestIncreaseQuota={onOpenQuotaModal}
+            onHide={toggleSidebar}
+          />
+        )}
 
         {/* Main Desktop Content Area */}
-        <main className="flex-1 overflow-y-auto min-h-[calc(100vh-64px)] animate-enter">
+        <main className="flex-1 min-w-0 min-h-[calc(100vh-56px)] animate-enter">
           {currentTab === 'home' && (
             <HomePage
               onNavigate={handleNavigate}

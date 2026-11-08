@@ -15,7 +15,9 @@ export default function Navbar({
   setSearchQuery,
   onOpenQuotaModal,
   onSelectTab,
-  onOpenAvatarModal
+  onOpenAvatarModal,
+  isSidebarHidden,
+  onToggleSidebar
 }) {
   const { user, logout } = useAuth();
   const { isUnlocked, remainingSeconds } = useVault();
@@ -28,14 +30,20 @@ export default function Navbar({
     <header className="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1F1F27] px-6 h-14 flex items-center justify-between transition-colors">
       {/* Brand & Local IP Pill */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2.5">
+        {/* Clickable Brand Logo & Text to toggle Sidebar */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex items-center gap-2.5 hover:opacity-80 active:scale-95 transition-all select-none text-left cursor-pointer"
+          title={isSidebarHidden ? "Buka Menu (Sidebar)" : "Tutup Menu (Sidebar)"}
+        >
           <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
             <Cloud className="w-4 h-4 stroke-[2.2]" />
           </div>
           <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
             MyCloud
           </h1>
-        </div>
+        </button>
 
         {/* Local Network Info Pill */}
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#F4F4F5] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[4px] text-[11px] font-mono text-[#6B6B6B] dark:text-[#A1A1AA]">

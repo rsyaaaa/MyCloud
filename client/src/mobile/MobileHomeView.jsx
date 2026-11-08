@@ -32,8 +32,28 @@ export default function MobileHomeView({
   const [fallbackRecent, setFallbackRecent] = useState([]);
   const [favoriteItems, setFavoriteItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isRecentMinimized, setIsRecentMinimized] = useState(false);
-  const [isFavoriteMinimized, setIsFavoriteMinimized] = useState(false);
+  const [isRecentMinimized, setIsRecentMinimized] = useState(() => {
+    return localStorage.getItem('mycloud_recent_minimized') === 'true';
+  });
+  const [isFavoriteMinimized, setIsFavoriteMinimized] = useState(() => {
+    return localStorage.getItem('mycloud_favorite_minimized') === 'true';
+  });
+
+  const toggleRecentMinimized = () => {
+    setIsRecentMinimized((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem('mycloud_recent_minimized', String(nextVal));
+      return nextVal;
+    });
+  };
+
+  const toggleFavoriteMinimized = () => {
+    setIsFavoriteMinimized((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem('mycloud_favorite_minimized', String(nextVal));
+      return nextVal;
+    });
+  };
   const [selectedDocFilter, setSelectedDocFilter] = useState(false);
   const [documentFiles, setDocumentFiles] = useState([]);
 
@@ -249,7 +269,7 @@ export default function MobileHomeView({
 
           {/* Minimize toggle button */}
           <button
-            onClick={() => setIsFavoriteMinimized(!isFavoriteMinimized)}
+            onClick={toggleFavoriteMinimized}
             className="p-1 rounded-[4px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all flex items-center gap-1 text-[10px]"
             title={isFavoriteMinimized ? "Buka Favorite" : "Minimize Favorite"}
           >
@@ -342,7 +362,7 @@ export default function MobileHomeView({
 
             {/* Minimize toggle button */}
             <button
-              onClick={() => setIsRecentMinimized(!isRecentMinimized)}
+              onClick={toggleRecentMinimized}
               className="p-1 rounded-[4px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all flex items-center gap-1 text-[10px]"
               title={isRecentMinimized ? "Buka Recent" : "Minimize Recent"}
             >
