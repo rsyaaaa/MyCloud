@@ -38,6 +38,75 @@ export async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
+export function uploadWithProgress(endpoint, formData, { onProgress, signal, vaultToken } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}${endpoint}`);
+    xhr.withCredentials = true;
+
+    if (vaultToken) {
+      xhr.setRequestHeader('x-vault-token', vaultToken);
+    }
+
+    if (signal) {
+      if (signal.aborted) {
+        return reject(new DOMException('Upload dibatalkan', 'AbortError'));
+      }
+      signal.addEventListener('abort', () => {
+        xhr.abort();
+        reject(new DOMException('Upload dibatalkan', 'AbortError'));
+      });
+    }
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+          onProgress({
+            loaded: event.loaded,
+            total: event.total,
+            percent
+          });
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      let data = null;
+      const contentType = xhr.getResponseHeader('content-type') || '';
+      try {
+        if (contentType.includes('application/json')) {
+          data = JSON.parse(xhr.responseText);
+        } else {
+          data = xhr.responseText;
+        }
+      } catch (e) {
+        data = xhr.responseText;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+      } else {
+        const errorMsg = (data && data.error) || (typeof data === 'string' ? data : `Request failed with status ${xhr.status}`);
+        const error = new Error(errorMsg);
+        error.status = xhr.status;
+        error.data = data;
+        reject(error);
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Koneksi jaringan terputus atau gagal terhubung ke server MyCloud.'));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('Upload timeout.'));
+    };
+
+    xhr.send(formData);
+  });
+}
+
 export const api = {
   // Auth
   login: (username, password) => apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
@@ -65,7 +134,7 @@ export const api = {
   },
   getMediaStats: () => apiRequest('/media/stats/summary'),
   getMedia: (id) => apiRequest(`/media/${id}`),
-  uploadMedia: (formData) => apiRequest('/media/upload', { method: 'POST', body: formData }),
+  uploadMedia: (formData, onProgress, signal) => uploadWithProgress('/media/upload', formData, { onProgress, signal }),
   updateMedia: (id, updates) => apiRequest(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
   lockMedia: (id) => apiRequest(`/media/${id}/lock`, { method: 'POST' }),
   unlockMedia: (id, vaultToken) => apiRequest(`/media/${id}/unlock`, { method: 'POST', vaultToken }),

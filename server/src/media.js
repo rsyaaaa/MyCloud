@@ -22,7 +22,9 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const uniqueId = uuidv4();
-    cb(null, `${uniqueId}${ext}`);
+    const filename = `${uniqueId}${ext}`;
+    req.currentUploadingFilePath = path.join(config.USERS_DIR, req.user.id, 'uploads', filename);
+    cb(null, filename);
   }
 });
 
@@ -35,7 +37,22 @@ const upload = multer({
 });
 
 // POST /api/media/upload
-router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
+router.post('/upload', authMiddleware, (req, res, next) => {
+  // If client disconnects or aborts before file is completely received, cleanup partial file
+  req.on('close', () => {
+    if (!req.complete && req.currentUploadingFilePath) {
+      if (fs.existsSync(req.currentUploadingFilePath)) {
+        try {
+          fs.unlinkSync(req.currentUploadingFilePath);
+          console.log(`[Upload Aborted] Cleaned up aborted upload: ${req.currentUploadingFilePath}`);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  });
+  next();
+}, upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Tidak ada file yang diunggah.' });
   }

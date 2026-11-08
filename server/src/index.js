@@ -62,7 +62,7 @@ async function startServer() {
   try {
     await initDb();
 
-    app.listen(config.PORT, config.HOST, () => {
+    const server = app.listen(config.PORT, config.HOST, () => {
       console.log('================================================================');
       console.log('   Personal Local Cloud & Media Hub (Private NAS Web App)      ');
       console.log(`   Listening on: http://${config.HOST}:${config.PORT}`);
@@ -73,6 +73,14 @@ async function startServer() {
       console.log(`   FFprobe Path: ${config.FFPROBE_PATH}`);
       console.log('================================================================');
     });
+
+    // Disable request timeout for multi-GB file uploads
+    server.timeout = 0;
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+    if (server.requestTimeout !== undefined) {
+      server.requestTimeout = 0;
+    }
   } catch (err) {
     console.error('Failed to initialize server:', err);
     process.exit(1);
