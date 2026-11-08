@@ -13,6 +13,7 @@ const memoriesRouter = require('./memories');
 const categoriesRouter = require('./categories');
 const watchProgressRouter = require('./watchProgress');
 const quotaRouter = require('./quota');
+const { setupTerminalWebSocket } = require('./terminal');
 
 const app = express();
 
@@ -73,6 +74,9 @@ async function startServer() {
       console.log(`   FFprobe Path: ${config.FFPROBE_PATH}`);
       console.log('================================================================');
     });
+
+    // Attach Terminal WebSocket for Admin PTY Bash Sessions
+    setupTerminalWebSocket(server);
 
     // Disable request timeout for multi-GB file uploads
     server.timeout = 0;

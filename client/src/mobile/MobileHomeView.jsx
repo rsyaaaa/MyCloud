@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from '../components/QuotaBar';
 import { getRecentHistory, clearRecentHistory, recordRecentItem } from '../utils/recentHistory';
+import AdminHomeDashboard from '../components/AdminHomeDashboard';
 
 function formatRelativeTime(isoString, lang = 'id') {
   if (!isoString) return '';
@@ -100,6 +101,14 @@ export default function MobileHomeView({
       if (onOpenViewer) onOpenViewer([item], 0);
     }
   };
+
+  if (user?.role === 'admin') {
+    return (
+      <div className="pb-28">
+        <AdminHomeDashboard />
+      </div>
+    );
+  }
 
   const displayList = recentItems.length > 0 ? recentItems : fallbackRecent;
 

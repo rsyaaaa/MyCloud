@@ -1,11 +1,168 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
+const os = require('os');
 const db = require('./db');
 const config = require('./config');
 const { authMiddleware, adminMiddleware } = require('./auth');
 
 const router = express.Router();
+
+// Real-time Linux system & load monitoring states
+let lastNetSample = null;
+let lastDiskSample = null;
+let lastCpuSample = null;
+let lastSampleTime = 0;
+
+function readProcNet() {
+  try {
+    const content = fs.readFileSync('/proc/net/dev', 'utf8');
+    const lines = content.split('\n');
+    let rx = 0, tx = 0;
+    let activeIface = 'eth0';
+    let maxTraffic = -1;
+
+    for (const line of lines) {
+      if (!line.includes(':')) continue;
+      const [iface, data] = line.split(':');
+      const name = iface.trim();
+      if (name === 'lo') continue;
+      const parts = data.trim().split(/\s+/);
+      const ifaceRx = parseInt(parts[0], 10) || 0;
+      const ifaceTx = parseInt(parts[8], 10) || 0;
+      rx += ifaceRx;
+      tx += ifaceTx;
+      if (ifaceRx + ifaceTx > maxTraffic) {
+        maxTraffic = ifaceRx + ifaceTx;
+        activeIface = name;
+      }
+    }
+    return { rx, tx, activeIface };
+  } catch (e) {
+    return { rx: 0, tx: 0, activeIface: 'unknown' };
+  }
+}
+
+function readProcDisk() {
+  try {
+    const content = fs.readFileSync('/proc/diskstats', 'utf8');
+    const lines = content.split('\n');
+    let rBytes = 0, wBytes = 0;
+    let mainDev = 'sda';
+
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (!parts || parts.length < 14) continue;
+      const dev = parts[2];
+      if ((dev.startsWith('sd') && dev.length === 3) || (dev.startsWith('nvme') && dev.endsWith('n1')) || (dev.startsWith('vd') && dev.length === 3)) {
+        const rSectors = parseInt(parts[5], 10) || 0;
+        const wSectors = parseInt(parts[9], 10) || 0;
+        rBytes += rSectors * 512;
+        wBytes += wSectors * 512;
+        mainDev = dev;
+      }
+    }
+    return { rBytes, wBytes, mainDev };
+  } catch (e) {
+    return { rBytes: 0, wBytes: 0, mainDev: 'disk' };
+  }
+}
+
+function readProcCpu() {
+  try {
+    const line = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0];
+    const parts = line.trim().split(/\s+/).slice(1).map(Number);
+    const idle = parts[3] + (parts[4] || 0);
+    const total = parts.reduce((a, b) => a + b, 0);
+    return { idle, total };
+  } catch (e) {
+    return { idle: 0, total: 0 };
+  }
+}
+
+function getRealtimeMetrics() {
+  const now = Date.now();
+  const currentNet = readProcNet();
+  const currentDisk = readProcDisk();
+  const currentCpu = readProcCpu();
+
+  let rxSpeed = 0;
+  let txSpeed = 0;
+  let readSpeed = 0;
+  let writeSpeed = 0;
+  let cpuPercent = 0;
+
+  if (lastSampleTime > 0) {
+    const deltaSeconds = Math.max(0.1, (now - lastSampleTime) / 1000);
+
+    if (lastNetSample) {
+      rxSpeed = Math.max(0, Math.round((currentNet.rx - lastNetSample.rx) / deltaSeconds));
+      txSpeed = Math.max(0, Math.round((currentNet.tx - lastNetSample.tx) / deltaSeconds));
+    }
+
+    if (lastDiskSample) {
+      readSpeed = Math.max(0, Math.round((currentDisk.rBytes - lastDiskSample.rBytes) / deltaSeconds));
+      writeSpeed = Math.max(0, Math.round((currentDisk.wBytes - lastDiskSample.wBytes) / deltaSeconds));
+    }
+
+    if (lastCpuSample && currentCpu.total > lastCpuSample.total) {
+      const dIdle = currentCpu.idle - lastCpuSample.idle;
+      const dTotal = currentCpu.total - lastCpuSample.total;
+      cpuPercent = Math.max(0, Math.min(100, Math.round((1 - dIdle / dTotal) * 100)));
+    }
+  }
+
+  lastNetSample = currentNet;
+  lastDiskSample = currentDisk;
+  lastCpuSample = currentCpu;
+  lastSampleTime = now;
+
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+
+  return {
+    network: {
+      rx_speed_bytes: rxSpeed,
+      tx_speed_bytes: txSpeed,
+      total_rx_bytes: currentNet.rx,
+      total_tx_bytes: currentNet.tx,
+      active_interface: currentNet.activeIface,
+    },
+    disk_io: {
+      read_speed_bytes: readSpeed,
+      write_speed_bytes: writeSpeed,
+      total_read_bytes: currentDisk.rBytes,
+      total_write_bytes: currentDisk.wBytes,
+      device: currentDisk.mainDev,
+    },
+    system: {
+      status: 'ONLINE',
+      uptime_seconds: Math.floor(os.uptime()),
+      cpu_percent: cpuPercent,
+      cpu_cores: os.cpus().length,
+      load_avg: os.loadavg(),
+      memory: {
+        total: totalMem,
+        free: freeMem,
+        used: usedMem,
+        percent: Math.round((usedMem / totalMem) * 100)
+      },
+      hostname: os.hostname(),
+      platform: `${os.type()} ${os.release()} (${os.arch()})`,
+      node_version: process.version,
+      process_memory_bytes: process.memoryUsage().rss,
+      timestamp: now
+    }
+  };
+}
+
+// Background sampling every 2 seconds to keep speed calculations accurate
+setInterval(() => {
+  try {
+    getRealtimeMetrics();
+  } catch (e) {}
+}, 2000);
 
 // POST /api/quota/request (User requests storage increase)
 router.post('/quota/request', authMiddleware, async (req, res) => {
@@ -130,12 +287,18 @@ router.get('/admin/system-stats', authMiddleware, adminMiddleware, async (req, r
     const mediaCount = await db.get('SELECT COUNT(*) as count, COALESCE(SUM(file_size), 0) as total_size FROM media_files');
     const pendingRequests = await db.get("SELECT COUNT(*) as count FROM storage_requests WHERE status = 'pending'");
 
+    // Real-time network, disk I/O, and CPU metrics
+    const realtime = getRealtimeMetrics();
+
     return res.json({
       disk: diskStats,
       users: userCount.count,
       media_count: mediaCount.count,
       total_media_bytes: mediaCount.total_size,
-      pending_requests: pendingRequests.count
+      pending_requests: pendingRequests.count,
+      network: realtime.network,
+      disk_io: realtime.disk_io,
+      system: realtime.system
     });
   } catch (err) {
     console.error('[Admin Stats] Error:', err);

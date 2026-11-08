@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Home, Images, Folder, Trash2, Settings, HardDrive, X
+  Home, Images, Folder, Trash2, Settings, HardDrive, X, Terminal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -11,14 +11,22 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, on
   const { t } = useLanguage();
 
   const navItems = [
-    { id: 'home', label: t('home', 'Home'), icon: Home },
-    { id: 'gallery', label: t('gallery', 'Galeri'), icon: Images },
-    { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
-    { id: 'trash', label: t('trash', 'Tempat Sampah'), icon: Trash2 },
+    { id: 'home', label: user?.role === 'admin' ? 'Server Dashboard' : t('home', 'Home'), icon: Home },
   ];
 
+  // Untuk admin, halaman gallery dihapus
+  if (user?.role !== 'admin') {
+    navItems.push({ id: 'gallery', label: t('gallery', 'Galeri'), icon: Images });
+  }
+
+  navItems.push(
+    { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
+    { id: 'trash', label: t('trash', 'Tempat Sampah'), icon: Trash2 }
+  );
+
+  // Menu Terminal khusus Admin
   if (user?.role === 'admin') {
-    navItems.push({ id: 'admin', label: t('admin', 'Admin Dashboard'), icon: Settings });
+    navItems.push({ id: 'terminal', label: 'Terminal', icon: Terminal });
   }
 
   return (

@@ -11,6 +11,8 @@ import AllFilesPage from '../pages/AllFilesPage';
 import VaultPage from '../pages/VaultPage';
 import AlbumsPage from '../pages/AlbumsPage';
 import AdminPage from '../pages/AdminPage';
+import AdminHomeDashboard from '../components/AdminHomeDashboard';
+import TerminalPage from '../pages/TerminalPage';
 import TrashPage from '../pages/TrashPage';
 import MediaContextMenu from '../components/MediaContextMenu';
 import MediaDetailModal from '../components/MediaDetailModal';
@@ -109,7 +111,7 @@ export default function DesktopApp({
             />
           )}
 
-          {currentTab === 'gallery' && (
+          {currentTab === 'gallery' && user?.role !== 'admin' && (
             <GalleryPage
               initialSubView={gallerySubView}
               searchQuery={searchQuery}
@@ -180,7 +182,11 @@ export default function DesktopApp({
           )}
 
           {currentTab === 'admin' && user?.role === 'admin' && (
-            <AdminPage />
+            <AdminHomeDashboard />
+          )}
+
+          {currentTab === 'terminal' && user?.role === 'admin' && (
+            <TerminalPage />
           )}
         </main>
       </div>
@@ -216,15 +222,17 @@ export default function DesktopApp({
         onUpdated={refreshUser}
       />
 
-      {/* Floating Action Button (FAB) - Upload */}
-      <button
-        onClick={onOpenUpload}
-        className="fixed bottom-8 right-8 z-40 btn-primary h-12 px-5 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all text-[14px] font-medium"
-        title="Upload Media"
-      >
-        <Upload className="w-5 h-5 stroke-[2.2]" />
-        <span>Upload</span>
-      </button>
+      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal) */}
+      {currentTab !== 'terminal' && (
+        <button
+          onClick={onOpenUpload}
+          className="fixed bottom-8 right-8 z-40 btn-primary h-12 px-5 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all text-[14px] font-medium"
+          title="Upload Media"
+        >
+          <Upload className="w-5 h-5 stroke-[2.2]" />
+          <span>Upload</span>
+        </button>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera, Languages
+  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
@@ -15,6 +15,8 @@ import MobileAllFilesView from './MobileAllFilesView';
 import MobileAlbumsView from './MobileAlbumsView';
 import MobileVaultView from './MobileVaultView';
 import MobileAdminView from './MobileAdminView';
+import AdminHomeDashboard from '../components/AdminHomeDashboard';
+import TerminalPage from '../pages/TerminalPage';
 import MobileTrashView from './MobileTrashView';
 import MobileSearchView from './MobileSearchView';
 import MobileMediaDetailView from './MobileMediaDetailView';
@@ -72,12 +74,24 @@ export default function MobileApp({
   };
 
   const navItems = [
-    { id: 'home', label: t('home', 'Home'), icon: Home },
-    { id: 'gallery', label: t('gallery', 'Galeri'), icon: Images },
+    { id: 'home', label: user?.role === 'admin' ? 'Server' : t('home', 'Home'), icon: Home },
+  ];
+
+  // Untuk admin, halaman gallery dihapus
+  if (user?.role !== 'admin') {
+    navItems.push({ id: 'gallery', label: t('gallery', 'Galeri'), icon: Images });
+  }
+
+  navItems.push(
     { id: 'search', label: t('search', 'Search'), icon: Search },
     { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
     { id: 'trash', label: t('trash', 'Trash'), icon: Trash2 },
-  ];
+  );
+
+  // Menu Terminal untuk admin di mobile bottom bar
+  if (user?.role === 'admin') {
+    navItems.push({ id: 'terminal', label: 'Terminal', icon: TerminalIcon });
+  }
 
   // Open full-screen dedicated mobile media viewer
   const handleMobileOpenViewer = (list, index, isVault = false, vaultToken = null) => {
@@ -134,7 +148,7 @@ export default function MobileApp({
           />
         )}
 
-        {currentTab === 'gallery' && (
+        {currentTab === 'gallery' && user?.role !== 'admin' && (
           <MobileGalleryView
             initialSubView={gallerySubView}
             searchQuery={searchQuery}
@@ -214,19 +228,29 @@ export default function MobileApp({
         )}
 
         {currentTab === 'admin' && user?.role === 'admin' && (
-          <MobileAdminView />
+          <div className="pb-28">
+            <AdminHomeDashboard />
+          </div>
+        )}
+
+        {currentTab === 'terminal' && user?.role === 'admin' && (
+          <div className="pb-20">
+            <TerminalPage />
+          </div>
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Upload */}
-      <button
-        onClick={onOpenUpload}
-        className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
-        title={t('upload', 'Upload Media')}
-      >
-        <Upload className="w-4 h-4 stroke-[2.3]" />
-        <span>{t('upload', 'Upload')}</span>
-      </button>
+      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal) */}
+      {currentTab !== 'terminal' && (
+        <button
+          onClick={onOpenUpload}
+          className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
+          title={t('upload', 'Upload Media')}
+        >
+          <Upload className="w-4 h-4 stroke-[2.3]" />
+          <span>{t('upload', 'Upload')}</span>
+        </button>
+      )}
 
       {/* Floating Bottom Navigation Bar */}
       <nav className="fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/90 dark:bg-[#0A0A0E]/90 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.70)] z-40 flex items-center justify-around px-2 transition-all">
@@ -414,18 +438,33 @@ export default function MobileApp({
 
               {/* Admin Dashboard (jika admin) */}
               {user?.role === 'admin' && (
-                <button
-                  onClick={() => {
-                    setProfileDrawerOpen(false);
-                    setTab('admin');
-                  }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
-                >
-                  <div className="flex items-center gap-2.5 text-[#C2410C]">
-                    <Server className="w-4 h-4" />
-                    <span>{t('admin', 'Admin Dashboard')}</span>
-                  </div>
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setProfileDrawerOpen(false);
+                      setTab('home');
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
+                  >
+                    <div className="flex items-center gap-2.5 text-[#C2410C]">
+                      <Server className="w-4 h-4" />
+                      <span>{t('admin', 'Admin Dashboard')}</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setProfileDrawerOpen(false);
+                      setTab('terminal');
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
+                  >
+                    <div className="flex items-center gap-2.5 text-[#10B981]">
+                      <TerminalIcon className="w-4 h-4" />
+                      <span>Terminal Server</span>
+                    </div>
+                  </button>
+                </>
               )}
             </div>
 
