@@ -5,15 +5,18 @@ import './index.css';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { VaultProvider } from './context/VaultContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { LanguageProvider } from './context/LanguageContext.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider>
-      <AuthProvider>
-        <VaultProvider>
-          <App />
-        </VaultProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <VaultProvider>
+            <App />
+          </VaultProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

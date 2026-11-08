@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import {
   Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera
+  Moon, Sun, Trash2, Camera, Languages
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import MobileHomeView from './MobileHomeView';
 import MobileGalleryView from './MobileGalleryView';
 import MobileVideoHubView from './MobileVideoHubView';
@@ -38,6 +39,7 @@ export default function MobileApp({
   const { user, refreshUser, logout } = useAuth();
   const { isUnlocked, remainingSeconds, notifyTabChange } = useVault();
   const { isDark, toggleTheme } = useTheme();
+  const { lang, setLang, t } = useLanguage();
 
   const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
   const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
@@ -70,11 +72,11 @@ export default function MobileApp({
   };
 
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'gallery', label: 'Galeri', icon: Images },
-    { id: 'search', label: 'Search', icon: Search },
-    { id: 'allfiles', label: 'All Files', icon: Folder },
-    { id: 'trash', label: 'Trash', icon: Trash2 },
+    { id: 'home', label: t('home', 'Home'), icon: Home },
+    { id: 'gallery', label: t('gallery', 'Galeri'), icon: Images },
+    { id: 'search', label: t('search', 'Search'), icon: Search },
+    { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
+    { id: 'trash', label: t('trash', 'Trash'), icon: Trash2 },
   ];
 
   // Open full-screen dedicated mobile media viewer
@@ -220,10 +222,10 @@ export default function MobileApp({
       <button
         onClick={onOpenUpload}
         className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
-        title="Upload Media"
+        title={t('upload', 'Upload Media')}
       >
         <Upload className="w-4 h-4 stroke-[2.3]" />
-        <span>Upload</span>
+        <span>{t('upload', 'Upload')}</span>
       </button>
 
       {/* Floating Bottom Navigation Bar */}
@@ -310,7 +312,7 @@ export default function MobileApp({
               className="w-full btn-secondary h-9 text-[12px] justify-center mb-3"
             >
               <Camera className="w-4 h-4" />
-              <span>Ganti Foto Profil</span>
+              <span>{t('changeAvatar', 'Ganti Foto Profil')}</span>
             </button>
 
             {/* Quota Widget */}
@@ -334,12 +336,42 @@ export default function MobileApp({
               >
                 <div className="flex items-center gap-2.5">
                   {isDark ? <Sun className="w-4 h-4 text-[#F59E0B]" /> : <Moon className="w-4 h-4 text-[#6B6B6B]" />}
-                  <span>{isDark ? 'Mode Terang' : 'Mode Gelap (AMOLED)'}</span>
+                  <span>{isDark ? t('lightMode', 'Mode Terang') : t('darkMode', 'Mode Gelap')}</span>
                 </div>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
                   {isDark ? 'ON' : 'OFF'}
                 </span>
               </button>
+
+              {/* Language Switcher (di bawah mode terang & gelap) */}
+              <div className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px] border-b border-[#E8E8EC] dark:border-[#1F1F27] pb-3 mb-1">
+                <div className="flex items-center gap-2.5">
+                  <Languages className="w-4 h-4 text-[#6B6B6B] dark:text-[#9C9C9C]" />
+                  <span>{t('language', 'Bahasa')}</span>
+                </div>
+                <div className="flex items-center gap-1 bg-[#E8E8EC] dark:bg-[#1F1F27] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#272733]">
+                  <button
+                    onClick={() => setLang('id')}
+                    className={`px-2.5 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
+                      lang === 'id'
+                        ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
+                        : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                    }`}
+                  >
+                    ID
+                  </button>
+                  <button
+                    onClick={() => setLang('en')}
+                    className={`px-2.5 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
+                      lang === 'en'
+                        ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
+                        : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                    }`}
+                  >
+                    EN
+                  </button>
+                </div>
+              </div>
 
               {/* Brankas Terkunci (Vault Link in Avatar Menu) */}
               <button
@@ -355,11 +387,11 @@ export default function MobileApp({
                   ) : (
                     <Shield className="w-4 h-4 text-[#C2410C]" />
                   )}
-                  <span>Brankas Terkunci</span>
+                  <span>{t('vault', 'Brankas Terkunci')}</span>
                 </div>
                 {isUnlocked ? (
                   <span className="text-[10px] font-mono font-bold bg-[#ECFDF5] text-[#059669] dark:bg-[#062817] dark:text-[#10B981] px-1.5 py-0.5 rounded border border-[#10B981]/20">
-                    Terbuka {remainingSeconds}s
+                    {t('unlockedBadge', 'Terbuka')} {remainingSeconds}s
                   </span>
                 ) : (
                   <span className="text-[11px] text-[#9C9C9C]">Terkunci</span>
@@ -376,7 +408,7 @@ export default function MobileApp({
               >
                 <div className="flex items-center gap-2.5 text-[#EF4444]">
                   <Trash2 className="w-4 h-4" />
-                  <span>Tempat Sampah (Trash)</span>
+                  <span>{t('trashLabel', 'Tempat Sampah (Trash)')}</span>
                 </div>
               </button>
 
@@ -391,7 +423,7 @@ export default function MobileApp({
                 >
                   <div className="flex items-center gap-2.5 text-[#C2410C]">
                     <Server className="w-4 h-4" />
-                    <span>Admin Dashboard</span>
+                    <span>{t('admin', 'Admin Dashboard')}</span>
                   </div>
                 </button>
               )}
@@ -401,7 +433,7 @@ export default function MobileApp({
             <div className="p-3 bg-[#FAFAFA] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[6px] mb-3 text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wifi className="w-4 h-4 text-[#10B981]" />
-                <span>Host Server:</span>
+                <span>{t('hostServer', 'Host Server')}:</span>
               </div>
               <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
             </div>
@@ -415,7 +447,7 @@ export default function MobileApp({
               className="w-full btn-destructive h-[42px] text-[14px] justify-center"
             >
               <LogOut className="w-4 h-4" />
-              <span>Keluar (Logout)</span>
+              <span>{t('logout', 'Keluar (Logout)')}</span>
             </button>
           </div>
         </div>

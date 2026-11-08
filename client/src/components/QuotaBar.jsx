@@ -1,5 +1,6 @@
 import React from 'react';
 import { HardDrive, ArrowUpCircle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export function formatBytes(bytes) {
   if (bytes === 0 || !bytes) return '0 B';
@@ -10,6 +11,7 @@ export function formatBytes(bytes) {
 }
 
 export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncrease, compact = false }) {
+  const { t } = useLanguage();
   const percentage = Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) || 0;
 
   let progressColor = 'bg-[#C2410C]'; // primary orange
@@ -40,7 +42,7 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-[#0A0A0A] dark:text-[#FAFAFA] font-semibold text-[14px]">
           <HardDrive className="w-4 h-4 text-[#C2410C]" />
-          <span>Kapasitas Penyimpanan</span>
+          <span>{t('storageCapacity', 'Kapasitas Penyimpanan')}</span>
         </div>
         <span className="text-[12px] font-bold text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-2 py-0.5 rounded-[4px] border border-[#C2410C]/20">
           {percentage}%
@@ -55,8 +57,8 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
       </div>
 
       <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-3">
-        <span>Terpakai: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(usedBytes)}</strong></span>
-        <span>Batas: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(quotaBytes)}</strong></span>
+        <span>{t('used', 'Terpakai')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(usedBytes)}</strong></span>
+        <span>{t('limit', 'Batas')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(quotaBytes)}</strong></span>
       </div>
 
       {onRequestIncrease && (

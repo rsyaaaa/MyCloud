@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { X, UploadCloud, File, AlertCircle, CheckCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
 import { api } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from './QuotaBar';
 
 export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, onRequestQuota }) {
+  const { t } = useLanguage();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -179,7 +181,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
               <UploadCloud className="w-4.5 h-4.5 stroke-[2.2]" />
             </div>
             <h3 className="text-lg font-serif font-bold text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Upload Media (Foto / Video)
+              {t('uploadMedia', 'Upload Media (Foto / Video)')}
             </h3>
           </div>
           <button
@@ -205,7 +207,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
                   }}
                   className="mt-2 text-[12px] font-semibold text-[#C2410C] underline hover:text-[#EA580C] flex items-center gap-1"
                 >
-                  <ArrowUpCircle className="w-3.5 h-3.5" /> Ajukan Penambahan Kuota Sekarang
+                  <ArrowUpCircle className="w-3.5 h-3.5" /> {t('requestQuota', 'Ajukan Tambah Kuota')}
                 </button>
               )}
             </div>
@@ -232,13 +234,13 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
               <UploadCloud className="w-6 h-6 stroke-[2.2]" />
             </div>
             <p className="text-[15px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Tarik & Lepas File ke Sini
+              {t('dragDrop', 'Tarik & Lepas File ke Sini')}
             </p>
             <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-              atau <span className="text-[#C2410C] font-semibold underline">pilih file dari perangkat</span>
+              {t('orChoose', 'atau pilih file dari perangkat')}
             </p>
             <p className="text-[11px] text-[#9C9C9C] mt-3">
-              Mendukung Foto (JPG, PNG, HEIC), Video (MP4, MKV), Dokumen (PDF, DOCX, TXT, XLS, ZIP)
+              {t('uploadSupport', 'Mendukung Foto (JPG, PNG, HEIC), Video (MP4, MKV), Dokumen (PDF, DOCX, TXT, XLS, ZIP)')}
             </p>
           </div>
         )}
@@ -247,7 +249,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
         {selectedFiles.length > 0 && !uploading && (
           <div className="mt-4 max-h-48 overflow-y-auto space-y-2 pr-1 border-t border-[#E8E8EC] dark:border-[#1F1F27] pt-3">
             <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-1">
-              <span>{selectedFiles.length} file dipilih</span>
+              <span>{selectedFiles.length} {t('filesSelected', 'file dipilih')}</span>
               <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
                 Total: {formatBytes(selectedFiles.reduce((acc, f) => acc + f.size, 0))}
               </span>
@@ -355,7 +357,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
               className="btn-destructive text-[14px] px-4 py-2 flex items-center gap-1.5"
             >
               <X className="w-4 h-4" />
-              <span>Batalkan Upload</span>
+              <span>{t('cancelUpload', 'Batalkan Upload')}</span>
             </button>
           ) : (
             <>
@@ -364,7 +366,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
                 onClick={handleClose}
                 className="btn-ghost text-[14px]"
               >
-                Batal
+                {t('cancel', 'Batal')}
               </button>
               <button
                 type="button"
@@ -372,7 +374,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
                 disabled={selectedFiles.length === 0 || isOverQuota}
                 className="btn-primary text-[14px]"
               >
-                Mulai Upload ({selectedFiles.length})
+                {t('startUpload', 'Mulai Upload')} ({selectedFiles.length})
               </button>
             </>
           )}

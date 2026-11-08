@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   Cloud, Upload, Search, User, LogOut, Shield, ShieldCheck, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera
+  Moon, Sun, Trash2, Camera, Languages
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 
@@ -22,6 +23,7 @@ export default function Navbar({
   const { user, logout } = useAuth();
   const { isUnlocked, remainingSeconds } = useVault();
   const { isDark, toggleTheme } = useTheme();
+  const { lang, setLang, t } = useLanguage();
   const [userDropdown, setUserDropdown] = useState(false);
 
   const avatarUrl = api.getAvatarUrl(user);
@@ -58,7 +60,7 @@ export default function Navbar({
           <Search className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
-            placeholder="Cari foto, video, atau judul berkas..."
+            placeholder={t('searchPlaceholder', 'Cari foto, video, atau judul berkas...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input-artisan w-full pl-9 h-[36px] text-[13px]"
@@ -128,7 +130,7 @@ export default function Navbar({
               {/* Quota Info */}
               <div className="px-4 py-2.5 text-[12px] text-[#6B6B6B] dark:text-[#A1A1AA] border-b border-[#E8E8EC] dark:border-[#1F1F27]">
                 <p>
-                  Penyimpanan:{' '}
+                  {t('storage', 'Penyimpanan')}:{' '}
                   <strong className="text-[#0A0A0A] dark:text-white font-mono">
                     {formatBytes(user?.used_storage_bytes)}
                   </strong>{' '}
@@ -138,7 +140,7 @@ export default function Navbar({
                   onClick={onOpenQuotaModal}
                   className="mt-1 text-[#C2410C] font-medium hover:underline block text-[11px]"
                 >
-                  Ajukan Tambah Kuota →
+                  {t('requestQuota', 'Ajukan Tambah Kuota')} →
                 </button>
               </div>
 
@@ -154,12 +156,47 @@ export default function Navbar({
                 >
                   <div className="flex items-center gap-2.5">
                     {isDark ? <Sun className="w-4 h-4 text-[#F59E0B]" /> : <Moon className="w-4 h-4 text-[#6B6B6B]" />}
-                    <span>{isDark ? 'Mode Terang' : 'Mode Gelap (AMOLED)'}</span>
+                    <span>{isDark ? t('lightMode', 'Mode Terang') : t('darkMode', 'Mode Gelap')}</span>
                   </div>
                   <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#F4F4F5] dark:bg-[#1F1F27] text-[#C2410C]">
                     {isDark ? 'ON' : 'OFF'}
                   </span>
                 </button>
+
+                {/* Language Switcher (di bawah mode terang & gelap) */}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center justify-between text-[13px] border-b border-[#E8E8EC] dark:border-[#1F1F27]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Languages className="w-4 h-4 text-[#6B6B6B] dark:text-[#9C9C9C]" />
+                    <span>{t('language', 'Bahasa')}</span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#1F1F27] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#272733]">
+                    <button
+                      onClick={() => setLang('id')}
+                      className={`px-2 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
+                        lang === 'id'
+                          ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
+                          : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
+                      }`}
+                      title="Bahasa Indonesia"
+                    >
+                      ID
+                    </button>
+                    <button
+                      onClick={() => setLang('en')}
+                      className={`px-2 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
+                        lang === 'en'
+                          ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
+                          : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
+                      }`}
+                      title="English"
+                    >
+                      EN
+                    </button>
+                  </div>
+                </div>
 
                 {/* Brankas Menu Link */}
                 <button
@@ -175,11 +212,11 @@ export default function Navbar({
                     ) : (
                       <Shield className="w-4 h-4 text-[#C2410C]" />
                     )}
-                    <span>Brankas Terkunci</span>
+                    <span>{t('vault', 'Brankas Terkunci')}</span>
                   </div>
                   {isUnlocked && (
                     <span className="text-[10px] font-mono font-medium bg-[#ECFDF5] text-[#059669] dark:bg-[#062817] dark:text-[#34D399] px-1.5 py-0.5 rounded border border-[#10B981]/20">
-                      Terbuka {remainingSeconds}s
+                      {t('unlockedBadge', 'Terbuka')} {remainingSeconds}s
                     </span>
                   )}
                 </button>
@@ -193,7 +230,7 @@ export default function Navbar({
                   className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center gap-2.5"
                 >
                   <Trash2 className="w-4 h-4 text-[#EF4444]" />
-                  <span>Tempat Sampah (Trash)</span>
+                  <span>{t('trashLabel', 'Tempat Sampah (Trash)')}</span>
                 </button>
               </div>
 
@@ -205,7 +242,7 @@ export default function Navbar({
                 className="w-full px-4 py-2 text-left text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#200A0A] flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Keluar (Logout)</span>
+                <span>{t('logout', 'Keluar (Logout)')}</span>
               </button>
             </div>
           )}

@@ -3,20 +3,22 @@ import {
   Home, Images, Folder, Trash2, Settings, HardDrive, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import QuotaBar from './QuotaBar';
 
 export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, onHide }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'gallery', label: 'Galeri', icon: Images },
-    { id: 'allfiles', label: 'All Files', icon: Folder },
-    { id: 'trash', label: 'Tempat Sampah', icon: Trash2 },
+    { id: 'home', label: t('home', 'Home'), icon: Home },
+    { id: 'gallery', label: t('gallery', 'Galeri'), icon: Images },
+    { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
+    { id: 'trash', label: t('trash', 'Tempat Sampah'), icon: Trash2 },
   ];
 
   if (user?.role === 'admin') {
-    navItems.push({ id: 'admin', label: 'Admin Dashboard', icon: Settings });
+    navItems.push({ id: 'admin', label: t('admin', 'Admin Dashboard'), icon: Settings });
   }
 
   return (

@@ -5,20 +5,21 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from '../components/QuotaBar';
 import { getRecentHistory, clearRecentHistory, recordRecentItem } from '../utils/recentHistory';
 
-function formatRelativeTime(isoString) {
+function formatRelativeTime(isoString, lang = 'id') {
   if (!isoString) return '';
   const diff = Date.now() - new Date(isoString).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Baru saja';
-  if (mins < 60) return `${mins}m lalu`;
+  if (mins < 1) return lang === 'en' ? 'Just now' : 'Baru saja';
+  if (mins < 60) return `${mins}${lang === 'en' ? 'm ago' : 'm lalu'}`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}j lalu`;
+  if (hours < 24) return `${hours}${lang === 'en' ? 'h ago' : 'j lalu'}`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}h lalu`;
-  return new Date(isoString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  if (days < 30) return `${days}${lang === 'en' ? 'd ago' : 'h lalu'}`;
+  return new Date(isoString).toLocaleDateString(lang === 'en' ? 'en-US' : 'id-ID', { day: 'numeric', month: 'short' });
 }
 
 export default function MobileHomeView({
@@ -27,6 +28,7 @@ export default function MobileHomeView({
   onToggleFavorite
 }) {
   const { user } = useAuth();
+  const { lang, t } = useLanguage();
   const [stats, setStats] = useState({ photos: 0, videos: 0, documents: 0, folders: 0, total: 0 });
   const [recentItems, setRecentItems] = useState([]);
   const [fallbackRecent, setFallbackRecent] = useState([]);
@@ -107,10 +109,10 @@ export default function MobileHomeView({
       <div className="flex items-center justify-between pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
         <div>
           <h2 className="font-serif font-bold text-xl text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
-            Halo, {user?.username}
+            {t('hello', 'Halo')}, {user?.username === 'public' ? t('publicUser', 'Public User') : user?.username}
           </h2>
           <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-            MyCloud Local NAS Storage
+            {t('storageSubtitle', 'MyCloud Local NAS Storage')}
           </p>
         </div>
 
@@ -135,10 +137,10 @@ export default function MobileHomeView({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
-              Foto
+              {t('photos', 'Foto')}
             </h4>
             <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.photos} file
+              {stats.photos} {t('fileCount', 'file')}
             </p>
           </div>
         </div>
@@ -156,10 +158,10 @@ export default function MobileHomeView({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
-              Video
+              {t('videos', 'Video')}
             </h4>
             <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.videos} video
+              {stats.videos} {t('videoCount', 'video')}
             </p>
           </div>
         </div>
@@ -181,10 +183,10 @@ export default function MobileHomeView({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
-              Dokumen
+              {t('documents', 'Dokumen')}
             </h4>
             <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.documents} file
+              {stats.documents} {t('fileCount', 'file')}
             </p>
           </div>
         </div>
@@ -202,10 +204,10 @@ export default function MobileHomeView({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
-              All Files
+              {t('allFiles', 'All Files')}
             </h4>
             <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.total} total
+              {stats.total} {t('totalCount', 'total')}
             </p>
           </div>
         </div>
@@ -216,19 +218,19 @@ export default function MobileHomeView({
         <div className="p-4 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] animate-enter">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
             <h4 className="font-serif font-bold text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Daftar Dokumen
+              {t('documentList', 'Daftar Dokumen')}
             </h4>
             <button
               onClick={() => setSelectedDocFilter(false)}
               className="text-[11px] text-[#6B6B6B] hover:text-[#0A0A0A] dark:hover:text-white"
             >
-              Tutup
+              {t('close', 'Tutup')}
             </button>
           </div>
 
           {documentFiles.length === 0 ? (
             <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] py-3 text-center">
-              Belum ada dokumen. Gunakan tombol Upload untuk mengunggah file.
+              {t('noDocsMobile', 'Belum ada dokumen. Gunakan tombol Upload untuk mengunggah file.')}
             </p>
           ) : (
             <div className="space-y-2">
@@ -258,7 +260,7 @@ export default function MobileHomeView({
           <div className="flex items-center gap-1.5">
             <Heart className="w-4 h-4 text-[#EF4444] fill-[#EF4444]" />
             <h3 className="font-serif font-bold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Favorite
+              {t('favorite', 'Favorite')}
             </h3>
             {favoriteItems.length > 0 && !isFavoriteMinimized && (
               <span className="text-[10px] font-mono font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#F4F4F5] dark:bg-[#121218] px-1.5 py-0.2 rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
@@ -271,9 +273,9 @@ export default function MobileHomeView({
           <button
             onClick={toggleFavoriteMinimized}
             className="p-1 rounded-[4px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all flex items-center gap-1 text-[10px]"
-            title={isFavoriteMinimized ? "Buka Favorite" : "Minimize Favorite"}
+            title={isFavoriteMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}
           >
-            <span>{isFavoriteMinimized ? 'Tampilkan' : 'Minimize'}</span>
+            <span>{isFavoriteMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}</span>
             {isFavoriteMinimized ? (
               <ChevronDown className="w-3 h-3 stroke-[2.2]" />
             ) : (
@@ -287,7 +289,7 @@ export default function MobileHomeView({
             <div className="text-center py-8 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-6">
               <Heart className="w-7 h-7 text-[#EF4444] mx-auto mb-1.5 opacity-40" />
               <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                Belum ada media favorit. Klik ikon hati pada foto atau video untuk menyimpannya di sini.
+                {t('noFavoriteDesc', 'Belum ada media favorit. Klik ikon hati pada foto atau video untuk menyimpannya di sini.')}
               </p>
             </div>
           ) : (
@@ -343,7 +345,7 @@ export default function MobileHomeView({
           <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-[#C2410C]" />
             <h3 className="font-serif font-bold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Recent
+              {t('recent', 'Recent')}
             </h3>
           </div>
 
@@ -356,7 +358,7 @@ export default function MobileHomeView({
                 }}
                 className="text-[11px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#EF4444]"
               >
-                Hapus
+                {t('clearHistory', 'Hapus')}
               </button>
             )}
 
@@ -364,9 +366,9 @@ export default function MobileHomeView({
             <button
               onClick={toggleRecentMinimized}
               className="p-1 rounded-[4px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all flex items-center gap-1 text-[10px]"
-              title={isRecentMinimized ? "Buka Recent" : "Minimize Recent"}
+              title={isRecentMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}
             >
-              <span>{isRecentMinimized ? 'Tampilkan' : 'Minimize'}</span>
+              <span>{isRecentMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}</span>
               {isRecentMinimized ? (
                 <ChevronDown className="w-3 h-3 stroke-[2.2]" />
               ) : (
@@ -381,7 +383,7 @@ export default function MobileHomeView({
             <div className="text-center py-8 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-6">
               <Clock className="w-7 h-7 text-[#C2410C] mx-auto mb-1.5 opacity-40" />
               <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                Belum ada riwayat aktivitas.
+                {t('noRecent', 'Belum ada riwayat aktivitas.')}
               </p>
             </div>
           ) : (
@@ -436,7 +438,7 @@ export default function MobileHomeView({
                         {isFolder ? 'Folder' : isDoc ? 'Doc' : isVid ? 'Video' : 'Foto'}
                       </span>
                       <span>
-                        {formatRelativeTime(item.opened_at || item.captured_at || item.created_at)}
+                        {formatRelativeTime(item.opened_at || item.captured_at || item.created_at, lang)}
                       </span>
                     </div>
                   </div>

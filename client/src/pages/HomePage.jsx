@@ -5,20 +5,21 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from '../components/QuotaBar';
 import { getRecentHistory, clearRecentHistory, recordRecentItem } from '../utils/recentHistory';
 
-function formatRelativeTime(isoString) {
+function formatRelativeTime(isoString, lang = 'id') {
   if (!isoString) return '';
   const diff = Date.now() - new Date(isoString).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Baru saja';
-  if (mins < 60) return `${mins} mnt lalu`;
+  if (mins < 1) return lang === 'en' ? 'Just now' : 'Baru saja';
+  if (mins < 60) return `${mins} ${lang === 'en' ? 'm ago' : 'mnt lalu'}`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} jam lalu`;
+  if (hours < 24) return `${hours} ${lang === 'en' ? 'h ago' : 'jam lalu'}`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} hari lalu`;
-  return new Date(isoString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  if (days < 30) return `${days} ${lang === 'en' ? 'd ago' : 'hari lalu'}`;
+  return new Date(isoString).toLocaleDateString(lang === 'en' ? 'en-US' : 'id-ID', { day: 'numeric', month: 'short' });
 }
 
 export default function HomePage({
@@ -28,6 +29,7 @@ export default function HomePage({
   onOpenQuotaModal
 }) {
   const { user } = useAuth();
+  const { lang, t } = useLanguage();
   const [stats, setStats] = useState({ photos: 0, videos: 0, documents: 0, folders: 0, total: 0 });
   const [recentItems, setRecentItems] = useState([]);
   const [fallbackRecent, setFallbackRecent] = useState([]);
@@ -116,10 +118,10 @@ export default function HomePage({
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
         <div>
           <h2 className="font-serif font-bold text-2xl sm:text-3xl text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
-            Selamat Datang, {user?.username || 'User'}
+            {t('welcome', 'Selamat Datang')}, {user?.username === 'public' ? t('publicUser', 'Public User') : user?.username || 'User'}
           </h2>
           <p className="text-[13px] sm:text-[14px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-            Pusat navigasi cloud & media pribadi Anda di jaringan lokal.
+            {t('welcomeSub', 'Pusat navigasi cloud & media pribadi Anda di jaringan lokal.')}
           </p>
         </div>
 
@@ -127,7 +129,7 @@ export default function HomePage({
         <div className="flex items-center gap-3 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] px-3.5 py-2 rounded-[8px]">
           <HardDrive className="w-4 h-4 text-[#C2410C]" />
           <div className="text-[12px]">
-            <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">Penyimpanan: </span>
+            <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">{t('storage', 'Penyimpanan')}: </span>
             <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">
               {formatBytes(user?.used_storage_bytes || 0)}
             </strong>
@@ -153,10 +155,10 @@ export default function HomePage({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[15px] sm:text-base text-[#0A0A0A] dark:text-[#FAFAFA] group-hover:text-[#C2410C] transition-colors leading-tight">
-              Foto
+              {t('photos', 'Foto')}
             </h4>
             <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.photos} file
+              {stats.photos} {t('fileCount', 'file')}
             </p>
           </div>
         </div>
@@ -176,10 +178,10 @@ export default function HomePage({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[15px] sm:text-base text-[#0A0A0A] dark:text-[#FAFAFA] group-hover:text-[#C2410C] transition-colors leading-tight">
-              Video
+              {t('videos', 'Video')}
             </h4>
             <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.videos} file
+              {stats.videos} {t('videoCount', 'file')}
             </p>
           </div>
         </div>
@@ -203,10 +205,10 @@ export default function HomePage({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[15px] sm:text-base text-[#0A0A0A] dark:text-[#FAFAFA] group-hover:text-[#C2410C] transition-colors leading-tight">
-              Dokumen
+              {t('documents', 'Dokumen')}
             </h4>
             <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.documents} file
+              {stats.documents} {t('fileCount', 'file')}
             </p>
           </div>
         </div>
@@ -226,10 +228,10 @@ export default function HomePage({
           </div>
           <div>
             <h4 className="font-serif font-bold text-[15px] sm:text-base text-[#0A0A0A] dark:text-[#FAFAFA] group-hover:text-[#C2410C] transition-colors leading-tight">
-              All Files
+              {t('allFiles', 'All Files')}
             </h4>
             <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-              {stats.total} file total
+              {stats.total} {t('fileTotalCount', 'file total')}
             </p>
           </div>
         </div>
@@ -242,20 +244,20 @@ export default function HomePage({
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#C2410C]" />
               <h4 className="font-serif font-bold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-                Daftar Dokumen
+                {t('documentList', 'Daftar Dokumen')}
               </h4>
             </div>
             <button
               onClick={() => setSelectedDocFilter(false)}
               className="text-[12px] text-[#6B6B6B] hover:text-[#0A0A0A] dark:hover:text-white"
             >
-              Tutup
+              {t('close', 'Tutup')}
             </button>
           </div>
 
           {documentFiles.length === 0 ? (
             <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] py-4 text-center">
-              Belum ada file dokumen. Gunakan tombol Upload untuk mengunggah PDF, DOCX, TXT, dll.
+              {t('noDocsText', 'Belum ada file dokumen. Gunakan tombol Upload untuk mengunggah PDF, DOCX, TXT, dll.')}
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -290,11 +292,11 @@ export default function HomePage({
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-[#EF4444] fill-[#EF4444]" />
             <h3 className="font-serif font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
-              Favorite
+              {t('favorite', 'Favorite')}
             </h3>
             {favoriteItems.length > 0 && !isFavoriteMinimized && (
               <span className="text-[10px] font-mono font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#F4F4F5] dark:bg-[#121218] px-2 py-0.5 rounded-[4px] border border-[#E8E8EC] dark:border-[#1F1F27]">
-                {favoriteItems.length} item
+                {favoriteItems.length} {t('itemCount', 'item')}
               </span>
             )}
           </div>
@@ -302,9 +304,9 @@ export default function HomePage({
           <button
             onClick={toggleFavoriteMinimized}
             className="p-1.5 rounded-[6px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] hover:bg-[#F4F4F5] dark:hover:bg-[#1F1F27] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all flex items-center gap-1 text-[11px] font-medium"
-            title={isFavoriteMinimized ? "Buka Favorite" : "Minimize Favorite"}
+            title={isFavoriteMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}
           >
-            <span>{isFavoriteMinimized ? 'Tampilkan' : 'Minimize'}</span>
+            <span>{isFavoriteMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}</span>
             {isFavoriteMinimized ? (
               <ChevronDown className="w-3.5 h-3.5 stroke-[2.2]" />
             ) : (
@@ -318,10 +320,10 @@ export default function HomePage({
             <div className="text-center py-12 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
               <Heart className="w-9 h-9 text-[#EF4444] mx-auto mb-2 opacity-40" />
               <h4 className="font-serif font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-                Belum ada media favorit
+                {t('noFavorite', 'Belum ada media favorit')}
               </h4>
               <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-                Klik ikon hati pada foto atau video untuk menyimpannya di sini.
+                {t('noFavoriteDesc', 'Klik ikon hati pada foto atau video untuk menyimpannya di sini.')}
               </p>
             </div>
           ) : (
@@ -379,11 +381,11 @@ export default function HomePage({
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-[#C2410C]" />
             <h3 className="font-serif font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
-              Recent
+              {t('recent', 'Recent')}
             </h3>
             {isFallback && !isRecentMinimized && (
               <span className="text-[10px] font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#F4F4F5] dark:bg-[#121218] px-2 py-0.5 rounded-[4px] border border-[#E8E8EC] dark:border-[#1F1F27]">
-                File Terbaru
+                {t('recentFiles', 'File Terbaru')}
               </span>
             )}
           </div>
@@ -394,7 +396,7 @@ export default function HomePage({
                 onClick={handleClearHistory}
                 className="text-[12px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#EF4444] transition-colors mr-1"
               >
-                Hapus Riwayat
+                {t('clearHistory', 'Hapus Riwayat')}
               </button>
             )}
 
@@ -402,9 +404,9 @@ export default function HomePage({
             <button
               onClick={toggleRecentMinimized}
               className="p-1.5 rounded-[6px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] hover:bg-[#F4F4F5] dark:hover:bg-[#1F1F27] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all flex items-center gap-1 text-[11px] font-medium"
-              title={isRecentMinimized ? "Buka Recent" : "Minimize Recent"}
+              title={isRecentMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}
             >
-              <span>{isRecentMinimized ? 'Tampilkan' : 'Minimize'}</span>
+              <span>{isRecentMinimized ? t('show', 'Tampilkan') : t('minimize', 'Minimize')}</span>
               {isRecentMinimized ? (
                 <ChevronDown className="w-3.5 h-3.5 stroke-[2.2]" />
               ) : (
@@ -419,10 +421,10 @@ export default function HomePage({
             <div className="text-center py-14 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
               <Clock className="w-9 h-9 text-[#C2410C] mx-auto mb-2 opacity-40" />
               <h4 className="font-serif font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-                Belum ada aktivitas
+                {t('noRecent', 'Belum ada aktivitas')}
               </h4>
               <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
-                Buka foto, video, atau dokumen untuk melihat riwayat aktivitas di sini.
+                {t('noRecentDesc', 'Buka foto, video, atau dokumen untuk melihat riwayat aktivitas di sini.')}
               </p>
             </div>
           ) : (
@@ -478,7 +480,7 @@ export default function HomePage({
                           {isFolder ? 'Folder' : isDoc ? 'Doc' : isVid ? 'Video' : 'Foto'}
                         </span>
                         <span>
-                          {formatRelativeTime(item.opened_at || item.captured_at || item.created_at)}
+                          {formatRelativeTime(item.opened_at || item.captured_at || item.created_at, lang)}
                         </span>
                       </div>
                     </div>
