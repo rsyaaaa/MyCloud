@@ -91,7 +91,7 @@ export default function MobileTrashView({ onBack, onRefreshQuota }) {
           )}
           <Trash2 className="w-5 h-5 text-[#EF4444]" />
           <h2 className="font-serif font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Tempat Sampah
+            Sampah
           </h2>
         </div>
 

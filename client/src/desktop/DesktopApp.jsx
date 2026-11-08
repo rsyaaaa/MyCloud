@@ -222,8 +222,8 @@ export default function DesktopApp({
         onUpdated={refreshUser}
       />
 
-      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal) */}
-      {currentTab !== 'terminal' && (
+      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal and Trash) */}
+      {currentTab !== 'terminal' && currentTab !== 'trash' && (
         <button
           onClick={onOpenUpload}
           className="fixed bottom-8 right-8 z-40 btn-primary h-12 px-5 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all text-[14px] font-medium"

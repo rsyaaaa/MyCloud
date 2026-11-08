@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Play, Heart, MoreVertical } from 'lucide-react';
+import { Play, Heart, MoreVertical, FileText } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 
@@ -72,12 +72,32 @@ export default function MobileMediaListItem({
         onClick={onClick}
         className="relative w-16 h-16 shrink-0 rounded-[8px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] border border-[#E8E8EC] dark:border-[#1F1F27] cursor-pointer flex items-center justify-center"
       >
-        <img
-          src={thumbSrc}
-          alt={media.display_name}
-          loading="lazy"
-          className="w-full h-full object-cover"
-        />
+        {media.thumbnail_path ? (
+          <img
+            src={thumbSrc}
+            alt={media.display_name}
+            loading="lazy"
+            className="w-full h-full object-cover object-top"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const fb = e.currentTarget.parentElement?.querySelector('.list-doc-fallback');
+              if (fb) fb.style.display = 'flex';
+            }}
+          />
+        ) : null}
+
+        <div className={`list-doc-fallback w-full h-full flex items-center justify-center ${media.thumbnail_path ? 'hidden' : 'flex'}`}>
+          {media.media_type === 'document' ? (
+            <FileText className="w-6 h-6 text-[#C2410C]" />
+          ) : !media.thumbnail_path ? (
+            <img
+              src={thumbSrc}
+              alt={media.display_name}
+              loading="lazy"
+              className="w-full h-full object-cover"
+            />
+          ) : null}
+        </div>
 
         {isVideo && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20">

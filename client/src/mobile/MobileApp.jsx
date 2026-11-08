@@ -49,6 +49,17 @@ export default function MobileApp({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [adminDiskStats, setAdminDiskStats] = useState(null);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      api.getAdminStats()
+        .then(res => {
+          if (res?.disk) setAdminDiskStats(res.disk);
+        })
+        .catch(() => {});
+    }
+  }, [user?.role]);
 
   // Dedicated Mobile Media Viewer State (Full-Screen View)
   const [detailViewer, setDetailViewer] = useState({
@@ -86,7 +97,7 @@ export default function MobileApp({
   navItems.push(
     { id: 'search', label: t('search', 'Search'), icon: Search },
     { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
-    { id: 'trash', label: t('trash', 'Trash'), icon: Trash2 },
+    { id: 'trash', label: t('trashMobile', 'Sampah'), icon: Trash2 },
   );
 
   // Menu Terminal untuk admin di mobile bottom bar
@@ -241,8 +252,8 @@ export default function MobileApp({
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal) */}
-      {currentTab !== 'terminal' && (
+      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal and Trash) */}
+      {currentTab !== 'terminal' && currentTab !== 'trash' && (
         <button
           onClick={onOpenUpload}
           className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
@@ -343,9 +354,10 @@ export default function MobileApp({
             {/* Quota Widget */}
             <div className="mb-4">
               <QuotaBar
-                usedBytes={user?.used_storage_bytes || 0}
-                quotaBytes={user?.storage_quota_bytes || 1}
-                onRequestIncrease={() => {
+                usedBytes={user?.role === 'admin' ? (adminDiskStats?.used ?? user?.used_storage_bytes ?? 0) : (user?.used_storage_bytes || 0)}
+                quotaBytes={user?.role === 'admin' ? (adminDiskStats?.total ?? 500 * 1024 * 1024 * 1024) : (user?.storage_quota_bytes || 1)}
+                title={user?.role === 'admin' ? 'Total Storage Server' : undefined}
+                onRequestIncrease={user?.role === 'admin' ? undefined : () => {
                   setProfileDrawerOpen(false);
                   onOpenQuotaModal();
                 }}
@@ -433,7 +445,7 @@ export default function MobileApp({
               >
                 <div className="flex items-center gap-2.5 text-[#EF4444]">
                   <Trash2 className="w-4 h-4" />
-                  <span>{t('trashLabel', 'Tempat Sampah (Trash)')}</span>
+                  <span>{t('trashMobile', 'Sampah')}</span>
                 </div>
               </button>
 

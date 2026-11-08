@@ -172,7 +172,8 @@ export const api = {
 
   // Categories & Folders
   listCategories: (type) => apiRequest(`/categories${type ? `?type=${type}` : ''}`),
-  createCategory: (name, type) => apiRequest('/categories', { method: 'POST', body: JSON.stringify({ name, type }) }),
+  createCategory: (name, type = 'folder') => apiRequest('/categories', { method: 'POST', body: JSON.stringify({ name, type }) }),
+  renameCategory: (id, name) => apiRequest(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
   deleteCategory: (id) => apiRequest(`/categories/${id}`, { method: 'DELETE' }),
   assignCategories: (media_id, category_ids) => apiRequest('/categories/assign', { method: 'POST', body: JSON.stringify({ media_id, category_ids }) }),
   getMediaCategories: (mediaId) => apiRequest(`/categories/media/${mediaId}`),

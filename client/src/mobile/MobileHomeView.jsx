@@ -61,12 +61,13 @@ export default function MobileHomeView({
   const [documentFiles, setDocumentFiles] = useState([]);
 
   const loadData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const statsRes = await api.getMediaStats().catch(() => null);
       if (statsRes) setStats(statsRes);
 
-      const history = getRecentHistory();
+      const history = getRecentHistory(user.id);
       setRecentItems(history);
 
       const [recentMediaRes, favRes] = await Promise.all([
@@ -88,16 +89,16 @@ export default function MobileHomeView({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const handleRecentClick = (item) => {
     if (item.type === 'folder' || item.is_folder) {
       if (onNavigate) onNavigate('allfiles', null, item.folder_id);
     } else if (item.media_type === 'document' || item.type === 'document') {
       window.open(api.getStreamUrl(item.id), '_blank');
-      recordRecentItem(item);
+      recordRecentItem(item, user?.id);
     } else {
-      recordRecentItem(item);
+      recordRecentItem(item, user?.id);
       if (onOpenViewer) onOpenViewer([item], 0);
     }
   };
@@ -362,7 +363,7 @@ export default function MobileHomeView({
             {recentItems.length > 0 && !isRecentMinimized && (
               <button
                 onClick={() => {
-                  clearRecentHistory();
+                  clearRecentHistory(user?.id);
                   setRecentItems([]);
                 }}
                 className="text-[11px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#EF4444]"
@@ -414,12 +415,26 @@ export default function MobileHomeView({
                           <Folder className="w-8 h-8 stroke-[1.8]" />
                         </div>
                       ) : isDoc ? (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
-                          <FileText className="w-6 h-6 stroke-[1.8] mb-0.5" />
-                          <span className="text-[8px] uppercase font-bold px-1 rounded bg-[#C2410C] text-white">
-                            DOC
-                          </span>
-                        </div>
+                        item.thumbnail_path ? (
+                          <div className="w-full h-full relative overflow-hidden bg-white dark:bg-[#121217]">
+                            <img
+                              src={api.getThumbnailUrl(item.id)}
+                              alt={item.display_name || item.name}
+                              loading="lazy"
+                              className="w-full h-full object-cover object-top"
+                            />
+                            <span className="absolute bottom-1 left-1 text-[7px] uppercase font-bold px-1 py-0.2 rounded bg-[#C2410C] text-white">
+                              {item.original_name ? item.original_name.split('.').pop().toUpperCase() : 'DOC'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
+                            <FileText className="w-6 h-6 stroke-[1.8] mb-0.5" />
+                            <span className="text-[8px] uppercase font-bold px-1 rounded bg-[#C2410C] text-white">
+                              {item.original_name ? item.original_name.split('.').pop().toUpperCase() : 'DOC'}
+                            </span>
+                          </div>
+                        )
                       ) : (
                         <>
                           <img

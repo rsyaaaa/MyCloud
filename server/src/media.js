@@ -102,13 +102,22 @@ router.post('/upload', authMiddleware, (req, res, next) => {
 
     if (mediaType !== 'document') {
       probe = await probeMedia(filePath);
-      // 4. Generate WebP thumbnail
+    }
+
+    // 4. Generate WebP thumbnail for all types (images, videos, and documents)
+    try {
       const thumbDir = path.join(config.USERS_DIR, req.user.id, 'thumbnails');
       if (!fs.existsSync(thumbDir)) {
         fs.mkdirSync(thumbDir, { recursive: true });
       }
       thumbPath = path.join(thumbDir, `${mediaId}.webp`);
-      await generateThumbnail(filePath, thumbPath, mediaType);
+      const thumbOk = await generateThumbnail(filePath, thumbPath, mediaType);
+      if (!thumbOk || !fs.existsSync(thumbPath)) {
+        thumbPath = null;
+      }
+    } catch (thumbErr) {
+      console.warn(`[Upload] Failed to generate thumbnail for ${mediaId}:`, thumbErr.message);
+      thumbPath = null;
     }
 
     // 5. Save to database
@@ -184,8 +193,12 @@ router.get('/', authMiddleware, async (req, res) => {
     const params = [req.user.id];
 
     if (media_type) {
-      query += ` AND m.media_type = ?`;
-      params.push(media_type);
+      if (media_type === 'gallery') {
+        query += ` AND m.media_type IN ('image', 'video')`;
+      } else {
+        query += ` AND m.media_type = ?`;
+        params.push(media_type);
+      }
     }
 
     if (is_favorite === '1' || is_favorite === 'true') {

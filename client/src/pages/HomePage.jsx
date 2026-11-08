@@ -62,6 +62,7 @@ export default function HomePage({
   const [documentFiles, setDocumentFiles] = useState([]);
 
   const loadData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const statsRes = await api.getMediaStats().catch(() => null);
@@ -69,7 +70,7 @@ export default function HomePage({
         setStats(statsRes);
       }
 
-      const history = getRecentHistory();
+      const history = getRecentHistory(user.id);
       setRecentItems(history);
 
       const [recentMediaRes, favRes] = await Promise.all([
@@ -91,10 +92,10 @@ export default function HomePage({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const handleClearHistory = () => {
-    clearRecentHistory();
+    clearRecentHistory(user?.id);
     setRecentItems([]);
   };
 
@@ -103,9 +104,9 @@ export default function HomePage({
       if (onNavigate) onNavigate('allfiles', null, item.folder_id);
     } else if (item.media_type === 'document' || item.type === 'document') {
       window.open(api.getStreamUrl(item.id), '_blank');
-      recordRecentItem(item);
+      recordRecentItem(item, user?.id);
     } else {
-      recordRecentItem(item);
+      recordRecentItem(item, user?.id);
       if (onOpenViewer) onOpenViewer([item], 0);
     }
   };
@@ -340,7 +341,7 @@ export default function HomePage({
                   <div
                     key={item.id}
                     onClick={() => {
-                      recordRecentItem(item);
+                      recordRecentItem(item, user?.id);
                       if (onOpenViewer) onOpenViewer(favoriteItems, idx);
                     }}
                     className="card-artisan p-2.5 cursor-pointer group hover:border-[#C2410C] transition-all flex flex-col justify-between relative bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]"
@@ -451,12 +452,26 @@ export default function HomePage({
                           <Folder className="w-9 h-9 stroke-[1.8]" />
                         </div>
                       ) : isDoc ? (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
-                          <FileText className="w-8 h-8 stroke-[1.8] mb-1" />
-                          <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-[#C2410C] text-white">
-                            DOC
-                          </span>
-                        </div>
+                        item.thumbnail_path ? (
+                          <div className="w-full h-full relative overflow-hidden bg-white dark:bg-[#121217]">
+                            <img
+                              src={api.getThumbnailUrl(item.id)}
+                              alt={item.display_name || item.name}
+                              loading="lazy"
+                              className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <span className="absolute bottom-1.5 left-1.5 text-[8px] uppercase font-bold px-1.5 py-0.2 rounded bg-[#C2410C] text-white">
+                              {item.original_name ? item.original_name.split('.').pop().toUpperCase() : 'DOC'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
+                            <FileText className="w-8 h-8 stroke-[1.8] mb-1" />
+                            <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-[#C2410C] text-white">
+                              {item.original_name ? item.original_name.split('.').pop().toUpperCase() : 'DOC'}
+                            </span>
+                          </div>
+                        )
                       ) : (
                         <>
                           <img

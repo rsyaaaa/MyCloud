@@ -1,14 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home, Images, Folder, Trash2, Settings, HardDrive, X, Terminal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { api } from '../api';
 import QuotaBar from './QuotaBar';
 
 export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, onHide }) {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const [adminDiskStats, setAdminDiskStats] = useState(null);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      api.getAdminStats()
+        .then(res => {
+          if (res?.disk) setAdminDiskStats(res.disk);
+        })
+        .catch(() => {});
+    }
+  }, [user?.role]);
 
   const navItems = [
     { id: 'home', label: user?.role === 'admin' ? 'Server Dashboard' : t('home', 'Home'), icon: Home },
@@ -77,9 +89,10 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, on
       {/* Quota bar at bottom */}
       <div className="pt-4 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
         <QuotaBar
-          usedBytes={user?.used_storage_bytes || 0}
-          quotaBytes={user?.storage_quota_bytes || 1}
-          onRequestIncrease={onRequestIncreaseQuota}
+          usedBytes={user?.role === 'admin' ? (adminDiskStats?.used ?? user?.used_storage_bytes ?? 0) : (user?.used_storage_bytes || 0)}
+          quotaBytes={user?.role === 'admin' ? (adminDiskStats?.total ?? 500 * 1024 * 1024 * 1024) : (user?.storage_quota_bytes || 1)}
+          title={user?.role === 'admin' ? 'Total Storage Server' : undefined}
+          onRequestIncrease={user?.role === 'admin' ? undefined : onRequestIncreaseQuota}
         />
       </div>
     </aside>

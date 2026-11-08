@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List
+  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Folder, X
 } from 'lucide-react';
 import MemoriesCarousel from '../components/MemoriesCarousel';
 import MobileMediaCard from './MobileMediaCard';
@@ -51,7 +51,7 @@ export default function MobileGalleryView({
   onRename,
   onLongPress
 }) {
-  const [subView, setSubView] = useState(initialSubView || 'all'); // 'all', 'photo', 'video'
+  const [subView, setSubView] = useState(() => initialSubView || localStorage.getItem('mycloud_pref_gallery_subview') || 'all');
   const [mediaList, setMediaList] = useState([]);
   const [memories, setMemories] = useState([]);
   const [recentMedia, setRecentMedia] = useState([]);
@@ -59,12 +59,28 @@ export default function MobileGalleryView({
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [orientationFilter, setOrientationFilter] = useState('all');
   const [aspectFilter, setAspectFilter] = useState('all');
-  const [sortOption, setSortOption] = useState('newest');
+  const [sortOption, setSortOption] = useState(() => localStorage.getItem('mycloud_pref_gallery_sort') || 'newest');
   const [onlyFavorite, setOnlyFavorite] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('mycloud_pref_gallery_view') || 'grid');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+
+  const changeSubView = (sub) => {
+    setSubView(sub);
+    localStorage.setItem('mycloud_pref_gallery_subview', sub);
+    setCurrentPage(1);
+  };
+
+  const changeSortOption = (sort) => {
+    setSortOption(sort);
+    localStorage.setItem('mycloud_pref_gallery_sort', sort);
+  };
+
+  const changeViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('mycloud_pref_gallery_view', mode);
+  };
 
   useEffect(() => {
     if (initialSubView) {
@@ -82,6 +98,9 @@ export default function MobileGalleryView({
         params.media_type = 'image';
       } else if (subView === 'video') {
         params.media_type = 'video';
+      } else {
+        // Gallery exclusively shows photos & videos (never documents)
+        params.media_type = 'gallery';
       }
 
       if (selectedCatId) {
@@ -99,10 +118,11 @@ export default function MobileGalleryView({
       const [mediaRes, memRes, catRes] = await Promise.all([
         api.listMedia(params),
         api.getMemories(),
-        api.listCategories(subView === 'video' ? 'genre' : null)
+        api.listCategories()
       ]);
 
-      let list = mediaRes.media || [];
+      // Strict client-side safety: ensure only images and videos in Gallery
+      let list = (mediaRes.media || []).filter(m => m.media_type === 'image' || m.media_type === 'video');
 
       // Filter orientation if needed
       if (subView === 'photo' && orientationFilter !== 'all') {
@@ -146,13 +166,16 @@ export default function MobileGalleryView({
   }, [mediaList, currentPage, pageSize]);
 
   const groupedMedia = useMemo(() => groupMediaByDate(paginatedItems), [paginatedItems]);
+  const visualFolders = useMemo(() => {
+    return (categories || []).filter(c => (c.visual_media_count > 0 || c.cover_media_id));
+  }, [categories]);
 
   return (
     <div className="p-4 pb-28 max-w-md mx-auto space-y-4 animate-enter">
       {/* 3 Main Mode Switcher: Semua | Foto | Video */}
       <div className="flex items-center gap-1 p-1 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] shadow-sm">
         <button
-          onClick={() => { setSubView('all'); setSelectedCatId(null); }}
+          onClick={() => { changeSubView('all'); setSelectedCatId(null); }}
           className={`flex-1 py-1.5 rounded-[8px] text-[12px] font-medium transition-all ${
             subView === 'all'
               ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
@@ -162,7 +185,7 @@ export default function MobileGalleryView({
           Semua
         </button>
         <button
-          onClick={() => { setSubView('photo'); setSelectedCatId(null); }}
+          onClick={() => { changeSubView('photo'); setSelectedCatId(null); }}
           className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-[8px] text-[12px] font-medium transition-all ${
             subView === 'photo'
               ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
@@ -173,7 +196,7 @@ export default function MobileGalleryView({
           <span>Foto</span>
         </button>
         <button
-          onClick={() => { setSubView('video'); setSelectedCatId(null); }}
+          onClick={() => { changeSubView('video'); setSelectedCatId(null); }}
           className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-[8px] text-[12px] font-medium transition-all ${
             subView === 'video'
               ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
@@ -239,8 +262,68 @@ export default function MobileGalleryView({
         </>
       )}
 
+      {/* Visual Folders Horizontal Cards Section */}
+      {visualFolders.length > 0 && !selectedCatId && !searchQuery && (
+        <div className="space-y-2 pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+          <div className="flex items-center justify-between text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
+            <div className="flex items-center gap-1.5">
+              <Folder className="w-4 h-4 text-[#C2410C]" />
+              <span>Folder Media ({visualFolders.length})</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {visualFolders.map((cat) => (
+              <div
+                key={cat.id}
+                onClick={() => setSelectedCatId(cat.id)}
+                className="card-artisan p-1.5 cursor-pointer border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[8px] bg-white dark:bg-[#0A0A0E] active:scale-95 transition-transform"
+              >
+                <div className="relative aspect-square w-full rounded-[6px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] flex items-center justify-center mb-1">
+                  {cat.cover_media_id ? (
+                    <img
+                      src={api.getThumbnailUrl(cat.cover_media_id)}
+                      alt={cat.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
+                      <Folder className="w-6 h-6 fill-[#C2410C]/20" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-0.5 right-0.5 text-[8px] font-mono font-bold bg-black/80 text-white px-1 rounded">
+                    {cat.visual_media_count || cat.media_count}
+                  </span>
+                </div>
+                <p className="text-[11px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate text-center">
+                  {cat.name}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active Folder Banner Mobile */}
+      {selectedCatId && (
+        <div className="flex items-center justify-between p-2.5 rounded-[8px] bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/20 text-[#C2410C] text-[12px]">
+          <div className="flex items-center gap-1.5 truncate mr-2">
+            <Folder className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              Folder: <strong>{categories.find(c => c.id === selectedCatId)?.name || 'Folder'}</strong>
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedCatId(null)}
+            className="font-semibold underline shrink-0 flex items-center gap-1"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Semua</span>
+          </button>
+        </div>
+      )}
+
       {/* Category Chips (If in Photo or Video subview) */}
-      {categories.length > 0 && subView !== 'all' && (
+      {visualFolders.length > 0 && subView !== 'all' && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setSelectedCatId(null)}
@@ -248,7 +331,7 @@ export default function MobileGalleryView({
           >
             Semua
           </button>
-          {categories.map((cat) => (
+          {visualFolders.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCatId(cat.id === selectedCatId ? null : cat.id)}
@@ -341,7 +424,7 @@ export default function MobileGalleryView({
         {/* View mode toggle (Grid vs List) */}
         <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[4px] border border-[#E8E8EC] dark:border-[#1F1F27]">
           <button
-            onClick={() => setViewMode('grid')}
+            onClick={() => changeViewMode('grid')}
             className={`p-1.5 rounded-[3px] transition-colors ${
               viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
             }`}
@@ -350,7 +433,7 @@ export default function MobileGalleryView({
             <LayoutGrid className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => changeViewMode('list')}
             className={`p-1.5 rounded-[3px] transition-colors ${
               viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
             }`}

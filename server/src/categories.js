@@ -10,10 +10,16 @@ router.get('/', authMiddleware, async (req, res) => {
   try {
     const { type } = req.query;
     let query = `
-      SELECT c.*, COUNT(r.media_id) as media_count
+      SELECT c.*,
+             COUNT(r.media_id) as media_count,
+             SUM(CASE WHEN m.media_type IN ('image', 'video') THEN 1 ELSE 0 END) as visual_media_count,
+             (SELECT m2.id FROM media_category_rel r2
+              JOIN media_files m2 ON r2.media_id = m2.id
+              WHERE r2.category_id = c.id AND m2.is_locked = 0 AND m2.is_trash = 0 AND m2.media_type IN ('image', 'video')
+              ORDER BY m2.created_at DESC LIMIT 1) as cover_media_id
       FROM categories_folders c
       LEFT JOIN media_category_rel r ON c.id = r.category_id
-      LEFT JOIN media_files m ON r.media_id = m.id AND m.is_locked = 0
+      LEFT JOIN media_files m ON r.media_id = m.id AND m.is_locked = 0 AND m.is_trash = 0
       WHERE c.user_id = ?
     `;
     const params = [req.user.id];
@@ -122,6 +128,25 @@ router.post('/assign', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[Assign Categories] Error:', err);
     return res.status(500).json({ error: 'Gagal menyimpan kategori media.' });
+  }
+});
+
+// PATCH /api/categories/:id (Rename folder/category)
+router.patch('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nama folder wajib diisi.' });
+    }
+    const cat = await db.get('SELECT * FROM categories_folders WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (!cat) {
+      return res.status(404).json({ error: 'Folder tidak ditemukan.' });
+    }
+    await db.run('UPDATE categories_folders SET name = ? WHERE id = ?', [name.trim(), req.params.id]);
+    const updated = await db.get('SELECT * FROM categories_folders WHERE id = ?', [req.params.id]);
+    return res.json({ message: 'Folder berhasil diubah.', category: updated });
+  } catch (err) {
+    return res.status(500).json({ error: 'Gagal mengubah nama folder.' });
   }
 });
 

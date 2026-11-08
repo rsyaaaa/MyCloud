@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Cloud, Upload, Search, User, LogOut, Shield, ShieldCheck, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera, Languages
+  Moon, Sun, Trash2, Camera, Languages, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
@@ -57,15 +57,24 @@ export default function Navbar({
 
       {/* Search Bar */}
       <div className="flex-1 max-w-md mx-6 hidden md:block">
-        <div className="relative">
-          <Search className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="flex items-center w-full h-[38px] px-3.5 rounded-[8px] bg-[#F4F4F5] dark:bg-[#121217] border border-[#E8E8EC] dark:border-[#1F1F27] focus-within:border-[#C2410C] focus-within:ring-2 focus-within:ring-[#C2410C]/20 transition-all">
+          <Search className="w-4 h-4 text-[#9C9C9C] shrink-0 mr-2.5" />
           <input
             type="text"
             placeholder={t('searchPlaceholder', 'Cari foto, video, atau judul berkas...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-artisan w-full pl-9 h-[36px] text-[13px]"
+            className="w-full h-full bg-transparent border-none outline-none text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C]"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="p-1 text-[#9C9C9C] hover:text-[#C2410C] transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

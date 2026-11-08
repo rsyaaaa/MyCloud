@@ -10,7 +10,7 @@ export function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncrease, compact = false }) {
+export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncrease, compact = false, title = null }) {
   const { t } = useLanguage();
   const percentage = Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) || 0;
 
@@ -42,7 +42,7 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-[#0A0A0A] dark:text-[#FAFAFA] font-semibold text-[14px]">
           <HardDrive className="w-4 h-4 text-[#C2410C]" />
-          <span>{t('storageCapacity', 'Kapasitas Penyimpanan')}</span>
+          <span>{title || t('storageCapacity', 'Kapasitas Penyimpanan')}</span>
         </div>
         <span className="text-[12px] font-bold text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-2 py-0.5 rounded-[4px] border border-[#C2410C]/20">
           {percentage}%

@@ -100,13 +100,19 @@ async function probeMedia(filePath) {
 }
 
 /**
- * Generate a WebP thumbnail for images and videos.
+ * Generate a WebP thumbnail for images, videos, and documents (PDF, DOCX, etc.).
  */
 async function generateThumbnail(sourcePath, destPath, mediaType) {
   try {
     const destDir = path.dirname(destPath);
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    if (mediaType === 'document') {
+      const scriptPath = path.join(__dirname, 'renderDocThumb.py');
+      await execPromise('python3', [scriptPath, sourcePath, destPath]);
+      return fs.existsSync(destPath);
     }
 
     const scaleFilter = 'scale=480:-1:flags=lanczos';

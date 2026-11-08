@@ -21,7 +21,9 @@ export const translations = {
     gallery: 'Galeri',
     search: 'Search',
     allFiles: 'All Files',
-    trash: 'Tempat Sampah',
+    trash: 'Sampah',
+    trashMobile: 'Sampah',
+    trashLabel: 'Sampah',
     admin: 'Admin Dashboard',
     vault: 'Brankas Terkunci',
     menu: 'Menu',
@@ -103,7 +105,6 @@ export const translations = {
 
     // Badges & Labels
     unlockedBadge: 'Terbuka',
-    trashLabel: 'Tempat Sampah (Trash)',
     processing: 'Memproses...',
 
     // Switch User
@@ -150,6 +151,8 @@ export const translations = {
     search: 'Search',
     allFiles: 'All Files',
     trash: 'Trash',
+    trashMobile: 'Trash',
+    trashLabel: 'Trash',
     admin: 'Admin Dashboard',
     vault: 'Safe Vault',
     menu: 'Menu',
@@ -231,7 +234,6 @@ export const translations = {
 
     // Badges & Labels
     unlockedBadge: 'Unlocked',
-    trashLabel: 'Trash Bin',
     processing: 'Processing...',
 
     // Switch User

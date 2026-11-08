@@ -61,20 +61,21 @@ export default function MobileSearchView({
   return (
     <div className="p-4 pb-28 max-w-md mx-auto space-y-4 animate-enter">
       {/* Search Input Box */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-[#C2410C] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="flex items-center w-full h-11 px-3.5 rounded-[10px] bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] focus-within:border-[#C2410C] focus-within:ring-2 focus-within:ring-[#C2410C]/20 transition-all">
+        <Search className="w-4 h-4 text-[#C2410C] shrink-0 mr-3" />
         <input
           type="text"
           autoFocus
           placeholder="Cari foto, video, dokumen, judul..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="input-artisan w-full pl-10 pr-10 h-11 text-[14px] bg-white dark:bg-[#0A0A0E] border-[#E8E8EC] dark:border-[#1F1F27] focus:border-[#C2410C]"
+          className="w-full h-full bg-transparent border-none outline-none text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C]"
         />
         {query && (
           <button
+            type="button"
             onClick={() => setQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white"
+            className="p-1 text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

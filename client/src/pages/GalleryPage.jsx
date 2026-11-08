@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Sparkles, Filter
+  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Sparkles, Filter, Folder, X
 } from 'lucide-react';
 import MemoriesCarousel from '../components/MemoriesCarousel';
 import MediaCard from '../components/MediaCard';
@@ -50,7 +50,7 @@ export default function GalleryPage({
   onContextMenu,
   onShowDetail
 }) {
-  const [subView, setSubView] = useState(initialSubView || 'all'); // 'all', 'photo', 'video'
+  const [subView, setSubView] = useState(() => initialSubView || localStorage.getItem('mycloud_pref_gallery_subview') || 'all');
   const [mediaList, setMediaList] = useState([]);
   const [memories, setMemories] = useState([]);
   const [recentMedia, setRecentMedia] = useState([]);
@@ -58,10 +58,25 @@ export default function GalleryPage({
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [orientationFilter, setOrientationFilter] = useState('all'); // 'all', 'landscape', 'portrait'
   const [aspectFilter, setAspectFilter] = useState('all'); // 'all', 'portrait', 'landscape'
-  const [sortOption, setSortOption] = useState('newest');
+  const [sortOption, setSortOption] = useState(() => localStorage.getItem('mycloud_pref_gallery_sort') || 'newest');
   const [onlyFavorite, setOnlyFavorite] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('mycloud_pref_gallery_view') || 'grid');
   const [loading, setLoading] = useState(true);
+
+  const changeSubView = (sub) => {
+    setSubView(sub);
+    localStorage.setItem('mycloud_pref_gallery_subview', sub);
+  };
+
+  const changeSortOption = (sort) => {
+    setSortOption(sort);
+    localStorage.setItem('mycloud_pref_gallery_sort', sort);
+  };
+
+  const changeViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('mycloud_pref_gallery_view', mode);
+  };
 
   // Sync subView if parent changes initialSubView
   useEffect(() => {
@@ -77,6 +92,9 @@ export default function GalleryPage({
         params.media_type = 'image';
       } else if (subView === 'video') {
         params.media_type = 'video';
+      } else {
+        // Gallery exclusively shows photos & videos (never documents)
+        params.media_type = 'gallery';
       }
 
       if (selectedCatId) {
@@ -94,10 +112,11 @@ export default function GalleryPage({
       const [mediaRes, memRes, catRes] = await Promise.all([
         api.listMedia(params),
         api.getMemories(),
-        api.listCategories(subView === 'video' ? 'genre' : null)
+        api.listCategories()
       ]);
 
-      let list = mediaRes.media || [];
+      // Strict client-side safety: ensure only images and videos in Gallery
+      let list = (mediaRes.media || []).filter(m => m.media_type === 'image' || m.media_type === 'video');
 
       // Filter orientation if needed
       if (subView === 'photo' && orientationFilter !== 'all') {
@@ -132,6 +151,9 @@ export default function GalleryPage({
   };
 
   const groupedMedia = useMemo(() => groupMediaByDate(mediaList), [mediaList]);
+  const visualFolders = useMemo(() => {
+    return (categories || []).filter(c => (c.visual_media_count > 0 || c.cover_media_id));
+  }, [categories]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-enter">
@@ -149,7 +171,7 @@ export default function GalleryPage({
         {/* 3 Main Mode Switcher: Semua (Campuran) | Foto | Video */}
         <div className="flex items-center gap-1.5 p-1 bg-[#F4F4F5] dark:bg-[#121218] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px]">
           <button
-            onClick={() => { setSubView('all'); setSelectedCatId(null); }}
+            onClick={() => { changeSubView('all'); setSelectedCatId(null); }}
             className={`px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
               subView === 'all'
                 ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
@@ -159,7 +181,7 @@ export default function GalleryPage({
             Semua (Campuran)
           </button>
           <button
-            onClick={() => { setSubView('photo'); setSelectedCatId(null); }}
+            onClick={() => { changeSubView('photo'); setSelectedCatId(null); }}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
               subView === 'photo'
                 ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
@@ -170,7 +192,7 @@ export default function GalleryPage({
             <span>Foto</span>
           </button>
           <button
-            onClick={() => { setSubView('video'); setSelectedCatId(null); }}
+            onClick={() => { changeSubView('video'); setSelectedCatId(null); }}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
               subView === 'video'
                 ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
@@ -237,8 +259,70 @@ export default function GalleryPage({
         </>
       )}
 
+      {/* Folder Media Section (Hanya folder yang punya isi foto/video) */}
+      {visualFolders.length > 0 && !selectedCatId && !searchQuery && (
+        <div className="space-y-3 pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Folder className="w-4.5 h-4.5 text-[#C2410C]" />
+              <h3 className="font-serif font-bold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
+                Folder Media ({visualFolders.length})
+              </h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {visualFolders.map((cat) => (
+              <div
+                key={cat.id}
+                onClick={() => setSelectedCatId(cat.id)}
+                className="card-artisan p-2 cursor-pointer group hover:border-[#C2410C] transition-all bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px]"
+              >
+                <div className="relative aspect-square w-full rounded-[6px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] flex items-center justify-center mb-1.5">
+                  {cat.cover_media_id ? (
+                    <img
+                      src={api.getThumbnailUrl(cat.cover_media_id)}
+                      alt={cat.name}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
+                      <Folder className="w-8 h-8 fill-[#C2410C]/20" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-1 right-1 text-[9px] font-mono font-bold bg-black/75 text-white px-1.5 py-0.2 rounded">
+                    {cat.visual_media_count || cat.media_count} media
+                  </span>
+                </div>
+                <p className="text-[12px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate group-hover:text-[#C2410C] transition-colors">
+                  {cat.name}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active Folder Banner (When viewing media inside a specific folder) */}
+      {selectedCatId && (
+        <div className="flex items-center justify-between p-3 rounded-[8px] bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/20 text-[#C2410C]">
+          <div className="flex items-center gap-2">
+            <Folder className="w-4 h-4" />
+            <span className="text-[13px] font-semibold">
+              Menampilkan media dari folder: <strong>{categories.find(c => c.id === selectedCatId)?.name || 'Folder'}</strong>
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedCatId(null)}
+            className="text-[12px] font-semibold hover:underline flex items-center gap-1"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Lihat Semua Media</span>
+          </button>
+        </div>
+      )}
+
       {/* Category / Genre Filters (For Photo & Video Hubs) */}
-      {categories.length > 0 && subView !== 'all' && (
+      {visualFolders.length > 0 && subView !== 'all' && (
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
           <button
             onClick={() => setSelectedCatId(null)}
@@ -246,7 +330,7 @@ export default function GalleryPage({
           >
             Semua {subView === 'photo' ? 'Album' : 'Genre'}
           </button>
-          {categories.map((cat) => (
+          {visualFolders.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCatId(cat.id === selectedCatId ? null : cat.id)}
@@ -338,7 +422,7 @@ export default function GalleryPage({
             <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">Urutkan:</span>
             <select
               value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
+              onChange={(e) => changeSortOption(e.target.value)}
               className="input-artisan h-[32px] py-0 text-[12px] bg-white dark:bg-[#000000]"
             >
               <option value="newest">Terbaru</option>
@@ -353,7 +437,7 @@ export default function GalleryPage({
           {subView !== 'all' && (
             <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
               <button
-                onClick={() => setViewMode('grid')}
+                onClick={() => changeViewMode('grid')}
                 className={`p-1.5 rounded-[4px] transition-colors ${
                   viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
                 }`}
@@ -362,7 +446,7 @@ export default function GalleryPage({
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => changeViewMode('list')}
                 className={`p-1.5 rounded-[4px] transition-colors ${
                   viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
                 }`}

@@ -27,6 +27,17 @@ export default function MediaCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isVideo = media.media_type === 'video';
+  const isDoc = media.media_type === 'document' || media.type === 'document';
+  const fileExt = media.original_name ? media.original_name.split('.').pop().toUpperCase() : (isDoc ? 'DOC' : '');
+  const badgeColor = fileExt === 'PDF'
+    ? 'bg-[#DC2626]'
+    : fileExt === 'DOCX' || fileExt === 'DOC'
+    ? 'bg-[#2563EB]'
+    : fileExt === 'PPTX' || fileExt === 'PPT'
+    ? 'bg-[#D97706]'
+    : fileExt === 'XLSX' || fileExt === 'XLS' || fileExt === 'CSV'
+    ? 'bg-[#059669]'
+    : 'bg-[#C2410C]';
   const touchTimerRef = useRef(null);
 
   const thumbSrc = isVault
@@ -66,15 +77,42 @@ export default function MediaCard({
         onClick={onClick}
         className="relative overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] flex items-center justify-center aspect-square"
       >
-        {media.media_type === 'document' ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-[#FFF7ED] to-[#FAFAFA] dark:from-[#1A0E08] dark:to-[#0A0A0E] text-center select-none">
-            <div className="w-12 h-12 rounded-[10px] bg-[#C2410C]/10 dark:bg-[#C2410C]/20 text-[#C2410C] flex items-center justify-center mb-2">
-              <FileText className="w-6 h-6 stroke-[2.2]" />
+        {isDoc ? (
+          media.thumbnail_path ? (
+            <div className="w-full h-full relative overflow-hidden bg-white dark:bg-[#121217] flex items-center justify-center">
+              <img
+                src={thumbSrc}
+                alt={media.display_name}
+                loading="lazy"
+                className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.parentElement?.querySelector('.doc-fallback');
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div className="doc-fallback hidden w-full h-full flex-col items-center justify-center p-3 bg-gradient-to-br from-[#FFF7ED] to-[#FAFAFA] dark:from-[#1A0E08] dark:to-[#0A0A0E] text-center select-none">
+                <div className="w-12 h-12 rounded-[10px] bg-[#C2410C]/10 dark:bg-[#C2410C]/20 text-[#C2410C] flex items-center justify-center mb-2">
+                  <FileText className="w-6 h-6 stroke-[2.2]" />
+                </div>
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded text-white ${badgeColor}`}>
+                  {fileExt}
+                </span>
+              </div>
+              <span className={`absolute bottom-2 left-2 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded shadow-sm text-white ${badgeColor}`}>
+                {fileExt}
+              </span>
             </div>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#C2410C] text-white">
-              {media.original_name ? media.original_name.split('.').pop().toUpperCase() : 'DOC'}
-            </span>
-          </div>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-[#FFF7ED] to-[#FAFAFA] dark:from-[#1A0E08] dark:to-[#0A0A0E] text-center select-none">
+              <div className="w-12 h-12 rounded-[10px] bg-[#C2410C]/10 dark:bg-[#C2410C]/20 text-[#C2410C] flex items-center justify-center mb-2">
+                <FileText className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded text-white ${badgeColor}`}>
+                {fileExt}
+              </span>
+            </div>
+          )
         ) : (
           <img
             src={thumbSrc}

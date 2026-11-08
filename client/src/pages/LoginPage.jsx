@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  Cloud, Lock, User, Wifi, AlertCircle, Globe, Trash2
+  Cloud, Lock, User, Wifi, AlertCircle, Globe, Trash2, Eye, EyeOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -127,11 +128,11 @@ export default function LoginPage() {
         {/* Standard Form: Username & Password */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[13px] font-semibold mb-1 text-[#0A0A0A] dark:text-[#FAFAFA]">
+            <label className="block text-[13px] font-semibold mb-1.5 text-[#0A0A0A] dark:text-[#FAFAFA]">
               Username
             </label>
-            <div className="relative">
-              <User className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="flex items-center w-full h-[42px] px-3.5 rounded-[8px] bg-white dark:bg-[#121217] border border-[#E8E8EC] dark:border-[#272733] focus-within:border-[#C2410C] focus-within:ring-2 focus-within:ring-[#C2410C]/20 transition-all">
+              <User className="w-4 h-4 text-[#9C9C9C] shrink-0 mr-3" />
               <input
                 type="text"
                 required
@@ -139,29 +140,37 @@ export default function LoginPage() {
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="input-artisan w-full pl-9 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
+                className="w-full h-full bg-transparent border-none outline-none text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#71717A]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[13px] font-semibold mb-1 text-[#0A0A0A] dark:text-[#FAFAFA]">
+            <label className="block text-[13px] font-semibold mb-1.5 text-[#0A0A0A] dark:text-[#FAFAFA]">
               Password
             </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="flex items-center w-full h-[42px] px-3.5 rounded-[8px] bg-white dark:bg-[#121217] border border-[#E8E8EC] dark:border-[#272733] focus-within:border-[#C2410C] focus-within:ring-2 focus-within:ring-[#C2410C]/20 transition-all">
+              <Lock className="w-4 h-4 text-[#9C9C9C] shrink-0 mr-3" />
               <input
                 ref={passwordInputRef}
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input-artisan w-full pl-9 dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
+                className="w-full h-full bg-transparent border-none outline-none text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#71717A]"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-[#9C9C9C] hover:text-[#C2410C] p-1 transition-colors shrink-0"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             {isRegister && (
-              <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
+              <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1.5">
                 {t('newAccountQuota', 'Akun baru akan mendapatkan kuota default')} <strong>15 GB</strong>.
               </p>
             )}
