@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Cloud, Lock, User, Wifi, Sparkles, AlertCircle } from 'lucide-react';
+import { Cloud, Lock, User, Wifi, Sparkles, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
+  const { login, loginPublic, register } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +23,19 @@ export default function LoginPage() {
       }
     } catch (err) {
       setError(err.message || 'Terjadi kesalahan saat otentikasi.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePublicLogin = async () => {
+    setError('');
+    setLoading(true);
+
+    try {
+      await loginPublic();
+    } catch (err) {
+      setError(err.message || 'Gagal masuk sebagai pengguna publik.');
     } finally {
       setLoading(false);
     }
@@ -126,6 +139,30 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        {/* Divider: Akses User Public */}
+        <div className="relative my-6 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-[#E8E8EC] dark:border-[#1F1F27]" />
+          </div>
+          <span className="relative px-3 bg-white dark:bg-[#0A0A0E] text-[11px] text-[#9C9C9C] uppercase font-mono tracking-wider">
+            atau akses publik
+          </span>
+        </div>
+
+        {/* 1-Click Public User Access Button */}
+        <button
+          type="button"
+          onClick={handlePublicLogin}
+          disabled={loading}
+          className="w-full p-3.5 rounded-[8px] bg-[#FFF7ED] dark:bg-[#1E1109] hover:bg-[#FFEDD5] dark:hover:bg-[#2A160A] border border-[#C2410C]/30 hover:border-[#C2410C] text-[#C2410C] dark:text-[#FB923C] font-semibold text-[14px] flex items-center justify-center gap-2.5 transition-all shadow-sm active:scale-[0.98] group"
+        >
+          <Globe className="w-4.5 h-4.5 stroke-[2.2] group-hover:scale-110 transition-transform" />
+          <span>Masuk sebagai User Public (50 GB Shared)</span>
+        </button>
+        <p className="text-[11px] text-center text-[#6B6B6B] dark:text-[#9C9C9C] mt-2 mb-1">
+          Tanpa password • Klik langsung untuk ruang berbagi & unduh bersama
+        </p>
 
         {/* Admin Credential Hint */}
         <div className="mt-6 pt-4 border-t border-[#E8E8EC] dark:border-[#1F1F27] text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#FAFAFA] dark:bg-[#14141A] -mx-4 -mb-4 p-4 rounded-b-[12px]">

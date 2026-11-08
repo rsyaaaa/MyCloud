@@ -176,6 +176,29 @@ async function initDb() {
     console.log('  Safe Vault Default PIN: 123456');
     console.log('========================================================');
   }
+
+  // Seed default Public Shared user if none exists
+  const existingPublic = await get("SELECT * FROM users WHERE username = 'public' LIMIT 1");
+  if (!existingPublic) {
+    const publicId = uuidv4();
+    const publicRoot = path.join(config.USERS_DIR, publicId);
+    fs.mkdirSync(path.join(publicRoot, 'uploads'), { recursive: true });
+    fs.mkdirSync(path.join(publicRoot, 'thumbnails'), { recursive: true });
+    fs.mkdirSync(path.join(publicRoot, 'vault'), { recursive: true });
+
+    await run(
+      `INSERT INTO users (id, username, password_hash, role, storage_quota_bytes, used_storage_bytes)
+       VALUES (?, 'public', '', 'public', ?, 0)`,
+      [publicId, config.DEFAULT_PUBLIC_QUOTA]
+    );
+
+    console.log('========================================================');
+    console.log('Public Shared User Account Created (50 GB quota):');
+    console.log('  Username: public (No password required)');
+    console.log('========================================================');
+  } else if (existingPublic.storage_quota_bytes !== config.DEFAULT_PUBLIC_QUOTA) {
+    await run("UPDATE users SET storage_quota_bytes = ? WHERE id = ?", [config.DEFAULT_PUBLIC_QUOTA, existingPublic.id]);
+  }
 }
 
 /**

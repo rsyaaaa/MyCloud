@@ -191,6 +191,56 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// POST /api/auth/public-login (1-Click Passwordless Login for Shared Public Storage)
+router.post('/public-login', async (req, res) => {
+  try {
+    let publicUser = await db.get("SELECT * FROM users WHERE username = 'public'");
+
+    if (!publicUser) {
+      const publicId = uuidv4();
+      const publicRoot = path.join(config.USERS_DIR, publicId);
+      fs.mkdirSync(path.join(publicRoot, 'uploads'), { recursive: true });
+      fs.mkdirSync(path.join(publicRoot, 'thumbnails'), { recursive: true });
+      fs.mkdirSync(path.join(publicRoot, 'vault'), { recursive: true });
+
+      await db.run(
+        `INSERT INTO users (id, username, password_hash, role, storage_quota_bytes, used_storage_bytes)
+         VALUES (?, 'public', '', 'public', ?, 0)`,
+        [publicId, config.DEFAULT_PUBLIC_QUOTA]
+      );
+      publicUser = await db.get("SELECT * FROM users WHERE id = ?", [publicId]);
+    }
+
+    const userData = {
+      id: publicUser.id,
+      username: 'public',
+      role: 'public',
+      storage_quota_bytes: publicUser.storage_quota_bytes || config.DEFAULT_PUBLIC_QUOTA,
+      used_storage_bytes: publicUser.used_storage_bytes || 0,
+      avatar_url: publicUser.avatar_url || '/avatars/user_default.jpg',
+      has_pin: 0
+    };
+
+    const token = signToken(userData);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    return res.json({
+      message: 'Login sebagai Public User berhasil!',
+      user: userData,
+      token
+    });
+  } catch (err) {
+    console.error('Public login error:', err);
+    return res.status(500).json({ error: 'Gagal melakukan login publik: ' + err.message });
+  }
+});
+
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
   res.clearCookie('token');

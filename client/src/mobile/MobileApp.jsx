@@ -285,10 +285,10 @@ export default function MobileApp({
                 </div>
                 <div>
                   <h3 className="font-semibold text-base leading-none">
-                    {user?.username}
+                    {user?.username === 'public' ? 'Public User' : user?.username}
                   </h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-1.5 py-0.5 rounded border border-[#C2410C]/20 mt-1 inline-block">
-                    {user?.role === 'admin' ? 'Administrator' : 'User'}
+                    {user?.role === 'admin' ? 'Administrator' : user?.role === 'public' ? 'Public Shared (50 GB)' : 'User'}
                   </span>
                 </div>
               </div>

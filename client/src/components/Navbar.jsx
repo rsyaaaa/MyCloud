@@ -80,7 +80,7 @@ export default function Navbar({
               className="w-7 h-7 rounded-full object-cover border border-[#E8E8EC] dark:border-[#1F1F27]"
             />
             <span className="text-[13px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA] pr-2 hidden sm:inline">
-              {user?.username}
+              {user?.username === 'public' ? 'Public (Shared)' : user?.username}
             </span>
           </button>
 
@@ -103,9 +103,11 @@ export default function Navbar({
                     </div>
                   </div>
                   <div>
-                    <p className="font-semibold text-base leading-snug">{user?.username}</p>
+                    <p className="font-semibold text-base leading-snug">
+                      {user?.username === 'public' ? 'Public User' : user?.username}
+                    </p>
                     <span className="text-[10px] uppercase tracking-wider font-semibold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] dark:text-[#FB923C] px-2 py-0.5 rounded border border-[#C2410C]/20 inline-block mt-0.5">
-                      {user?.role === 'admin' ? 'Administrator' : 'User'}
+                      {user?.role === 'admin' ? 'Administrator' : user?.role === 'public' ? 'Public Shared (50 GB)' : 'User'}
                     </span>
                   </div>
                 </div>

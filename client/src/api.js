@@ -110,6 +110,7 @@ export function uploadWithProgress(endpoint, formData, { onProgress, signal, vau
 export const api = {
   // Auth
   login: (username, password) => apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  loginPublic: () => apiRequest('/auth/public-login', { method: 'POST' }),
   register: (username, password) => apiRequest('/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),
   getMe: () => apiRequest('/auth/me'),

@@ -25,6 +25,8 @@ const VAULT_SECRET = process.env.VAULT_SECRET || 'nas-super-secret-vault-pin-tok
 const DEFAULT_USER_QUOTA = 15 * 1024 * 1024 * 1024; // 16,106,127,360 bytes
 // Admin quota: 500 GB
 const DEFAULT_ADMIN_QUOTA = 500 * 1024 * 1024 * 1024;
+// Public shared user quota: 50 GB
+const DEFAULT_PUBLIC_QUOTA = 50 * 1024 * 1024 * 1024;
 
 // Find ffmpeg & ffprobe executable
 function resolveBinary(name) {
@@ -50,6 +52,7 @@ module.exports = {
   VAULT_SECRET,
   DEFAULT_USER_QUOTA,
   DEFAULT_ADMIN_QUOTA,
+  DEFAULT_PUBLIC_QUOTA,
   FFMPEG_PATH,
   FFPROBE_PATH
 };
