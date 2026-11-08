@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon
+  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon, ArrowUp
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
@@ -63,6 +63,26 @@ export default function MobileApp({
         .catch(() => {});
     }
   }, [user?.role]);
+
+  // Floating Upload Button Hide-on-scroll state
+  const [showUploadBtn, setShowUploadBtn] = useState(true);
+  const lastScrollYRef = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const diff = currentScrollY - lastScrollYRef.current;
+      if (diff > 8 && currentScrollY > 50) {
+        setShowUploadBtn(false);
+      } else if (diff < -8 || currentScrollY <= 50) {
+        setShowUploadBtn(true);
+      }
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Dedicated Mobile Media Viewer State (Full-Screen View)
   const [detailViewer, setDetailViewer] = useState({
@@ -157,9 +177,9 @@ export default function MobileApp({
   const avatarUrl = api.getAvatarUrl(user);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#000000] flex flex-col text-[#0A0A0A] dark:text-[#FAFAFA] selection:bg-[#FFEDD5] selection:text-[#C2410C] transition-colors">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0B0B0E] flex flex-col text-[#0A0A0A] dark:text-[#F4F4F5] selection:bg-[#FFEDD5] selection:text-[#C2410C] transition-colors">
       {/* Mobile Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1F1F27] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
         {/* Brand */}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
@@ -305,20 +325,23 @@ export default function MobileApp({
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal, Trash, and Admin Dashboard) */}
+      {/* Floating Action Button (FAB) - Upload (Terabox Simple Arrow Style with Scroll Animation) */}
       {currentTab !== 'terminal' && currentTab !== 'trash' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
         <button
           onClick={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
-          className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
-          title={activeFolder && currentTab === 'allfiles' ? `Upload ke folder ${activeFolder.name}` : t('upload', 'Upload Media')}
+          className={`fixed bottom-[84px] right-4 z-40 w-13 h-13 rounded-full bg-gradient-to-tr from-[#C2410C] to-[#EA580C] text-white shadow-[0_8px_25px_rgba(194,65,12,0.45)] flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${
+            showUploadBtn
+              ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
+              : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
+          }`}
+          title={activeFolder && currentTab === 'allfiles' ? `Upload ke ${activeFolder.name}` : t('upload', 'Upload Media')}
         >
-          <Upload className="w-4 h-4 stroke-[2.3]" />
-          <span>{activeFolder && currentTab === 'allfiles' ? activeFolder.name : t('upload', 'Upload')}</span>
+          <ArrowUp className="w-6 h-6 stroke-[2.4]" />
         </button>
       )}
 
       {/* Floating Bottom Navigation Bar */}
-      <nav className="fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/90 dark:bg-[#0A0A0E]/90 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.70)] z-40 flex items-center justify-around px-2 transition-all">
+      <nav className="fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.60)] z-40 flex items-center justify-around px-2 transition-all">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
@@ -332,8 +355,8 @@ export default function MobileApp({
               }}
               className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-[16px] transition-all active:scale-95 ${
                 isActive
-                  ? 'text-[#C2410C] font-semibold bg-[#FFF7ED] dark:bg-[#2A1208]'
-                  : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA]'
+                  ? 'text-[#C2410C] font-semibold bg-[#FFF7ED] dark:bg-[#25150D] dark:text-[#EA580C]'
+                  : 'text-[#6B6B6B] dark:text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA]'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
@@ -353,10 +376,10 @@ export default function MobileApp({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-[#0A0A0E] border-t border-[#E8E8EC] dark:border-[#1F1F27] rounded-t-[16px] p-5 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA]"
+            className="bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[20px] p-5 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA]"
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#20202A]">
               <div className="flex items-center gap-3">
                 <div
                   className="relative group cursor-pointer"

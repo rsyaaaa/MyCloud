@@ -11,8 +11,8 @@
   }
 
   .dark body, html.dark body {
-    background-color: #000000;
-    color: #FAFAFA;
+    background-color: #0B0B0E;
+    color: #F4F4F5;
   }
 
   h1, h2, h3, h4, .font-serif, .font-display {
@@ -73,11 +73,11 @@ button:active:not(:disabled), a:active {
 }
 
 .btn-secondary {
-  @apply bg-transparent text-[#0A0A0A] dark:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#272733] font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-transparent text-[#0A0A0A] dark:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#252532] font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#F4F4F5] dark:hover:bg-[#1A1A24] hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-ghost {
-  @apply bg-transparent text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] px-3 py-2 rounded-[6px] transition-all inline-flex items-center justify-center gap-2 select-none text-[14px];
+  @apply bg-transparent text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#1A1A24] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] px-3 py-2 rounded-[6px] transition-all inline-flex items-center justify-center gap-2 select-none text-[14px];
 }
 
 .btn-destructive {
@@ -85,11 +85,11 @@ button:active:not(:disabled), a:active {
 }
 
 .input-artisan {
-  @apply bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#272733] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C] rounded-[6px] px-3.5 h-[38px] text-[14px] focus:border-[#C2410C] focus:ring-[3px] focus:ring-[#C2410C]/15 focus:outline-none transition-all disabled:bg-[#F4F4F5] dark:disabled:bg-[#0A0A0E] disabled:opacity-50;
+  @apply bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#262633] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C] rounded-[6px] px-3.5 h-[38px] text-[14px] focus:border-[#C2410C] focus:ring-[3px] focus:ring-[#C2410C]/15 focus:outline-none transition-all disabled:bg-[#F4F4F5] dark:disabled:bg-[#101016] disabled:opacity-50;
 }
 
 .chip-filter {
-  @apply h-[30px] px-3 rounded-full border border-[#E8E8EC] dark:border-[#272733] text-[12px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[#F4F4F5] dark:bg-[#121218] text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#E8E8EC] dark:hover:bg-[#1F1F27] hover:text-[#0A0A0A] dark:hover:text-white select-none;
+  @apply h-[30px] px-3 rounded-full border border-[#E8E8EC] dark:border-[#242430] text-[12px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[#F4F4F5] dark:bg-[#16161F] text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#E8E8EC] dark:hover:bg-[#20202B] hover:text-[#0A0A0A] dark:hover:text-white select-none;
 }
 
 .chip-filter-active {
@@ -97,11 +97,11 @@ button:active:not(:disabled), a:active {
 }
 
 .card-artisan {
-  @apply bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] transition-all duration-200 hover:-translate-y-[2px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:border-[#33333F];
+  @apply bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] rounded-[14px] transition-all duration-200 hover:-translate-y-[2px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:border-[#353545];
 }
 
 .card-elevated {
-  @apply bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#272733] rounded-[12px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all;
+  @apply bg-white dark:bg-[#171720] border border-[#E8E8EC] dark:border-[#252532] rounded-[14px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all;
 }
 
 /* Fluid Page and Modal Animations */
