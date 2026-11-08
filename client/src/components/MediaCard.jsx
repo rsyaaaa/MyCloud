@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Play, Heart, Lock, Unlock, MoreVertical, Folder, Trash2, Edit2, Download, Info, FileText } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
+import { useLanguage, localeFor } from '../context/LanguageContext';
 
 function formatSeconds(sec) {
   if (!sec || isNaN(sec)) return '00:00';
@@ -26,6 +27,7 @@ export default function MediaCard({
   vaultToken = null
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t, lang } = useLanguage();
   const isVideo = media.media_type === 'video';
   const isDoc = media.media_type === 'document' || media.type === 'document';
   const fileExt = media.original_name ? media.original_name.split('.').pop().toUpperCase() : (isDoc ? 'DOC' : '');
@@ -148,7 +150,7 @@ export default function MediaCard({
               ? 'bg-white text-[#EF4444] opacity-100 shadow'
               : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:scale-110'
           }`}
-          title="Favorit"
+          title={t('favorite', 'Favorit')}
         >
           <Heart className={`w-4 h-4 ${media.is_favorite ? 'fill-[#EF4444]' : ''}`} />
         </button>
@@ -164,7 +166,7 @@ export default function MediaCard({
             <span className="font-mono">{formatBytes(media.file_size)}</span>
             <span>•</span>
             <span>
-              {new Date(media.captured_at || media.created_at).toLocaleDateString('id-ID', {
+              {new Date(media.captured_at || media.created_at).toLocaleDateString(localeFor(lang), {
                 day: 'numeric',
                 month: 'short'
               })}
@@ -197,7 +199,7 @@ export default function MediaCard({
                 className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
               >
                 <Edit2 className="w-3.5 h-3.5 text-[#6B6B6B] dark:text-[#9C9C9C]" />
-                <span>Ubah Nama</span>
+                <span>{t('renameShort', 'Ubah Nama')}</span>
               </button>
 
               {!isVault && onOrganize && (
@@ -209,7 +211,7 @@ export default function MediaCard({
                   className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
                 >
                   <Folder className="w-3.5 h-3.5 text-[#6B6B6B] dark:text-[#9C9C9C]" />
-                  <span>Atur ke Album</span>
+                  <span>{t('organizeToAlbum', 'Atur ke Album')}</span>
                 </button>
               )}
 
@@ -222,7 +224,7 @@ export default function MediaCard({
                   className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
                 >
                   <Unlock className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span>Keluarkan ke Galeri</span>
+                  <span>{t('removeFromVault', 'Keluarkan ke Galeri')}</span>
                 </button>
               ) : (
                 <button
@@ -233,7 +235,7 @@ export default function MediaCard({
                   className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
                 >
                   <Lock className="w-3.5 h-3.5 text-[#C2410C]" />
-                  <span>Kunci ke Brankas</span>
+                  <span>{t('lockToVaultShort', 'Kunci ke Brankas')}</span>
                 </button>
               )}
 
@@ -246,7 +248,7 @@ export default function MediaCard({
                   className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
                 >
                   <Info className="w-3.5 h-3.5 text-[#C2410C]" />
-                  <span>Detail Metadata</span>
+                  <span>{t('metadataDetail', 'Detail Metadata')}</span>
                 </button>
               )}
 
@@ -258,7 +260,7 @@ export default function MediaCard({
                   className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5 text-[#6B6B6B] dark:text-[#9C9C9C]" />
-                  <span>Unduh File</span>
+                  <span>{t('downloadFile', 'Unduh File')}</span>
                 </a>
               )}
 
@@ -272,7 +274,7 @@ export default function MediaCard({
                 className="w-full px-3 py-1.5 text-left text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#2A0808] flex items-center gap-2"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Pindah ke Sampah</span>
+                <span>{t('moveToTrash', 'Pindah ke Sampah')}</span>
               </button>
             </div>
           )}

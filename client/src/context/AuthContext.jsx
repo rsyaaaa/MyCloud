@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api';
+import { useLanguage } from './LanguageContext';
 import {
   getSavedAccounts,
   saveAccount,
@@ -10,6 +11,7 @@ import {
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const { t } = useLanguage();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [savedAccounts, setSavedAccounts] = useState(() => getSavedAccounts());
@@ -90,11 +92,11 @@ export function AuthProvider({ children }) {
   };
 
   const switchAccount = async (targetAccount) => {
-    if (!targetAccount) return { success: false, error: 'Target akun tidak valid' };
+    if (!targetAccount) return { success: false, error: t('invalidTargetAccount', 'Target akun tidak valid') };
 
     // Strict guard: Admin is NEVER switchable
     if (targetAccount.role === 'admin' || targetAccount.username === 'admin') {
-      return { success: false, error: 'Akun admin tidak dapat diganti melalui fitur switch user.' };
+      return { success: false, error: t('adminCannotSwitch', 'Akun admin tidak dapat diganti melalui fitur switch user.') };
     }
 
     // Public user: 1-click passwordless switch

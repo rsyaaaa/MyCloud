@@ -3,6 +3,7 @@ import {
   Heart, Lock, Unlock, Folder, Edit2, Download, Info, Trash2, X
 } from 'lucide-react';
 import { api } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function MediaContextMenu({
   isOpen,
@@ -21,6 +22,7 @@ export default function MediaContextMenu({
   onShowDetail
 }) {
   const menuRef = useRef(null);
+  const { t } = useLanguage();
 
   // Close on outside click
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function MediaContextMenu({
   const items = [
     {
       id: 'favorite',
-      label: media.is_favorite ? 'Hapus dari Favorit' : 'Tambah ke Favorit',
+      label: media.is_favorite ? t('removeFavorite', 'Hapus dari Favorit') : t('addFavorite', 'Tambah ke Favorit'),
       icon: Heart,
       iconColor: media.is_favorite ? 'text-[#DC2626] fill-[#DC2626]' : 'text-[#DC2626]',
       onClick: () => {
@@ -74,7 +76,7 @@ export default function MediaContextMenu({
       ? [
           {
             id: 'unlock',
-            label: 'Keluarkan ke Galeri',
+            label: t('removeFromVault', 'Keluarkan ke Galeri'),
             icon: Unlock,
             iconColor: 'text-[#365314]',
             onClick: () => {
@@ -86,7 +88,7 @@ export default function MediaContextMenu({
       : [
           {
             id: 'lock',
-            label: 'Pindah ke Brankas',
+            label: t('moveToVault', 'Pindah ke Brankas'),
             icon: Lock,
             iconColor: 'text-[#C2410C]',
             onClick: () => {
@@ -99,7 +101,7 @@ export default function MediaContextMenu({
       ? [
           {
             id: 'organize',
-            label: 'Pindah ke Folder/Album',
+            label: t('moveToFolderAlbum', 'Pindah ke Folder/Album'),
             icon: Folder,
             iconColor: 'text-[#C2410C]',
             onClick: () => {
@@ -111,7 +113,7 @@ export default function MediaContextMenu({
       : []),
     {
       id: 'rename',
-      label: 'Ubah Nama Berkas',
+      label: t('renameFile', 'Ubah Nama Berkas'),
       icon: Edit2,
       iconColor: 'text-[#6B6B6B] dark:text-[#9C9C9C]',
       onClick: () => {
@@ -123,7 +125,7 @@ export default function MediaContextMenu({
       ? [
           {
             id: 'download',
-            label: 'Unduh File Asli',
+            label: t('downloadOriginal', 'Unduh File Asli'),
             icon: Download,
             iconColor: 'text-[#6B6B6B] dark:text-[#9C9C9C]',
             href: api.getDownloadUrl(media.id),
@@ -133,7 +135,7 @@ export default function MediaContextMenu({
       : []),
     {
       id: 'detail',
-      label: 'Detail Metadata',
+      label: t('metadataDetail', 'Detail Metadata'),
       icon: Info,
       iconColor: 'text-[#C2410C]',
       onClick: () => {
@@ -143,7 +145,7 @@ export default function MediaContextMenu({
     },
     {
       id: 'delete',
-      label: 'Pindahkan ke Sampah',
+      label: t('moveToTrash', 'Pindahkan ke Sampah'),
       icon: Trash2,
       iconColor: 'text-[#DC2626]',
       isDestructive: true,
@@ -171,7 +173,7 @@ export default function MediaContextMenu({
               <h4 className="font-semibold text-[14px] text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
                 {media.display_name}
               </h4>
-              <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">Opsi Tindakan Media</span>
+              <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">{t('mediaActions', 'Opsi Tindakan Media')}</span>
             </div>
             <button onClick={onClose} className="p-1 text-[#6B6B6B] dark:text-[#9C9C9C]">
               <X className="w-5 h-5" />

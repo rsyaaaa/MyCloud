@@ -5,9 +5,12 @@ import { api } from '../api';
 import { AlbumsSkeleton, MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
 import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AlbumsPage({
   onOpenViewer,
+  onOpenText,
   onToggleFavorite,
   onLock,
   onOrganize,
@@ -16,6 +19,7 @@ export default function AlbumsPage({
   onContextMenu,
   onShowDetail
 }) {
+  const { t } = useLanguage();
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryMedia, setCategoryMedia] = useState([]);
@@ -91,7 +95,7 @@ export default function AlbumsPage({
 
   const handleDeleteCategory = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Hapus album/kategori ini? File foto & video tidak akan terhapus.')) return;
+    if (!window.confirm(t('deleteAlbumConfirm', 'Hapus album/kategori ini? File foto & video tidak akan terhapus.'))) return;
 
     try {
       await api.deleteCategory(id);
@@ -125,7 +129,7 @@ export default function AlbumsPage({
                 </span>
               </div>
               <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
-                {categoryMedia.length} berkas media dalam album ini.
+                {categoryMedia.length} {t('albumMediaCount', 'berkas media dalam album ini.')}
               </p>
             </div>
           </div>
@@ -137,10 +141,10 @@ export default function AlbumsPage({
           <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
             <Layers className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
             <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Album Masih Kosong
+              {t('albumEmptyTitle', 'Album Masih Kosong')}
             </h4>
             <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
-              Buka Galeri Utama, pilih menu titik tiga pada file dan klik "Atur ke Album" untuk menambahkan file ke album ini.
+              {t('albumEmptyHint', 'Buka Galeri Utama, pilih menu titik tiga pada file dan klik "Atur ke Album" untuk menambahkan file ke album ini.')}
             </p>
           </div>
         ) : (
@@ -149,7 +153,18 @@ export default function AlbumsPage({
               <MediaCard
                 key={m.id}
                 media={m}
-                onClick={() => onOpenViewer(categoryMedia, idx)}
+                onClick={() => {
+                  if (m.media_type === 'document') {
+                    recordRecentItem(m);
+                    if (isTxtFile(m) && onOpenText) {
+                      onOpenText(m);
+                    } else {
+                      window.open(api.getStreamUrl(m.id), '_blank');
+                    }
+                  } else {
+                    onOpenViewer(categoryMedia, idx);
+                  }
+                }}
                 onToggleFavorite={onToggleFavorite}
                 onLock={onLock}
                 onOrganize={onOrganize}
@@ -173,18 +188,18 @@ export default function AlbumsPage({
           <div className="flex items-center gap-2">
             <Folder className="w-6 h-6 text-[#C2410C]" />
             <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Album & Folder Kategori
+              {t('albumTitle', 'Album & Folder Kategori')}
             </h2>
           </div>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-            Organisir foto dan video Anda ke dalam koleksi tema atau genre.
+            {t('albumSubtitle', 'Organisir foto dan video Anda ke dalam koleksi tema atau genre.')}
           </p>
         </div>
 
         <form onSubmit={handleCreate} className="flex items-center gap-2">
           <input
             type="text"
-            placeholder="Nama album baru..."
+            placeholder={t('newAlbumPlaceholder', 'Nama album baru...')}
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
             className="input-artisan h-[38px] text-[13px] w-48"
@@ -194,9 +209,9 @@ export default function AlbumsPage({
             onChange={(e) => setNewCatType(e.target.value)}
             className="input-artisan h-[38px] text-[13px] px-2 bg-white dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
           >
-            <option value="album">Album</option>
-            <option value="folder">Folder</option>
-            <option value="genre">Genre</option>
+            <option value="album">{t('albumLabel', 'Album')}</option>
+            <option value="folder">{t('folderLabel', 'Folder')}</option>
+            <option value="genre">{t('genreLabel', 'Genre')}</option>
           </select>
           <button
             type="submit"
@@ -204,7 +219,7 @@ export default function AlbumsPage({
             className="btn-primary text-[13px] h-[38px] px-3.5"
           >
             <FolderPlus className="w-4 h-4" />
-            <span>Buat</span>
+            <span>{t('createBtn', 'Buat')}</span>
           </button>
         </form>
       </div>
@@ -216,10 +231,10 @@ export default function AlbumsPage({
         <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
           <Folder className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
           <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Belum ada Album atau Folder
+            {t('noAlbums', 'Belum ada Album atau Folder')}
           </h4>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-            Gunakan form di atas untuk membuat album pertama Anda.
+            {t('noAlbumsHint', 'Gunakan form di atas untuk membuat album pertama Anda.')}
           </p>
         </div>
       ) : (
@@ -237,7 +252,7 @@ export default function AlbumsPage({
                 <button
                   onClick={(e) => handleDeleteCategory(cat.id, e)}
                   className="opacity-0 group-hover:opacity-100 p-1 text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#EF4444] transition-all"
-                  title="Hapus Album"
+                  title={t('deleteAlbum', 'Hapus Album')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -248,7 +263,7 @@ export default function AlbumsPage({
                   {cat.name}
                 </h4>
                 <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-                  <span className="font-mono">{cat.media_count || 0} berkas</span>
+                  <span className="font-mono">{cat.media_count || 0} {t('filesUnit', 'berkas')}</span>
                   <span className="uppercase text-[10px] font-bold tracking-wider px-1.5 py-0.2 bg-[#FAFAFA] dark:bg-[#14141A] border border-[#E8E8EC] dark:border-[#1F1F27] rounded">
                     {cat.type}
                   </span>

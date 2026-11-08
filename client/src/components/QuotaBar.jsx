@@ -1,5 +1,5 @@
 import React from 'react';
-import { HardDrive, ArrowUpCircle } from 'lucide-react';
+import { HardDrive } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export function formatBytes(bytes) {
@@ -10,7 +10,7 @@ export function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncrease, compact = false, title = null }) {
+export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, compact = false, title = null }) {
   const { t } = useLanguage();
   const percentage = Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) || 0;
 
@@ -56,20 +56,10 @@ export default function QuotaBar({ usedBytes = 0, quotaBytes = 1, onRequestIncre
         />
       </div>
 
-      <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-3">
+      <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
         <span>{t('used', 'Terpakai')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(usedBytes)}</strong></span>
         <span>{t('limit', 'Batas')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] font-mono">{formatBytes(quotaBytes)}</strong></span>
       </div>
-
-      {onRequestIncrease && (
-        <button
-          onClick={onRequestIncrease}
-          className="w-full btn-secondary text-[13px] py-1.5 h-[34px] justify-center"
-        >
-          <ArrowUpCircle className="w-4 h-4" />
-          <span>Add Storage</span>
-        </button>
-      )}
     </div>
   );
 }

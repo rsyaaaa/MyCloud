@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useVault } from '../context/VaultContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
@@ -8,6 +9,7 @@ import HomePage from '../pages/HomePage';
 import GalleryPage from '../pages/GalleryPage';
 import VideoHubPage from '../pages/VideoHubPage';
 import AllFilesPage from '../pages/AllFilesPage';
+import DocumentsPage from '../pages/DocumentsPage';
 import VaultPage from '../pages/VaultPage';
 import AlbumsPage from '../pages/AlbumsPage';
 import AdminPage from '../pages/AdminPage';
@@ -20,7 +22,7 @@ import AvatarModal from '../components/AvatarModal';
 
 export default function DesktopApp({
   onOpenUpload,
-  onOpenQuotaModal,
+  onOpenText,
   onOpenViewer,
   onToggleFavorite,
   onLockMedia,
@@ -30,8 +32,10 @@ export default function DesktopApp({
   onRenameMedia
 }) {
   const { user, refreshUser } = useAuth();
+  const { t, lang } = useLanguage();
   const { notifyTabChange } = useVault();
   const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'albums', 'vault', 'trash', 'admin'
+  const [activeFolder, setActiveFolder] = useState(null);
   const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -58,6 +62,11 @@ export default function DesktopApp({
     notifyTabChange(newTab);
   };
 
+  // Browser tab title follows the active menu.
+  useEffect(() => {
+    document.title = 'MyCloud';
+  }, []);
+
   const handleNavigate = (tab, subView = 'all', folderId = null) => {
     if (subView) setGallerySubView(subView);
     setTab(tab);
@@ -82,7 +91,6 @@ export default function DesktopApp({
         onOpenUpload={onOpenUpload}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onOpenQuotaModal={onOpenQuotaModal}
         onSelectTab={setTab}
         onOpenAvatarModal={() => setAvatarModalOpen(true)}
         isSidebarHidden={isSidebarHidden}
@@ -95,7 +103,6 @@ export default function DesktopApp({
           <Sidebar
             currentTab={currentTab}
             setTab={setTab}
-            onRequestIncreaseQuota={onOpenQuotaModal}
             onHide={toggleSidebar}
           />
         )}
@@ -107,7 +114,7 @@ export default function DesktopApp({
               onNavigate={handleNavigate}
               onOpenViewer={onOpenViewer}
               onOpenUpload={onOpenUpload}
-              onOpenQuotaModal={onOpenQuotaModal}
+              onOpenText={onOpenText}
             />
           )}
 
@@ -129,6 +136,7 @@ export default function DesktopApp({
           {currentTab === 'allfiles' && (
             <AllFilesPage
               onOpenViewer={onOpenViewer}
+              onOpenText={onOpenText}
               onToggleFavorite={onToggleFavorite}
               onLock={onLockMedia}
               onOrganize={onOrganizeMedia}
@@ -136,7 +144,21 @@ export default function DesktopApp({
               onRename={onRenameMedia}
               onContextMenu={handleOpenContextMenu}
               onShowDetail={(media) => setDetailModalMedia(media)}
-              onOpenUpload={onOpenUpload}
+              onOpenUpload={() => onOpenUpload(activeFolder)}
+              onFolderChange={setActiveFolder}
+            />
+          )}
+
+          {currentTab === 'documents' && (
+            <DocumentsPage
+              onOpenText={onOpenText}
+              onToggleFavorite={onToggleFavorite}
+              onLock={onLockMedia}
+              onOrganize={onOrganizeMedia}
+              onDelete={onDeleteMedia}
+              onRename={onRenameMedia}
+              onContextMenu={handleOpenContextMenu}
+              onShowDetail={(media) => setDetailModalMedia(media)}
             />
           )}
 
@@ -156,6 +178,7 @@ export default function DesktopApp({
           {currentTab === 'albums' && (
             <AlbumsPage
               onOpenViewer={onOpenViewer}
+              onOpenText={onOpenText}
               onToggleFavorite={onToggleFavorite}
               onLock={onLockMedia}
               onOrganize={onOrganizeMedia}
@@ -222,15 +245,15 @@ export default function DesktopApp({
         onUpdated={refreshUser}
       />
 
-      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal and Trash) */}
-      {currentTab !== 'terminal' && currentTab !== 'trash' && (
+      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal, Trash, and Admin Dashboard) */}
+      {currentTab !== 'terminal' && currentTab !== 'trash' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
         <button
-          onClick={onOpenUpload}
+          onClick={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
           className="fixed bottom-8 right-8 z-40 btn-primary h-12 px-5 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all text-[14px] font-medium"
-          title="Upload Media"
+          title={activeFolder && currentTab === 'allfiles' ? `Upload ke folder ${activeFolder.name}` : 'Upload Media'}
         >
           <Upload className="w-5 h-5 stroke-[2.2]" />
-          <span>Upload</span>
+          <span>{activeFolder && currentTab === 'allfiles' ? `Upload ke ${activeFolder.name}` : 'Upload'}</span>
         </button>
       )}
     </div>

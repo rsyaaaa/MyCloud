@@ -8,6 +8,7 @@ import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
 
 export default function MobileSearchView({
   onOpenViewer,
@@ -16,7 +17,8 @@ export default function MobileSearchView({
   onOrganize,
   onDelete,
   onRename,
-  onLongPress
+  onLongPress,
+  onOpenText
 }) {
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all', 'image', 'video', 'document'
@@ -70,7 +72,11 @@ export default function MobileSearchView({
   const handleItemClick = (item, idx) => {
     recordRecentItem(item);
     if (item.media_type === 'document') {
-      window.open(api.getStreamUrl(item.id), '_blank');
+      if (isTxtFile(item) && onOpenText) {
+        onOpenText(item);
+      } else {
+        window.open(api.getStreamUrl(item.id), '_blank');
+      }
     } else {
       if (onOpenViewer) onOpenViewer(results, idx);
     }

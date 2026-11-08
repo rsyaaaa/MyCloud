@@ -147,6 +147,8 @@ export const api = {
   },
   getMediaStats: () => apiRequest('/media/stats/summary'),
   getMedia: (id) => apiRequest(`/media/${id}`),
+  getTextContent: (id) => apiRequest(`/media/${id}/text`),
+  saveTextContent: (id, content) => apiRequest(`/media/${id}/text`, { method: 'PUT', body: JSON.stringify({ content }) }),
   uploadMedia: (formData, onProgress, signal) => uploadWithProgress('/media/upload', formData, { onProgress, signal }),
   updateMedia: (id, updates) => apiRequest(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
   lockMedia: (id) => apiRequest(`/media/${id}/lock`, { method: 'POST' }),

@@ -1,19 +1,37 @@
-import React, { useState, useRef } from 'react';
-import { X, UploadCloud, File, AlertCircle, CheckCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, UploadCloud, File, AlertCircle, CheckCircle, Loader2, Folder } from 'lucide-react';
 import { api } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from './QuotaBar';
 
-export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, onRequestQuota }) {
-  const { t } = useLanguage();
+export default function UploadModal({
+  isOpen,
+  onClose,
+  user,
+  targetFolder = null,
+  onUploadSuccess,
+  onRequestQuota
+}) {
+  const { t, tp } = useLanguage();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progressInfo, setProgressInfo] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isOverQuota, setIsOverQuota] = useState(false);
+  const [folderList, setFolderList] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState('');
   const fileInputRef = useRef(null);
   const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedFolderId(targetFolder?.id || '');
+      api.listCategories().then(res => {
+        setFolderList(res.categories || []);
+      }).catch(() => {});
+    }
+  }, [isOpen, targetFolder]);
 
   if (!isOpen) return null;
 
@@ -36,7 +54,10 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
     const availableBytes = (user?.storage_quota_bytes || 0) - (user?.used_storage_bytes || 0);
 
     if (totalNewBytes > availableBytes) {
-      setErrorMsg(`Ukuran total file (${formatBytes(totalNewBytes)}) melebihi sisa kuota Anda (${formatBytes(availableBytes)}).`);
+      setErrorMsg(tp('quotaExceeded', `Ukuran total file (${formatBytes(totalNewBytes)}) melebihi sisa kuota Anda (${formatBytes(availableBytes)}).`, {
+        size: formatBytes(totalNewBytes),
+        available: formatBytes(availableBytes)
+      }));
       setIsOverQuota(true);
     }
 
@@ -60,7 +81,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
 
   const handleClose = () => {
     if (uploading) {
-      if (window.confirm('Proses upload sedang berjalan. Apakah Anda yakin ingin membatalkannya?')) {
+      if (window.confirm(t('cancelUploadConfirm', 'Proses upload sedang berjalan. Apakah Anda yakin ingin membatalkannya?'))) {
         handleCancelUpload();
         onClose();
       }
@@ -88,6 +109,9 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
       setCurrentIndex(i);
       const file = selectedFiles[i];
       const formData = new FormData();
+      if (selectedFolderId) {
+        formData.append('category_id', selectedFolderId);
+      }
       formData.append('file', file);
 
       let lastLoaded = 0;
@@ -152,10 +176,13 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
           return;
         }
         if (err.status === 413) {
-          setErrorMsg(err.message || 'Penyimpanan penuh (413 Payload Too Large).');
+          setErrorMsg(err.message || t('payloadTooLarge', 'Penyimpanan penuh (413 Payload Too Large).'));
           setIsOverQuota(true);
         } else {
-          setErrorMsg(`Gagal mengunggah "${file.name}": ${err.message}`);
+          setErrorMsg(tp('uploadFailedFile', `Gagal mengunggah "${file.name}": ${err.message}`, {
+            file: file.name,
+            message: err.message
+          }));
         }
         setUploading(false);
         setProgressInfo(null);
@@ -167,7 +194,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
     setProgressInfo(null);
     setSelectedFiles([]);
     abortControllerRef.current = null;
-    if (onUploadSuccess) onUploadSuccess();
+    if (onUploadSuccess) onUploadSuccess(selectedFolderId);
     onClose();
   };
 
@@ -199,18 +226,35 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
             <div className="flex-1">
               <p>{errorMsg}</p>
               {isOverQuota && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleClose();
-                    if (onRequestQuota) onRequestQuota();
-                  }}
-                  className="mt-2 text-[12px] font-semibold text-[#C2410C] underline hover:text-[#EA580C] flex items-center gap-1"
-                >
-                  <ArrowUpCircle className="w-3.5 h-3.5" /> {t('requestQuota', 'Ajukan Tambah Kuota')}
-                </button>
+                <p className="mt-2 text-[12px] font-medium text-[#C2410C]">
+                  {t('contactAdminStorage', 'Hubungi Administrator untuk penambahan kuota penyimpanan.')}
+                </p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Destination Folder Selector */}
+        {!uploading && (
+          <div className="mb-4 flex items-center justify-between gap-3 p-2.5 rounded-[8px] bg-[#F5F5F7] dark:bg-[#14141A] border border-[#E8E8EC] dark:border-[#1F1F27] text-[13px]">
+            <div className="flex items-center gap-2 text-[#6B6B6B] dark:text-[#9C9C9C] shrink-0">
+              <Folder className="w-4 h-4 text-[#C2410C]" />
+              <span className="font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{t('destinationFolder', 'Simpan ke Folder:')}</span>
+            </div>
+            <select
+              value={selectedFolderId}
+              onChange={(e) => setSelectedFolderId(e.target.value)}
+              className="bg-transparent font-medium text-[#C2410C] text-right outline-none cursor-pointer text-[13px] max-w-[210px] truncate"
+            >
+              <option value="" className="bg-white dark:bg-[#0A0A0E] text-[#0A0A0A] dark:text-[#FAFAFA]">
+                {t('rootFolderOption', 'Direktori Utama (Tanpa Folder)')}
+              </option>
+              {folderList.map((f) => (
+                <option key={f.id} value={f.id} className="bg-white dark:bg-[#0A0A0E] text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  📁 {f.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -251,7 +295,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
             <div className="flex items-center justify-between text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-1">
               <span>{selectedFiles.length} {t('filesSelected', 'file dipilih')}</span>
               <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
-                Total: {formatBytes(selectedFiles.reduce((acc, f) => acc + f.size, 0))}
+                {t('totalLabel', 'Total')}: {formatBytes(selectedFiles.reduce((acc, f) => acc + f.size, 0))}
               </span>
             </div>
             {selectedFiles.map((file, idx) => (
@@ -274,7 +318,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
                       handleRemoveFile(idx);
                     }}
                     className="p-1 text-[#9C9C9C] hover:text-[#EF4444] transition-colors"
-                    title="Hapus file ini"
+                    title={t('removeFileTitle', 'Hapus file ini')}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -297,7 +341,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
                 {progressInfo?.isProcessing ? (
                   <span className="text-amber-500 font-sans font-medium text-[12px] flex items-center gap-1.5">
                     <Loader2 className="w-3.5 h-3.5 animate-spin inline-block text-amber-500" />
-                    Memproses...
+                    {t('processing', 'Memproses...')}
                   </span>
                 ) : (
                   `${progressInfo ? progressInfo.percent : 0}%`
@@ -324,12 +368,12 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
               </span>
               <span>
                 {progressInfo?.isProcessing ? (
-                  <span className="text-amber-500">Mengekstrak metadata & thumbnail...</span>
+                  <span className="text-amber-500">{t('extractingMetadata', 'Mengekstrak metadata & thumbnail...')}</span>
                 ) : (
                   <>
                     {progressInfo?.speed > 0 && <span>{formatBytes(progressInfo.speed)}/s</span>}
                     {progressInfo?.remainingSec !== null && progressInfo?.remainingSec > 0 && (
-                      <span> • ~{progressInfo.remainingSec}s tersisa</span>
+                      <span> • ~{progressInfo.remainingSec}s {t('remainingLabel', 'tersisa')}</span>
                     )}
                   </>
                 )}
@@ -339,7 +383,7 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
             {/* Overall progress for multi-file upload */}
             {selectedFiles.length > 1 && progressInfo && (
               <div className="pt-2.5 border-t border-[#E8E8EC] dark:border-[#1F1F27] flex items-center justify-between text-[11px] text-[#9C9C9C]">
-                <span>Total Semua ({selectedFiles.length} file):</span>
+                <span>{t('totalAll', 'Total Semua')} ({selectedFiles.length} {t('fileCount', 'file')}):</span>
                 <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
                   {formatBytes(progressInfo.totalCompletedBytes)} / {formatBytes(progressInfo.totalAllBytes)} ({Math.round((progressInfo.totalCompletedBytes / progressInfo.totalAllBytes) * 100)}%)
                 </span>

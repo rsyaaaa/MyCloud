@@ -7,9 +7,11 @@ import { api } from '../api';
 import { AlbumsSkeleton, MediaGridSkeleton, MediaListSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
 import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
 
 export default function MobileAlbumsView({
   onOpenViewer,
+  onOpenText,
   onToggleFavorite,
   onLock,
   onOrganize,
@@ -110,6 +112,19 @@ export default function MobileAlbumsView({
     } catch (e) {}
   };
 
+  const handleMediaClick = (media, idx) => {
+    if (media.media_type === 'document') {
+      recordRecentItem(media);
+      if (isTxtFile(media) && onOpenText) {
+        onOpenText(media);
+      } else {
+        window.open(api.getStreamUrl(media.id), '_blank');
+      }
+    } else if (onOpenViewer) {
+      onOpenViewer(categoryMedia, idx);
+    }
+  };
+
   const totalItems = categoryMedia.length;
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
   const paginatedItems = useMemo(() => {
@@ -187,7 +202,7 @@ export default function MobileAlbumsView({
                     <MobileMediaCard
                       key={m.id}
                       media={m}
-                      onClick={() => onOpenViewer(categoryMedia, globalIdx)}
+                      onClick={() => handleMediaClick(m, globalIdx)}
                       onToggleFavorite={onToggleFavorite}
                       onLock={onLock}
                       onOrganize={onOrganize}
@@ -208,7 +223,7 @@ export default function MobileAlbumsView({
                     <MobileMediaListItem
                       key={m.id}
                       media={m}
-                      onClick={() => onOpenViewer(categoryMedia, globalIdx)}
+                      onClick={() => handleMediaClick(m, globalIdx)}
                       onToggleFavorite={onToggleFavorite}
                       onLock={onLock}
                       onOrganize={onOrganize}

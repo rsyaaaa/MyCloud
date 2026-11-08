@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Home, Images, Folder, Trash2, Settings, HardDrive, X, Terminal
+  Home, Images, Folder, FileText, Trash2, Settings, HardDrive, X, Terminal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api';
 import QuotaBar from './QuotaBar';
 
-export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, onHide }) {
+export default function Sidebar({ currentTab, setTab, onHide }) {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [adminDiskStats, setAdminDiskStats] = useState(null);
@@ -23,7 +23,7 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, on
   }, [user?.role]);
 
   const navItems = [
-    { id: 'home', label: user?.role === 'admin' ? 'Server Dashboard' : t('home', 'Home'), icon: Home },
+    { id: 'home', label: user?.role === 'admin' ? t('serverDashboard', 'Server Dashboard') : t('home', 'Home'), icon: Home },
   ];
 
   // Untuk admin, halaman gallery dihapus
@@ -33,6 +33,7 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, on
 
   navItems.push(
     { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
+    { id: 'documents', label: t('documents', 'Dokumen'), icon: FileText },
     { id: 'trash', label: t('trash', 'Tempat Sampah'), icon: Trash2 }
   );
 
@@ -47,13 +48,13 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, on
         {/* Navigation Header with X Button */}
         <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
           <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-[#9C9C9C]">
-            Menu
+            {t('menu', 'Menu')}
           </span>
           {onHide && (
             <button
               onClick={onHide}
               className="p-1 rounded-[6px] text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white hover:bg-[#F4F4F5] dark:hover:bg-[#141418] transition-colors"
-              title="Tutup Menu"
+              title={t('closeMenu', 'Tutup Menu')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -92,7 +93,6 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota, on
           usedBytes={user?.role === 'admin' ? (adminDiskStats?.used ?? user?.used_storage_bytes ?? 0) : (user?.used_storage_bytes || 0)}
           quotaBytes={user?.role === 'admin' ? (adminDiskStats?.total ?? 500 * 1024 * 1024 * 1024) : (user?.storage_quota_bytes || 1)}
           title={user?.role === 'admin' ? 'Total Storage Server' : undefined}
-          onRequestIncrease={user?.role === 'admin' ? undefined : onRequestIncreaseQuota}
         />
       </div>
     </aside>

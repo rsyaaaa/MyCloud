@@ -1,8 +1,10 @@
 import React from 'react';
 import { Sparkles, Play, Calendar, ChevronRight } from 'lucide-react';
 import { api } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function MemoriesCarousel({ memories = [], onSelectMedia }) {
+  const { t } = useLanguage();
   if (!memories || memories.length === 0) return null;
 
   return (
@@ -10,7 +12,7 @@ export default function MemoriesCarousel({ memories = [], onSelectMedia }) {
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-5 h-5 text-[#C2410C]" />
         <h3 className="font-serif font-semibold text-xl text-[#0A0A0A] dark:text-[#FAFAFA]">
-          Ingatkah Momen Ini?
+          {t('memoriesTitle', 'Ingatkah Momen Ini?')}
         </h3>
       </div>
 
@@ -49,7 +51,7 @@ export default function MemoriesCarousel({ memories = [], onSelectMedia }) {
                 </div>
 
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] px-1.5 py-0.5 rounded-[3px] font-mono">
-                  {group.items.length} file
+                  {group.items.length} {t('fileCount', 'file')}
                 </div>
               </div>
 

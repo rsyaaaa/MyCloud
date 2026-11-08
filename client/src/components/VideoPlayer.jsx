@@ -124,6 +124,33 @@ export default function VideoPlayer({
     }, 600);
   };
 
+  // Desktop keyboard shortcut: ArrowRight / ArrowLeft seek forward / backward 10 seconds
+  useEffect(() => {
+    const handleSeekKeyDown = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+
+      const active = document.activeElement;
+      const tag = active && active.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (active && active.isContentEditable)) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === 'ArrowRight') {
+        seekBy(10);
+        showFeedback('right', '+10 detik');
+      } else {
+        seekBy(-10);
+        showFeedback('left', '-10 detik');
+      }
+    };
+
+    window.addEventListener('keydown', handleSeekKeyDown, true);
+    return () => window.removeEventListener('keydown', handleSeekKeyDown, true);
+  }, [duration]);
+
   const handleContainerClick = (e) => {
     // If click was on control buttons or slider, ignore
     if (e.target.closest('button') || e.target.closest('input')) {

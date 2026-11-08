@@ -10,6 +10,14 @@ const { probeMedia, generateThumbnail } = require('./ffmpegHelper');
 
 const router = express.Router();
 
+const TEXT_FILE_MAX_BYTES = 2 * 1024 * 1024; // 2 MB editable text limit
+
+function isTextDocument(media) {
+  if (!media) return false;
+  const name = media.original_name || '';
+  return path.extname(name).toLowerCase() === '.txt' || media.mime_type === 'text/plain';
+}
+
 // Multer disk storage: write directly into user's upload directory
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -155,11 +163,27 @@ router.post('/upload', authMiddleware, (req, res, next) => {
       [fileSize, req.user.id]
     );
 
+    // 7. Associate with folder / category if requested
+    const targetCategoryId = req.body.category_id || req.body.folder_id;
+    if (targetCategoryId) {
+      const cat = await db.get(
+        'SELECT id FROM categories_folders WHERE id = ? AND user_id = ?',
+        [targetCategoryId, req.user.id]
+      );
+      if (cat) {
+        await db.run(
+          'INSERT OR IGNORE INTO media_category_rel (media_id, category_id) VALUES (?, ?)',
+          [mediaId, cat.id]
+        );
+      }
+    }
+
     const savedMedia = await db.get('SELECT * FROM media_files WHERE id = ?', [mediaId]);
 
     return res.status(201).json({
       message: 'File berhasil diunggah!',
-      media: savedMedia
+      media: savedMedia,
+      category_id: targetCategoryId || null
     });
   } catch (err) {
     console.error('[Upload] Error processing file:', err);
@@ -313,6 +337,87 @@ router.get('/:id', authMiddleware, async (req, res) => {
     return res.json({ media: row });
   } catch (err) {
     return res.status(500).json({ error: 'Gagal memuat media.' });
+  }
+});
+
+// GET /api/media/:id/text (Read a .txt file directly in the browser editor)
+router.get('/:id/text', authMiddleware, async (req, res) => {
+  try {
+    const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (!media) {
+      return res.status(404).json({ error: 'Media tidak ditemukan.' });
+    }
+    if (media.is_locked) {
+      return res.status(403).json({ error: 'Media terkunci di Brankas.' });
+    }
+    if (!isTextDocument(media)) {
+      return res.status(400).json({ error: 'Hanya file .txt yang dapat dibuka sebagai teks.' });
+    }
+    if (!fs.existsSync(media.file_path)) {
+      return res.status(404).json({ error: 'File fisik tidak ditemukan pada disk server.' });
+    }
+
+    const stat = fs.statSync(media.file_path);
+    if (stat.size > TEXT_FILE_MAX_BYTES) {
+      return res.status(413).json({ error: 'File teks terlalu besar untuk dibuka di browser (maksimal 2 MB).' });
+    }
+
+    const content = await fs.promises.readFile(media.file_path, 'utf8');
+    return res.json({ content, media });
+  } catch (err) {
+    console.error('[Read Text] Error:', err);
+    return res.status(500).json({ error: 'Gagal membaca file teks.' });
+  }
+});
+
+// PUT /api/media/:id/text (Save edits to a .txt file)
+router.put('/:id/text', authMiddleware, async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (typeof content !== 'string') {
+      return res.status(400).json({ error: 'Isi file teks tidak valid.' });
+    }
+
+    const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (!media) {
+      return res.status(404).json({ error: 'Media tidak ditemukan.' });
+    }
+    if (media.is_locked) {
+      return res.status(403).json({ error: 'Media terkunci di Brankas.' });
+    }
+    if (!isTextDocument(media)) {
+      return res.status(400).json({ error: 'Hanya file .txt yang dapat diedit sebagai teks.' });
+    }
+    if (!fs.existsSync(media.file_path)) {
+      return res.status(404).json({ error: 'File fisik tidak ditemukan pada disk server.' });
+    }
+
+    const newSize = Buffer.byteLength(content, 'utf8');
+    if (newSize > TEXT_FILE_MAX_BYTES) {
+      return res.status(413).json({ error: 'Isi file melebihi batas 2 MB.' });
+    }
+
+    // Quota enforcement on the size delta
+    const quotaResult = await db.get(
+      'SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM media_files WHERE user_id = ?',
+      [req.user.id]
+    );
+    if (quotaResult.used_bytes - media.file_size + newSize > req.user.storage_quota_bytes) {
+      return res.status(413).json({ error: 'Kuota penyimpanan tidak mencukupi untuk menyimpan perubahan file teks.' });
+    }
+
+    await fs.promises.writeFile(media.file_path, content, 'utf8');
+    await db.run('UPDATE media_files SET file_size = ? WHERE id = ?', [newSize, media.id]);
+    await db.run(
+      'UPDATE users SET used_storage_bytes = MAX(0, used_storage_bytes + ?) WHERE id = ?',
+      [newSize - media.file_size, req.user.id]
+    );
+
+    const updated = await db.get('SELECT * FROM media_files WHERE id = ?', [media.id]);
+    return res.json({ message: 'File teks berhasil disimpan.', media: updated });
+  } catch (err) {
+    console.error('[Save Text] Error:', err);
+    return res.status(500).json({ error: 'Gagal menyimpan file teks.' });
   }
 });
 

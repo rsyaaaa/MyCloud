@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, FolderPlus, Check, Folder } from 'lucide-react';
 import { api } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
+  const { t } = useLanguage();
   const [categories, setCategories] = useState([]);
   const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [newCatName, setNewCatName] = useState('');
@@ -27,7 +29,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
       setCategories(allCatsRes.categories || []);
       setSelectedCatIds((mediaCatsRes.categories || []).map(c => c.id));
     } catch (e) {
-      setError('Gagal memuat kategori.');
+      setError(t('loadCategoriesFailed', 'Gagal memuat kategori.'));
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
       setSelectedCatIds([...selectedCatIds, newCat.id]);
       setNewCatName('');
     } catch (err) {
-      setError(err.message || 'Gagal membuat kategori.');
+      setError(err.message || t('createCategoryFailed', 'Gagal membuat kategori.'));
     } finally {
       setCreating(false);
     }
@@ -68,7 +70,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
       if (onUpdated) onUpdated();
       onClose();
     } catch (err) {
-      setError(err.message || 'Gagal menyimpan kategori.');
+      setError(err.message || t('saveCategoriesFailed', 'Gagal menyimpan kategori.'));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
           <div className="flex items-center gap-2">
             <Folder className="w-5 h-5 text-[#C2410C]" />
             <h3 className="text-xl font-serif font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Atur ke Album & Folder
+              {t('organizeTitle', 'Atur ke Album & Folder')}
             </h3>
           </div>
           <button
@@ -93,7 +95,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
         </div>
 
         <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-3 truncate">
-          Media: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{media.display_name}</strong>
+          {t('mediaLabel', 'Media')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{media.display_name}</strong>
         </p>
 
         {error && (
@@ -106,7 +108,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
         <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[8px] p-2 bg-[#FAFAFA] dark:bg-[#0A0A0E]">
           {categories.length === 0 ? (
             <p className="text-[13px] text-[#9C9C9C] text-center py-4">
-              Belum ada album atau folder. Buat yang baru di bawah.
+              {t('noAlbumFolder', 'Belum ada album atau folder. Buat yang baru di bawah.')}
             </p>
           ) : (
             categories.map((cat) => {
@@ -147,7 +149,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Nama album / folder baru..."
+              placeholder={t('newAlbumFolderPlaceholder', 'Nama album / folder baru...')}
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               className="input-artisan flex-1 h-[36px] text-[13px] dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
@@ -157,9 +159,9 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
               onChange={(e) => setNewCatType(e.target.value)}
               className="input-artisan h-[36px] text-[12px] px-2 bg-white dark:bg-[#000000] dark:border-[#1F1F27] dark:text-white"
             >
-              <option value="album">Album</option>
-              <option value="folder">Folder</option>
-              <option value="genre">Genre</option>
+              <option value="album">{t('albumLabel', 'Album')}</option>
+              <option value="folder">{t('folderLabel', 'Folder')}</option>
+              <option value="genre">{t('genreLabel', 'Genre')}</option>
             </select>
             <button
               type="submit"
@@ -177,7 +179,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
             onClick={onClose}
             className="btn-ghost text-[14px]"
           >
-            Batal
+            {t('cancel', 'Batal')}
           </button>
           <button
             type="button"
@@ -185,7 +187,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
             disabled={loading}
             className="btn-primary text-[14px]"
           >
-            {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+            {loading ? t('savingText', 'Menyimpan...') : t('saveChanges', 'Simpan Perubahan')}
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Image, Video, FileText, FolderOpen, Clock, HardDrive, Heart,
-  Folder, Play, Download, ChevronRight, ChevronDown, ChevronUp
+  Folder, Play, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from '../components/QuotaBar';
 import { getRecentHistory, clearRecentHistory, recordRecentItem } from '../utils/recentHistory';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
 import AdminHomeDashboard from '../components/AdminHomeDashboard';
 
 function formatRelativeTime(isoString, lang = 'id') {
@@ -27,7 +28,8 @@ function formatRelativeTime(isoString, lang = 'id') {
 export default function MobileHomeView({
   onNavigate,
   onOpenViewer,
-  onToggleFavorite
+  onToggleFavorite,
+  onOpenText
 }) {
   const { user } = useAuth();
   const { lang, t } = useLanguage();
@@ -58,9 +60,6 @@ export default function MobileHomeView({
       return nextVal;
     });
   };
-  const [selectedDocFilter, setSelectedDocFilter] = useState(false);
-  const [documentFiles, setDocumentFiles] = useState([]);
-
   const loadData = async (silent = false) => {
     if (!user) return;
     if (!silent) setLoading(true);
@@ -79,8 +78,6 @@ export default function MobileHomeView({
       setFallbackRecent((recentMediaRes.media || []).slice(0, 10));
       setFavoriteItems(favRes.media || []);
 
-      const docs = (recentMediaRes.media || []).filter(m => m.media_type === 'document');
-      setDocumentFiles(docs);
     } catch (err) {
       console.error('Failed to load mobile home data:', err);
     } finally {
@@ -108,7 +105,6 @@ export default function MobileHomeView({
         setFallbackRecent((prev) => prev.filter((m) => m.id !== event.id));
         setFavoriteItems((prev) => prev.filter((m) => m.id !== event.id));
         setRecentItems((prev) => prev.filter((m) => m.id !== event.id));
-        setDocumentFiles((prev) => prev.filter((m) => m.id !== event.id));
         loadData(true);
       } else if (['upload', 'restore', 'unlock', 'rename', 'folder', 'organize'].includes(event.type)) {
         loadData(true);
@@ -121,8 +117,12 @@ export default function MobileHomeView({
     if (item.type === 'folder' || item.is_folder) {
       if (onNavigate) onNavigate('allfiles', null, item.folder_id);
     } else if (item.media_type === 'document' || item.type === 'document') {
-      window.open(api.getStreamUrl(item.id), '_blank');
       recordRecentItem(item, user?.id);
+      if (isTxtFile(item) && onOpenText) {
+        onOpenText(item);
+      } else {
+        window.open(api.getStreamUrl(item.id), '_blank');
+      }
     } else {
       recordRecentItem(item, user?.id);
       if (onOpenViewer) onOpenViewer([item], 0);
@@ -204,12 +204,8 @@ export default function MobileHomeView({
 
         {/* Card 3: Dokumen */}
         <div
-          onClick={() => setSelectedDocFilter(!selectedDocFilter)}
-          className={`group p-3.5 rounded-[12px] bg-white dark:bg-[#0A0A0E] border active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-between min-h-[105px] select-none ${
-            selectedDocFilter
-              ? 'border-[#C2410C] ring-2 ring-[#C2410C]/20'
-              : 'border-[#E8E8EC] dark:border-[#1F1F27]'
-          }`}
+          onClick={() => onNavigate && onNavigate('documents')}
+          className="group p-3.5 rounded-[12px] bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] active:border-[#C2410C] active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-between min-h-[105px] select-none"
         >
           <div className="flex items-center justify-between">
             <div className="w-9 h-9 rounded-[8px] bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] flex items-center justify-center border border-[#C2410C]/20">
@@ -248,47 +244,6 @@ export default function MobileHomeView({
           </div>
         </div>
       </div>
-
-      {/* Expandable Document Files on Mobile */}
-      {selectedDocFilter && (
-        <div className="p-4 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] animate-enter">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
-            <h4 className="font-serif font-bold text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA]">
-              {t('documentList', 'Daftar Dokumen')}
-            </h4>
-            <button
-              onClick={() => setSelectedDocFilter(false)}
-              className="text-[11px] text-[#6B6B6B] hover:text-[#0A0A0A] dark:hover:text-white"
-            >
-              {t('close', 'Tutup')}
-            </button>
-          </div>
-
-          {documentFiles.length === 0 ? (
-            <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] py-3 text-center">
-              {t('noDocsMobile', 'Belum ada dokumen. Gunakan tombol Upload untuk mengunggah file.')}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {documentFiles.map((doc) => (
-                <div
-                  key={doc.id}
-                  onClick={() => handleRecentClick(doc)}
-                  className="flex items-center justify-between p-2.5 rounded-[8px] border border-[#E8E8EC] dark:border-[#1F1F27] bg-[#FAFAFA] dark:bg-[#121218] active:bg-[#F4F4F5]"
-                >
-                  <div className="flex items-center gap-2 truncate pr-2">
-                    <FileText className="w-4 h-4 text-[#C2410C] shrink-0" />
-                    <span className="text-[12px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
-                      {doc.display_name}
-                    </span>
-                  </div>
-                  <Download className="w-4 h-4 text-[#9C9C9C] shrink-0" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Favorite Section */}
       <div>

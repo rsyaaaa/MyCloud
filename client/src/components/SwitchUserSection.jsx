@@ -79,14 +79,14 @@ export default function SwitchUserSection({ onAfterSwitch }) {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!addModal.username.trim() || !addModal.password) {
-      setAddModal((prev) => ({ ...prev, error: 'Username dan password wajib diisi.' }));
+      setAddModal((prev) => ({ ...prev, error: t('usernamePasswordRequired', 'Username dan password wajib diisi.') }));
       return;
     }
 
     if (addModal.username.trim().toLowerCase() === 'admin') {
       setAddModal((prev) => ({
         ...prev,
-        error: 'Akun admin tidak dapat ditambahkan ke daftar switch user perangkat.'
+        error: t('adminCannotAdd', 'Akun admin tidak dapat ditambahkan ke daftar switch user perangkat.')
       }));
       return;
     }
@@ -165,7 +165,7 @@ export default function SwitchUserSection({ onAfterSwitch }) {
                       </span>
                     </div>
                     <span className="text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                      {isPublic ? 'Shared Storage (50 GB)' : t('userAccount', 'Akun Pengguna')}
+                      {isPublic ? t('sharedStorage', 'Shared Storage (50 GB)') : t('userAccount', 'Akun Pengguna')}
                     </span>
                   </div>
                 </div>

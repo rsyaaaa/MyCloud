@@ -15,7 +15,6 @@ export default function Navbar({
   onOpenUpload,
   searchQuery,
   setSearchQuery,
-  onOpenQuotaModal,
   onSelectTab,
   onOpenAvatarModal,
   isSidebarHidden,
@@ -38,7 +37,7 @@ export default function Navbar({
           type="button"
           onClick={onToggleSidebar}
           className="flex items-center gap-2.5 hover:opacity-80 active:scale-95 transition-all select-none text-left cursor-pointer"
-          title={isSidebarHidden ? "Buka Menu (Sidebar)" : "Tutup Menu (Sidebar)"}
+          title={isSidebarHidden ? t('openSidebar', 'Buka Menu (Sidebar)') : t('closeSidebar', 'Tutup Menu (Sidebar)')}
         >
           <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
             <Cloud className="w-4 h-4 stroke-[2.2]" />
@@ -125,7 +124,7 @@ export default function Navbar({
                       {user?.username === 'public' ? 'Public User' : user?.username}
                     </p>
                     <span className="text-[10px] uppercase tracking-wider font-semibold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] dark:text-[#FB923C] px-2 py-0.5 rounded border border-[#C2410C]/20 inline-block mt-0.5">
-                      {user?.role === 'admin' ? 'Administrator' : user?.role === 'public' ? 'Public Shared (50 GB)' : 'User'}
+                      {user?.role === 'admin' ? t('administrator', 'Administrator') : user?.role === 'public' ? t('publicShared', 'Public Shared (50 GB)') : t('userRole', 'User')}
                     </span>
                   </div>
                 </div>
@@ -137,7 +136,7 @@ export default function Navbar({
                     onOpenAvatarModal();
                   }}
                   className="p-1.5 text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#C2410C] rounded hover:bg-[#F4F4F5] dark:hover:bg-[#141418]"
-                  title="Ganti Foto Profil"
+                  title={t('changeAvatar', 'Ganti Foto Profil')}
                 >
                   <Camera className="w-4 h-4" />
                 </button>
@@ -152,12 +151,6 @@ export default function Navbar({
                   </strong>{' '}
                   / {formatBytes(user?.storage_quota_bytes)}
                 </p>
-                <button
-                  onClick={onOpenQuotaModal}
-                  className="mt-1 text-[#C2410C] font-medium hover:underline block text-[11px]"
-                >
-                  {t('requestQuota', 'Ajukan Tambah Kuota')} →
-                </button>
               </div>
 
               {/* Avatar Menu Items */}
@@ -246,7 +239,7 @@ export default function Navbar({
                   className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center gap-2.5"
                 >
                   <Trash2 className="w-4 h-4 text-[#EF4444]" />
-                  <span>{t('trashLabel', 'Tempat Sampah (Trash)')}</span>
+                  <span>{t('trashLabel', 'Sampah')}</span>
                 </button>
               </div>
 

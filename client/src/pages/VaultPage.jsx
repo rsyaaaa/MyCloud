@@ -9,6 +9,7 @@ import SafePinModal from '../components/SafePinModal';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function VaultPage({
   onOpenViewer,
@@ -19,6 +20,7 @@ export default function VaultPage({
   onShowDetail
 }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { vaultToken, isUnlocked, remainingSeconds, lockVault } = useVault();
   const [vaultMedia, setVaultMedia] = useState([]);
   const [pinModalOpen, setPinModalOpen] = useState(false);
@@ -71,10 +73,10 @@ export default function VaultPage({
         </div>
 
         <h2 className="font-serif font-bold text-2xl text-[#0A0A0A] dark:text-[#FAFAFA] mb-2">
-          Brankas Terkunci (Safe Vault)
+          {t('vault', 'Brankas Terkunci')}
         </h2>
         <p className="text-[14px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-6 leading-relaxed">
-          Semua file foto & video di dalam brankas ini terisolasi sepenuhnya dan tidak akan muncul di Galeri Utama, Carousel Memori, maupun Video Hub.
+          {t('vaultLockedDesc', 'Semua file foto & video di dalam brankas ini terisolasi sepenuhnya dan tidak akan muncul di Galeri Utama, Carousel Memori, maupun Video Hub.')}
         </p>
 
         <button
@@ -82,7 +84,7 @@ export default function VaultPage({
           className="btn-primary text-[15px] px-6 py-3 shadow-modal mx-auto"
         >
           <KeyRound className="w-5 h-5" />
-          <span>{user?.has_pin ? 'Buka dengan PIN Brankas' : 'Atur PIN Brankas Sekarang'}</span>
+          <span>{user?.has_pin ? t('openWithPin', 'Buka dengan PIN Brankas') : t('setupPinNow', 'Atur PIN Brankas Sekarang')}</span>
         </button>
 
         <SafePinModal
@@ -105,11 +107,11 @@ export default function VaultPage({
           </div>
           <div>
             <h3 className="font-serif font-semibold text-lg text-[#065F46] dark:text-[#34D399]">
-              Brankas Aktif (Terbuka)
+              {t('vaultActive', 'Brankas Aktif (Terbuka)')}
             </h3>
             <p className="text-[12px] text-[#065F46]/90 dark:text-[#34D399]/90 flex items-center gap-1.5 mt-0.5">
               <Clock className="w-3.5 h-3.5" />
-              Sesi aktif tanpa batas selama di menu ini. Timer 180s otomatis berjalan jika keluar dari menu.
+              {t('vaultSessionNote', 'Sesi aktif tanpa batas selama di menu ini. Timer 180s otomatis berjalan jika keluar dari menu.')}
             </p>
           </div>
         </div>
@@ -120,7 +122,7 @@ export default function VaultPage({
             className="btn-destructive text-[13px] py-1.5 px-3.5 h-[36px]"
           >
             <Lock className="w-4 h-4" />
-            <span>Kunci Brankas Sekarang</span>
+            <span>{t('lockVaultNow', 'Kunci Brankas Sekarang')}</span>
           </button>
         </div>
       </div>
@@ -132,10 +134,10 @@ export default function VaultPage({
         <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
           <FolderLock className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
           <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Belum ada media di brankas
+            {t('vaultEmptyTitle', 'Belum ada media di brankas')}
           </h4>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
-            Klik menu 3-titik atau klik kanan pada foto/video mana saja di Galeri Utama, lalu pilih <strong>Kunci ke Brankas</strong>.
+            {t('vaultHowTo', 'Klik menu 3-titik atau klik kanan pada foto/video mana saja di Galeri Utama, lalu pilih')} <strong>{t('lockToVaultShort', 'Kunci ke Brankas')}</strong>.
           </p>
         </div>
       ) : (

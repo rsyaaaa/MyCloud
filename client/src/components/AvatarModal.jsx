@@ -2,9 +2,11 @@ import React, { useState, useRef } from 'react';
 import { X, Upload, Trash2, Camera, User, Check, RefreshCw } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AvatarModal({ isOpen, onClose, onUpdated }) {
   const { user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const fileInputRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -21,12 +23,12 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('File harus berupa gambar (JPG, PNG, WebP).');
+      setError(t('fileMustBeImage', 'File harus berupa gambar (JPG, PNG, WebP).'));
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('Ukuran gambar maksimal 10 MB.');
+      setError(t('imageMaxSize', 'Ukuran gambar maksimal 10 MB.'));
       return;
     }
 
@@ -47,20 +49,20 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
 
       await api.uploadAvatar(formData);
       await refreshUser();
-      setSuccess('Foto profil berhasil diperbarui!');
+      setSuccess(t('avatarUpdated', 'Foto profil berhasil diperbarui!'));
       setTimeout(() => {
         if (onUpdated) onUpdated();
         onClose();
       }, 1000);
     } catch (err) {
-      setError(err.message || 'Gagal mengunggah avatar.');
+      setError(err.message || t('avatarUploadFailed', 'Gagal mengunggah avatar.'));
     } finally {
       setUploading(false);
     }
   };
 
   const handleResetToDefault = async () => {
-    if (!window.confirm('Kembalikan foto profil ke default?')) return;
+    if (!window.confirm(t('resetAvatarConfirm', 'Kembalikan foto profil ke default?'))) return;
 
     setUploading(true);
     setError(null);
@@ -69,13 +71,13 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
       await refreshUser();
       setPreviewUrl(null);
       setSelectedFile(null);
-      setSuccess('Foto profil dikembalikan ke default.');
+      setSuccess(t('avatarResetDone', 'Foto profil dikembalikan ke default.'));
       setTimeout(() => {
         if (onUpdated) onUpdated();
         onClose();
       }, 1000);
     } catch (err) {
-      setError(err.message || 'Gagal mereset avatar.');
+      setError(err.message || t('avatarResetFailed', 'Gagal mereset avatar.'));
     } finally {
       setUploading(false);
     }
@@ -90,7 +92,7 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
         <div className="flex items-center justify-between pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27] mb-4">
           <div className="flex items-center gap-2">
             <Camera className="w-5 h-5 text-[#C2410C]" />
-            <h3 className="font-serif font-bold text-lg">Ganti Foto Profil</h3>
+            <h3 className="font-serif font-bold text-lg">{t('changeAvatar', 'Ganti Foto Profil')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -123,13 +125,13 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
             />
             <div className="absolute inset-0 rounded-full bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera className="w-6 h-6 mb-1" />
-              <span className="text-[10px] font-semibold">Pilih Foto</span>
+              <span className="text-[10px] font-semibold">{t('choosePhoto', 'Pilih Foto')}</span>
             </div>
           </div>
 
           <p className="mt-3 font-semibold text-base">{user?.username}</p>
           <span className="text-[11px] uppercase font-bold tracking-wider text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-2 py-0.5 rounded border border-[#C2410C]/20 mt-1">
-            {user?.role === 'admin' ? 'Administrator' : 'Regular User'}
+            {user?.role === 'admin' ? t('administrator', 'Administrator') : t('regularUser', 'Regular User')}
           </span>
         </div>
 
@@ -148,7 +150,7 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
             className="w-full btn-secondary h-10 text-[13px] justify-center"
           >
             <Upload className="w-4 h-4" />
-            <span>{selectedFile ? 'Pilih Gambar Lain' : 'Unggah Foto Baru'}</span>
+            <span>{selectedFile ? t('chooseOtherImage', 'Pilih Gambar Lain') : t('uploadNewPhoto', 'Unggah Foto Baru')}</span>
           </button>
 
           {selectedFile && (
@@ -158,7 +160,7 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
               className="w-full btn-primary h-10 text-[13px] justify-center"
             >
               <Check className="w-4 h-4" />
-              <span>{uploading ? 'Menyimpan...' : 'Simpan Foto Profil'}</span>
+              <span>{uploading ? t('savingText', 'Menyimpan...') : t('saveProfilePhoto', 'Simpan Foto Profil')}</span>
             </button>
           )}
 
@@ -169,7 +171,7 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
               className="w-full btn-ghost h-9 text-[12px] text-[#DC2626] justify-center hover:bg-[#FEF2F2] dark:hover:bg-[#2A0808]"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Kembalikan ke Avatar Default</span>
+              <span>{t('resetDefaultAvatar', 'Kembalikan ke Avatar Default')}</span>
             </button>
           )}
         </div>

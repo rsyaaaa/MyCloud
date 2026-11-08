@@ -3,10 +3,12 @@ import { X, ShieldCheck, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import { api } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function SafePinModal({ isOpen, onClose, onSuccess }) {
   const { user, refreshUser } = useAuth();
   const { unlockVault } = useVault();
+  const { t } = useLanguage();
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +23,7 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
     setError('');
 
     if (pin.length < 4) {
-      setError('PIN minimal 4 digit.');
+      setError(t('pinMin', 'PIN minimal 4 digit.'));
       return;
     }
 
@@ -29,7 +31,7 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
     try {
       if (isSettingUp) {
         if (pin !== confirmPin) {
-          setError('Konfirmasi PIN tidak cocok.');
+          setError(t('pinMismatch', 'Konfirmasi PIN tidak cocok.'));
           setLoading(false);
           return;
         }
@@ -43,7 +45,7 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || 'PIN salah atau gagal memverifikasi.');
+      setError(err.message || t('pinWrong', 'PIN salah atau gagal memverifikasi.'));
     } finally {
       setLoading(false);
     }
@@ -66,12 +68,12 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         <h3 className="text-xl font-serif font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] mb-1">
-          {isSettingUp ? 'Atur PIN Brankas' : 'Buka Kunci Brankas'}
+          {isSettingUp ? t('setupVaultPin', 'Atur PIN Brankas') : t('unlockVaultTitle', 'Buka Kunci Brankas')}
         </h3>
         <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-5">
           {isSettingUp
-            ? 'Buat PIN sekunder untuk mengunci foto & video rahasia.'
-            : 'Masukkan PIN master Anda untuk mengakses media di dalam brankas.'}
+            ? t('setupPinDesc', 'Buat PIN sekunder untuk mengunci foto & video rahasia.')
+            : t('unlockPinDesc', 'Masukkan PIN master Anda untuk mengakses media di dalam brankas.')}
         </p>
 
         {error && (
@@ -83,7 +85,7 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>
             <label className="block text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] mb-1">
-              {isSettingUp ? 'Buat PIN Baru (Min 4 Digit)' : 'Masukkan PIN Brankas'}
+              {isSettingUp ? t('newPinLabel', 'Buat PIN Baru (Min 4 Digit)') : t('enterVaultPin', 'Masukkan PIN Brankas')}
             </label>
             <div className="relative">
               <input
@@ -102,7 +104,7 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
           {isSettingUp && (
             <div>
               <label className="block text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] mb-1">
-                Ulangi PIN Konfirmasi
+                {t('repeatPinConfirm', 'Ulangi PIN Konfirmasi')}
               </label>
               <input
                 type="password"
@@ -123,13 +125,13 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
               className="w-full btn-primary text-[15px] h-[42px] justify-center"
             >
               <KeyRound className="w-4 h-4" />
-              <span>{loading ? 'Memproses...' : (isSettingUp ? 'Simpan PIN & Buka' : 'Buka Brankas')}</span>
+              <span>{loading ? t('processing', 'Memproses...') : (isSettingUp ? t('savePinOpen', 'Simpan PIN & Buka') : t('openVault', 'Buka Brankas'))}</span>
             </button>
           </div>
         </form>
 
         <p className="text-[11px] text-[#A8A29E] mt-4">
-          Otomatis terkunci setelah 3 menit tidak aktif atau saat berpindah aplikasi.
+          {t('autoLockNote', 'Otomatis terkunci setelah 3 menit tidak aktif atau saat berpindah aplikasi.')}
         </p>
       </div>
     </div>

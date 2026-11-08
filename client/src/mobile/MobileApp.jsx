@@ -12,6 +12,7 @@ import MobileHomeView from './MobileHomeView';
 import MobileGalleryView from './MobileGalleryView';
 import MobileVideoHubView from './MobileVideoHubView';
 import MobileAllFilesView from './MobileAllFilesView';
+import MobileDocumentsView from './MobileDocumentsView';
 import MobileAlbumsView from './MobileAlbumsView';
 import MobileVaultView from './MobileVaultView';
 import MobileAdminView from './MobileAdminView';
@@ -31,7 +32,7 @@ import { recordRecentItem } from '../utils/recentHistory';
 
 export default function MobileApp({
   onOpenUpload,
-  onOpenQuotaModal,
+  onOpenText,
   onOpenViewer,
   onToggleFavorite,
   onLockMedia,
@@ -46,6 +47,7 @@ export default function MobileApp({
   const { lang, setLang, t } = useLanguage();
 
   const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
+  const [activeFolder, setActiveFolder] = useState(null);
   const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,6 +109,11 @@ export default function MobileApp({
     setCurrentTabState(newTab);
     notifyTabChange(newTab);
   };
+
+  // Browser tab title follows the active menu.
+  useEffect(() => {
+    document.title = 'MyCloud';
+  }, []);
 
   const handleNavigate = (tab, subView = 'all', folderId = null) => {
     if (subView) setGallerySubView(subView);
@@ -185,6 +192,7 @@ export default function MobileApp({
           <MobileHomeView
             onNavigate={handleNavigate}
             onOpenViewer={handleMobileOpenViewer}
+            onOpenText={onOpenText}
           />
         )}
 
@@ -205,6 +213,7 @@ export default function MobileApp({
         {currentTab === 'search' && (
           <MobileSearchView
             onOpenViewer={handleMobileOpenViewer}
+            onOpenText={onOpenText}
             onToggleFavorite={onToggleFavorite}
             onLock={onLockMedia}
             onOrganize={onOrganizeMedia}
@@ -217,6 +226,21 @@ export default function MobileApp({
         {currentTab === 'allfiles' && (
           <MobileAllFilesView
             onOpenViewer={handleMobileOpenViewer}
+            onOpenText={onOpenText}
+            onToggleFavorite={onToggleFavorite}
+            onLock={onLockMedia}
+            onOrganize={onOrganizeMedia}
+            onDelete={onDeleteMedia}
+            onRename={onRenameMedia}
+            onLongPress={(media) => setContextMenuMedia(media)}
+            onOpenUpload={() => onOpenUpload(activeFolder)}
+            onFolderChange={setActiveFolder}
+          />
+        )}
+
+        {currentTab === 'documents' && (
+          <MobileDocumentsView
+            onOpenText={onOpenText}
             onToggleFavorite={onToggleFavorite}
             onLock={onLockMedia}
             onOrganize={onOrganizeMedia}
@@ -241,6 +265,7 @@ export default function MobileApp({
         {currentTab === 'albums' && (
           <MobileAlbumsView
             onOpenViewer={handleMobileOpenViewer}
+            onOpenText={onOpenText}
             onToggleFavorite={onToggleFavorite}
             onLock={onLockMedia}
             onOrganize={onOrganizeMedia}
@@ -280,15 +305,15 @@ export default function MobileApp({
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal and Trash) */}
-      {currentTab !== 'terminal' && currentTab !== 'trash' && (
+      {/* Floating Action Button (FAB) - Upload (Hidden on Terminal, Trash, and Admin Dashboard) */}
+      {currentTab !== 'terminal' && currentTab !== 'trash' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
         <button
-          onClick={onOpenUpload}
+          onClick={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
           className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
-          title={t('upload', 'Upload Media')}
+          title={activeFolder && currentTab === 'allfiles' ? `Upload ke folder ${activeFolder.name}` : t('upload', 'Upload Media')}
         >
           <Upload className="w-4 h-4 stroke-[2.3]" />
-          <span>{t('upload', 'Upload')}</span>
+          <span>{activeFolder && currentTab === 'allfiles' ? activeFolder.name : t('upload', 'Upload')}</span>
         </button>
       )}
 
@@ -385,10 +410,6 @@ export default function MobileApp({
                 usedBytes={user?.role === 'admin' ? (adminDiskStats?.used ?? user?.used_storage_bytes ?? 0) : (user?.used_storage_bytes || 0)}
                 quotaBytes={user?.role === 'admin' ? (adminDiskStats?.total ?? 500 * 1024 * 1024 * 1024) : (user?.storage_quota_bytes || 1)}
                 title={user?.role === 'admin' ? 'Total Storage Server' : undefined}
-                onRequestIncrease={user?.role === 'admin' ? undefined : () => {
-                  setProfileDrawerOpen(false);
-                  onOpenQuotaModal();
-                }}
               />
             </div>
 

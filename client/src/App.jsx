@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from './context/AuthContext';
+import { useLanguage } from './context/LanguageContext';
 import { useVault } from './context/VaultContext';
 import { useIsMobile } from './hooks/useIsMobile';
 import DesktopApp from './desktop/DesktopApp';
 import MobileApp from './mobile/MobileApp';
 import Toast from './components/Toast';
 import UploadModal from './components/UploadModal';
-import RequestQuotaModal from './components/RequestQuotaModal';
 import MediaViewerModal from './components/MediaViewerModal';
+import TextEditorModal from './components/TextEditorModal';
 import OrganizeModal from './components/OrganizeModal';
 import LoginPage from './pages/LoginPage';
 import { api } from './api';
@@ -15,15 +16,17 @@ import { triggerMediaEvent } from './utils/mediaEvents';
 
 export default function App() {
   const { user, loading, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const isMobile = useIsMobile(768);
 
   const [toasts, setToasts] = useState([]);
 
   // Modals
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [quotaModalOpen, setQuotaModalOpen] = useState(false);
+  const [uploadTargetFolder, setUploadTargetFolder] = useState(null);
   const [organizeModalOpen, setOrganizeModalOpen] = useState(false);
   const [organizingMedia, setOrganizingMedia] = useState(null);
+  const [textEditorMedia, setTextEditorMedia] = useState(null);
 
   // Viewer Modal
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -53,14 +56,14 @@ export default function App() {
     triggerMediaEvent({ type: 'favorite', id, is_favorite: isFavorite ? 1 : 0 });
     try {
       await api.updateMedia(id, { is_favorite: isFavorite });
-      addToast(isFavorite ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit', 'success');
+      addToast(isFavorite ? t('addedFavorite', 'Ditambahkan ke Favorit') : t('removedFavorite', 'Dihapus dari Favorit'), 'success');
       setViewerMediaList((prev) =>
         prev.map((m) => (m.id === id ? { ...m, is_favorite: isFavorite ? 1 : 0 } : m))
       );
     } catch (e) {
       // Rollback on network failure
       triggerMediaEvent({ type: 'favorite', id, is_favorite: isFavorite ? 0 : 1 });
-      addToast(e.message || 'Gagal mengubah status favorit.', 'error');
+      addToast(e.message || t('favoriteFailed', 'Gagal mengubah status favorit.'), 'error');
     }
   };
 
@@ -69,12 +72,12 @@ export default function App() {
     triggerMediaEvent({ type: 'lock', id });
     try {
       await api.lockMedia(id);
-      addToast('Foto/video berhasil dipindahkan ke Brankas Rahasia.', 'success');
+      addToast(t('movedToVault', 'Foto/video berhasil dipindahkan ke Brankas Rahasia.'), 'success');
       setViewerOpen(false);
       refreshUser();
     } catch (e) {
       triggerMediaEvent({ type: 'unlock', id });
-      addToast(e.message || 'Gagal mengunci media.', 'error');
+      addToast(e.message || t('lockFailed', 'Gagal mengunci media.'), 'error');
     }
   };
 
@@ -82,18 +85,18 @@ export default function App() {
     try {
       await api.unlockMedia(id, vaultToken);
       triggerMediaEvent({ type: 'unlock', id });
-      addToast('File berhasil dipindahkan kembali ke Galeri Utama.', 'success');
+      addToast(t('movedToGallery', 'File berhasil dipindahkan kembali ke Galeri Utama.'), 'success');
       setViewerOpen(false);
       refreshUser();
     } catch (e) {
-      addToast(e.message || 'Gagal membuka kunci media.', 'error');
+      addToast(e.message || t('unlockFailed', 'Gagal membuka kunci media.'), 'error');
     }
   };
 
   const handleRenameMedia = async (idOrMedia, newName) => {
     const id = typeof idOrMedia === 'object' ? idOrMedia.id : idOrMedia;
     const name = typeof idOrMedia === 'object'
-      ? prompt('Masukkan nama tampilan baru:', idOrMedia.display_name)
+      ? prompt(t('renamePrompt', 'Masukkan nama tampilan baru:'), idOrMedia.display_name)
       : newName;
 
     if (!name || !name.trim()) return;
@@ -102,29 +105,29 @@ export default function App() {
     triggerMediaEvent({ type: 'rename', id, name: name.trim() });
     try {
       await api.updateMedia(id, { display_name: name.trim() });
-      addToast('Nama file berhasil diperbarui.', 'success');
+      addToast(t('renamed', 'Nama file berhasil diperbarui.'), 'success');
       setViewerMediaList((prev) =>
         prev.map((m) => (m.id === id ? { ...m, display_name: name.trim() } : m))
       );
     } catch (e) {
       triggerMediaEvent({ type: 'rename_rollback', id });
-      addToast(e.message || 'Gagal mengubah nama file.', 'error');
+      addToast(e.message || t('renameFailed', 'Gagal mengubah nama file.'), 'error');
     }
   };
 
   const handleDeleteMedia = async (id, vaultToken) => {
-    if (!window.confirm('Pindahkan file ini ke Tempat Sampah (akan dihapus permanen dalam 31 hari)?')) return;
+    if (!window.confirm(t('deleteConfirm', 'Pindahkan file ini ke Tempat Sampah (akan dihapus permanen dalam 31 hari)?'))) return;
 
     // 1. Optimistically remove item from UI immediately
     triggerMediaEvent({ type: 'delete', id });
     try {
       await api.deleteMedia(id, vaultToken);
-      addToast('File dipindahkan ke Tempat Sampah.', 'success');
+      addToast(t('movedToTrash', 'File dipindahkan ke Tempat Sampah.'), 'success');
       setViewerOpen(false);
       refreshUser();
     } catch (e) {
       triggerMediaEvent({ type: 'restore', id });
-      addToast(e.message || 'Gagal menghapus file.', 'error');
+      addToast(e.message || t('deleteFailed', 'Gagal menghapus file.'), 'error');
     }
   };
 
@@ -140,7 +143,7 @@ export default function App() {
           MC
         </div>
         <p className="font-display font-bold text-xl text-[#C2410C] tracking-tight">
-          Memuat MyCloud...
+          {t('appLoading', 'Memuat MyCloud...')}
         </p>
       </div>
     );
@@ -150,9 +153,14 @@ export default function App() {
     return <LoginPage />;
   }
 
+  const handleOpenUpload = (targetFolder = null) => {
+    setUploadTargetFolder(targetFolder);
+    setUploadModalOpen(true);
+  };
+
   const commonProps = {
-    onOpenUpload: () => setUploadModalOpen(true),
-    onOpenQuotaModal: () => setQuotaModalOpen(true),
+    onOpenUpload: handleOpenUpload,
+    onOpenText: (media) => setTextEditorMedia(media),
     onOpenViewer: handleOpenViewer,
     onToggleFavorite: handleToggleFavorite,
     onLockMedia: handleLockMedia,
@@ -177,23 +185,27 @@ export default function App() {
       {/* Shared Modals */}
       <UploadModal
         isOpen={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        user={user}
-        onUploadSuccess={() => {
-          refreshUser();
-          triggerMediaEvent({ type: 'upload' });
-          addToast('File berhasil diupload ke cloud!', 'success');
+        onClose={() => {
+          setUploadModalOpen(false);
+          setUploadTargetFolder(null);
         }}
-        onRequestQuota={() => setQuotaModalOpen(true)}
+        user={user}
+        targetFolder={uploadTargetFolder}
+        onUploadSuccess={(folderId) => {
+          refreshUser();
+          triggerMediaEvent({ type: 'upload', category_id: folderId });
+          addToast(t('uploadSuccessToast', 'File berhasil diupload ke cloud!'), 'success');
+        }}
       />
 
-      <RequestQuotaModal
-        isOpen={quotaModalOpen}
-        onClose={() => setQuotaModalOpen(false)}
-        user={user}
-        onRequested={() => {
+      <TextEditorModal
+        isOpen={Boolean(textEditorMedia)}
+        media={textEditorMedia}
+        onClose={() => setTextEditorMedia(null)}
+        onSaved={() => {
           refreshUser();
-          addToast('Permohonan penambahan kuota berhasil dikirim.', 'success');
+          triggerMediaEvent({ type: 'upload' });
+          addToast(t('textSaved', 'File teks berhasil disimpan.'), 'success');
         }}
       />
 
@@ -203,7 +215,7 @@ export default function App() {
         media={organizingMedia}
         onUpdated={() => {
           triggerMediaEvent({ type: 'organize' });
-          addToast('Album media berhasil diperbarui.', 'success');
+          addToast(t('albumUpdated', 'Album media berhasil diperbarui.'), 'success');
         }}
       />
 

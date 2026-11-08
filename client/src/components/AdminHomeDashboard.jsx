@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
+import { useLanguage } from '../context/LanguageContext';
 
 function formatSpeed(bytesPerSec) {
   if (!bytesPerSec || bytesPerSec <= 0) return '0 B/s';
@@ -15,20 +16,21 @@ function formatSpeed(bytesPerSec) {
   return parseFloat((bytesPerSec / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function formatUptime(seconds) {
-  if (!seconds || seconds <= 0) return '0 mnt';
+function formatUptime(seconds, lang = 'id') {
+  if (!seconds || seconds <= 0) return `0 ${lang === 'en' ? 'm' : 'mnt'}`;
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
 
   const parts = [];
-  if (days > 0) parts.push(`${days}h`);
-  if (hours > 0) parts.push(`${hours}j`);
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(lang === 'en' ? `${hours}h` : `${hours}j`);
   parts.push(`${mins}m`);
   return parts.join(' ');
 }
 
 export default function AdminHomeDashboard() {
+  const { t, lang } = useLanguage();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -94,7 +96,7 @@ export default function AdminHomeDashboard() {
       await api.actionAdminQuotaRequest(id, action);
       await loadAllData();
     } catch (e) {
-      alert(e.message || 'Gagal memproses permohonan.');
+      alert(e.message || t('processRequestFailed', 'Gagal memproses permohonan.'));
     } finally {
       setActionLoading(false);
     }
@@ -103,7 +105,7 @@ export default function AdminHomeDashboard() {
   const handleUpdateQuota = async (userId) => {
     const gb = parseFloat(newQuotaGb);
     if (isNaN(gb) || gb <= 0) {
-      alert('Masukkan angka kuota GB yang valid.');
+      alert(t('invalidQuotaGb', 'Masukkan angka kuota GB yang valid.'));
       return;
     }
 
@@ -113,7 +115,7 @@ export default function AdminHomeDashboard() {
       setNewQuotaGb('');
       await loadAllData();
     } catch (e) {
-      alert(e.message || 'Gagal memperbarui kuota.');
+      alert(e.message || t('quotaUpdateFailed', 'Gagal memperbarui kuota.'));
     }
   };
 
@@ -142,7 +144,7 @@ export default function AdminHomeDashboard() {
                 Server Monitoring & Admin Hub
               </h2>
               <p className="text-[12px] sm:text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                Monitoring beban real-time, kapasitas total HDD host, dan pengelolaan kuota pengguna.
+                {t('adminDashSubtitle', 'Monitoring beban real-time, kapasitas total HDD host, dan pengelolaan kuota pengguna.')}
               </p>
             </div>
           </div>
@@ -158,7 +160,7 @@ export default function AdminHomeDashboard() {
             </span>
             <span>SERVER ONLINE</span>
             <span className="text-[11px] font-mono text-[#059669]/80 dark:text-[#34D399]/80">
-              • {formatUptime(system.uptime_seconds)}
+              • {formatUptime(system.uptime_seconds, lang)}
             </span>
           </div>
 
@@ -170,10 +172,10 @@ export default function AdminHomeDashboard() {
                 ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] border-[#C2410C]/30 shadow-sm'
                 : 'bg-white dark:bg-[#0A0A0E] text-[#6B6B6B] dark:text-[#9C9C9C] border-[#E8E8EC] dark:border-[#1F1F27]'
             }`}
-            title={isLivePolling ? 'Jeda monitoring real-time' : 'Aktifkan monitoring real-time'}
+            title={isLivePolling ? t('pauseMonitoring', 'Jeda monitoring real-time') : t('enableMonitoring', 'Aktifkan monitoring real-time')}
           >
             {isLivePolling ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{isLivePolling ? 'Live 2s' : 'Paused'}</span>
+            <span className="hidden sm:inline">{isLivePolling ? 'Live 2s' : t('pausedLabel', 'Paused')}</span>
           </button>
 
           {/* Manual Refresh */}
@@ -181,7 +183,7 @@ export default function AdminHomeDashboard() {
             onClick={loadAllData}
             disabled={loading}
             className="p-2 rounded-[8px] border border-[#E8E8EC] dark:border-[#1F1F27] bg-white dark:bg-[#0A0A0E] text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white transition-colors"
-            title="Muat ulang seluruh data"
+            title={t('refreshData', 'Muat ulang seluruh data')}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -329,7 +331,7 @@ export default function AdminHomeDashboard() {
 
           <div className="pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27] text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono flex items-center justify-between">
             <span>Load: {system.load_avg?.map(n => n.toFixed(2)).join(' ')}</span>
-            <span>Host OK</span>
+            <span>{t('hostOk', 'Host OK')}</span>
           </div>
         </div>
 
@@ -366,7 +368,7 @@ export default function AdminHomeDashboard() {
 
           <div className="pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27] text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono flex items-center justify-between">
             <span>{formatBytes(system.memory?.used || 0)} / {formatBytes(system.memory?.total || 1)}</span>
-            <span>{formatBytes(system.memory?.free || 0)} Free</span>
+            <span>{formatBytes(system.memory?.free || 0)} {t('freeLabel', 'Bebas')}</span>
           </div>
         </div>
       </div>
@@ -380,17 +382,17 @@ export default function AdminHomeDashboard() {
             </div>
             <div>
               <h3 className="font-serif font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
-                Total Kapasitas Penyimpanan HDD Server Host
+                {t('storageTotalTitle', 'Total Kapasitas Penyimpanan HDD Server Host')}
               </h3>
               <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
-                Volume penyimpanan fisik 500 GB untuk direktori data MyCloud
+                {t('storageVolumeNote', 'Volume penyimpanan fisik 500 GB untuk direktori data MyCloud')}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-[13px] font-mono font-bold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] px-3 py-1 rounded-[6px] border border-[#C2410C]/25">
-              {diskPercent}% Terpakai
+              {diskPercent}{t('percentUsed', '% Terpakai')}
             </span>
           </div>
         </div>
@@ -409,7 +411,7 @@ export default function AdminHomeDashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <div className="p-3 bg-[#FAFAFA] dark:bg-[#121218] rounded-[10px] border border-[#E8E8EC] dark:border-[#1F1F27]">
             <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] block uppercase font-mono font-semibold">
-              Total Fisik HDD
+              {t('totalPhysicalHdd', 'Total Fisik HDD')}
             </span>
             <strong className="text-[16px] sm:text-lg font-mono text-[#0A0A0A] dark:text-[#FAFAFA] block mt-0.5">
               {formatBytes(diskTotal)}
@@ -418,7 +420,7 @@ export default function AdminHomeDashboard() {
 
           <div className="p-3 bg-[#FAFAFA] dark:bg-[#121218] rounded-[10px] border border-[#E8E8EC] dark:border-[#1F1F27]">
             <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] block uppercase font-mono font-semibold">
-              Terpakai (OS + App)
+              {t('usedOsApp', 'Terpakai (OS + App)')}
             </span>
             <strong className="text-[16px] sm:text-lg font-mono text-[#C2410C] block mt-0.5">
               {formatBytes(diskUsed)}
@@ -427,7 +429,7 @@ export default function AdminHomeDashboard() {
 
           <div className="p-3 bg-[#FAFAFA] dark:bg-[#121218] rounded-[10px] border border-[#E8E8EC] dark:border-[#1F1F27]">
             <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] block uppercase font-mono font-semibold">
-              Sisa Ruang Bebas
+              {t('freeSpace', 'Sisa Ruang Bebas')}
             </span>
             <strong className="text-[16px] sm:text-lg font-mono text-[#10B981] block mt-0.5">
               {formatBytes(diskFree)}
@@ -436,13 +438,13 @@ export default function AdminHomeDashboard() {
 
           <div className="p-3 bg-[#FAFAFA] dark:bg-[#121218] rounded-[10px] border border-[#E8E8EC] dark:border-[#1F1F27]">
             <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] block uppercase font-mono font-semibold">
-              Total Data Media
+              {t('totalMediaData', 'Total Data Media')}
             </span>
             <strong className="text-[16px] sm:text-lg font-mono text-[#0A0A0A] dark:text-[#FAFAFA] block mt-0.5">
               {formatBytes(stats?.total_media_bytes || 0)}
             </strong>
             <span className="text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] block">
-              {stats?.media_count || 0} berkas tersimpan
+              {stats?.media_count || 0} {t('filesStoredCount', 'berkas tersimpan')}
             </span>
           </div>
         </div>
@@ -454,7 +456,7 @@ export default function AdminHomeDashboard() {
           <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
             <Clock className="w-5 h-5 text-[#F59E0B]" />
             <h3 className="font-serif font-bold text-base sm:text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-              Permohonan Tambah Kuota Menunggu Persetujuan ({requests.length})
+              {t('quotaRequestsPendingTitle', 'Permohonan Tambah Kuota Menunggu Persetujuan')} ({requests.length})
             </h3>
           </div>
 
@@ -462,10 +464,10 @@ export default function AdminHomeDashboard() {
             <table className="w-full text-left text-[13px]">
               <thead>
                 <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                  <th className="py-2.5 px-3">Pengguna</th>
-                  <th className="py-2.5 px-3">Permintaan</th>
-                  <th className="py-2.5 px-3">Alasan</th>
-                  <th className="py-2.5 px-3 text-right">Aksi</th>
+                  <th className="py-2.5 px-3">{t('userColumn', 'Pengguna')}</th>
+                  <th className="py-2.5 px-3">{t('requestColumn', 'Permintaan')}</th>
+                  <th className="py-2.5 px-3">{t('reasonColumn', 'Alasan')}</th>
+                  <th className="py-2.5 px-3 text-right">{t('actionColumn', 'Aksi')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27]">
@@ -474,7 +476,7 @@ export default function AdminHomeDashboard() {
                     <td className="py-3 px-3 font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
                       {r.username}
                       <span className="block text-[11px] font-normal text-[#6B6B6B] dark:text-[#9C9C9C] font-mono">
-                        Saat ini: {formatBytes(r.used_storage_bytes)} / {formatBytes(r.storage_quota_bytes)}
+                        {t('currently', 'Saat ini')}: {formatBytes(r.used_storage_bytes)} / {formatBytes(r.storage_quota_bytes)}
                       </span>
                     </td>
                     <td className="py-3 px-3 font-mono font-bold text-[#C2410C]">
@@ -491,18 +493,18 @@ export default function AdminHomeDashboard() {
                             disabled={actionLoading}
                             className="btn-primary text-[12px] py-1 px-3 h-7"
                           >
-                            Setujui
+                            {t('approve', 'Setujui')}
                           </button>
                           <button
                             onClick={() => handleActionRequest(r.id, 'rejected')}
                             disabled={actionLoading}
                             className="btn-destructive text-[12px] py-1 px-3 h-7"
                           >
-                            Tolak
+                            {t('reject', 'Tolak')}
                           </button>
                         </div>
                       ) : (
-                        <span className="text-[12px] text-[#9C9C9C] italic">Diproses</span>
+                        <span className="text-[12px] text-[#9C9C9C] italic">{t('processedLabel', 'Diproses')}</span>
                       )}
                     </td>
                   </tr>
@@ -522,10 +524,10 @@ export default function AdminHomeDashboard() {
             </div>
             <div>
               <h3 className="font-serif font-bold text-base sm:text-lg text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
-                Daftar Pengguna & Kapasitas Disk ({users.length} User Terdaftar)
+                {t('usersListTitle', 'Daftar Pengguna & Kapasitas Disk')} ({users.length} {t('usersRegistered', 'User Terdaftar')})
               </h3>
               <p className="text-[11px] sm:text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                Admin memantau kuota dan penggunaan penyimpanan. Privasi file pengguna sepenuhnya terlindungi.
+                {t('privacyNote', 'Admin memantau kuota dan penggunaan penyimpanan. Privasi file pengguna sepenuhnya terlindungi.')}
               </p>
             </div>
           </div>
@@ -535,12 +537,12 @@ export default function AdminHomeDashboard() {
           <table className="w-full text-left text-[13px]">
             <thead>
               <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                <th className="py-2.5 px-3">Pengguna</th>
-                <th className="py-2.5 px-3">Tipe Akses</th>
-                <th className="py-2.5 px-3">Terdaftar</th>
-                <th className="py-2.5 px-3">Total File</th>
-                <th className="py-2.5 px-3 min-w-[200px]">Kapasitas Disk Terpakai / Kuota</th>
-                <th className="py-2.5 px-3 text-right">Atur Kuota</th>
+                <th className="py-2.5 px-3">{t('userColumn', 'Pengguna')}</th>
+                <th className="py-2.5 px-3">{t('accessType', 'Tipe Akses')}</th>
+                <th className="py-2.5 px-3">{t('registered', 'Terdaftar')}</th>
+                <th className="py-2.5 px-3">{t('totalFiles', 'Total File')}</th>
+                <th className="py-2.5 px-3 min-w-[200px]">{t('diskUsedQuota', 'Kapasitas Disk Terpakai / Kuota')}</th>
+                <th className="py-2.5 px-3 text-right">{t('setQuota', 'Atur Kuota')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27]">
@@ -589,7 +591,7 @@ export default function AdminHomeDashboard() {
 
                     {/* Total Files */}
                     <td className="py-3 px-3 font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">
-                      {u.total_files || 0} berkas
+                      {u.total_files || 0} {t('filesUnit', 'berkas')}
                     </td>
 
                     {/* Disk Usage & Quota Bar */}
@@ -629,14 +631,14 @@ export default function AdminHomeDashboard() {
                           <button
                             onClick={() => handleUpdateQuota(u.id)}
                             className="btn-primary text-[11px] h-7 px-2"
-                            title="Simpan Kuota Baru"
+                            title={t('saveNewQuota', 'Simpan Kuota Baru')}
                           >
                             <Check className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setEditingUserId(null)}
                             className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white px-1"
-                            title="Batal"
+                            title={t('cancel', 'Batal')}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -650,7 +652,7 @@ export default function AdminHomeDashboard() {
                           className="btn-ghost text-[12px] py-1 px-2.5 h-7 inline-flex items-center gap-1.5"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span>Ubah Kuota</span>
+                          <span>{t('changeQuota', 'Ubah Kuota')}</span>
                         </button>
                       )}
                     </td>

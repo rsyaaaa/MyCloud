@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Folder, FolderPlus, FileText, Image, Video, HardDrive, Search, LayoutGrid, List,
-  Download, Trash2, ChevronRight, ArrowLeft, X
+  Download, Trash2, Edit2, ChevronRight, ArrowLeft, X, Upload
 } from 'lucide-react';
 import MobileMediaCard from './MobileMediaCard';
 import MobileMediaListItem from './MobileMediaListItem';
@@ -11,6 +11,7 @@ import { formatBytes } from '../components/QuotaBar';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
 import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
 
 export default function MobileAllFilesView({
   onOpenViewer,
@@ -19,12 +20,19 @@ export default function MobileAllFilesView({
   onOrganize,
   onDelete,
   onRename,
-  onLongPress
+  onLongPress,
+  onOpenText,
+  onOpenUpload,
+  onFolderChange
 }) {
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [currentFolder, setCurrentFolder] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (onFolderChange) onFolderChange(currentFolder);
+  }, [currentFolder]);
 
   // Persistence (Requirement 3)
   const [filterType, setFilterType] = useState(() => localStorage.getItem('mycloud_pref_allfiles_filter') || 'all');
@@ -38,6 +46,57 @@ export default function MobileAllFilesView({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [submittingFolder, setSubmittingFolder] = useState(false);
+
+  // Rename folder modal
+  const [folderToRename, setFolderToRename] = useState(null);
+  const [renameFolderName, setRenameFolderName] = useState('');
+  const [renamingFolder, setRenamingFolder] = useState(false);
+
+  // Folder long-press action sheet
+  const [folderMenu, setFolderMenu] = useState(null);
+  const folderPressTimer = useRef(null);
+  const folderPressOrigin = useRef({ x: 0, y: 0 });
+  const folderLongPressTriggered = useRef(false);
+
+  const clearFolderPress = () => {
+    if (folderPressTimer.current) {
+      clearTimeout(folderPressTimer.current);
+      folderPressTimer.current = null;
+    }
+  };
+
+  const startFolderPress = (folder, e) => {
+    clearFolderPress();
+    folderLongPressTriggered.current = false;
+    const point = e.touches?.[0] || e;
+    folderPressOrigin.current = { x: point.clientX || 0, y: point.clientY || 0 };
+    folderPressTimer.current = setTimeout(() => {
+      folderLongPressTriggered.current = true;
+      if (navigator.vibrate) navigator.vibrate(35);
+      setFolderMenu(folder);
+    }, 500);
+  };
+
+  const moveFolderPress = (e) => {
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    const diffX = Math.abs(touch.clientX - folderPressOrigin.current.x);
+    const diffY = Math.abs(touch.clientY - folderPressOrigin.current.y);
+    if (diffX > 10 || diffY > 10) clearFolderPress();
+  };
+
+  const handleFolderClick = (folder) => {
+    if (folderLongPressTriggered.current) {
+      folderLongPressTriggered.current = false;
+      return;
+    }
+    setCurrentFolder(folder);
+  };
+
+  const closeFolderMenu = () => {
+    setFolderMenu(null);
+    folderLongPressTriggered.current = false;
+  };
 
   const changeViewMode = (mode) => {
     setViewMode(mode);
@@ -143,10 +202,42 @@ export default function MobileAllFilesView({
     }
   };
 
+  const openRenameFolder = (folder) => {
+    setFolderToRename(folder);
+    setRenameFolderName(folder?.name || '');
+  };
+
+  const handleRenameFolder = async (e) => {
+    e.preventDefault();
+    if (!folderToRename || !renameFolderName.trim()) return;
+    setRenamingFolder(true);
+    try {
+      await api.renameCategory(folderToRename.id, renameFolderName.trim());
+      const nextName = renameFolderName.trim();
+      setFolders((prev) =>
+        prev.map((f) => (f.id === folderToRename.id ? { ...f, name: nextName } : f))
+      );
+      if (currentFolder?.id === folderToRename.id) {
+        setCurrentFolder((prev) => (prev ? { ...prev, name: nextName } : prev));
+      }
+      triggerMediaEvent({ type: 'folder' });
+      setFolderToRename(null);
+      await loadFolders();
+    } catch (err) {
+      alert(err.message || 'Gagal mengubah nama folder');
+    } finally {
+      setRenamingFolder(false);
+    }
+  };
+
   const handleFileClick = (item, idx) => {
     recordRecentItem(item);
     if (item.media_type === 'document') {
-      window.open(api.getStreamUrl(item.id), '_blank');
+      if (isTxtFile(item) && onOpenText) {
+        onOpenText(item);
+      } else {
+        window.open(api.getStreamUrl(item.id), '_blank');
+      }
     } else {
       if (onOpenViewer) onOpenViewer(files, idx);
     }
@@ -215,39 +306,48 @@ export default function MobileAllFilesView({
 
       {/* Folders List (When in Root View) */}
       {!currentFolder && folders.length > 0 && !searchQuery.trim() && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
-            <span>Folder ({folders.length})</span>
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
+              Folder ({folders.length})
+            </span>
+            <span className="text-[10px] text-[#9C9C9C] dark:text-[#71717A]">
+              Tekan lama untuk opsi
+            </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             {folders.map((folder) => (
               <div
                 key={folder.id}
-                onClick={() => setCurrentFolder(folder)}
-                className="card-artisan p-2.5 flex items-center justify-between cursor-pointer border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px] bg-white dark:bg-[#0A0A0E] active:scale-95 transition-transform"
+                role="button"
+                tabIndex={0}
+                onTouchStart={(e) => startFolderPress(folder, e)}
+                onTouchMove={moveFolderPress}
+                onTouchEnd={clearFolderPress}
+                onTouchCancel={clearFolderPress}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  clearFolderPress();
+                  folderLongPressTriggered.current = true;
+                  setFolderMenu(folder);
+                }}
+                onClick={() => handleFolderClick(folder)}
+                className="card-artisan group p-2 min-h-[78px] flex flex-col justify-between cursor-pointer select-none rounded-[12px] bg-white dark:bg-[#0A0A0E] active:scale-[0.97] transition-transform"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-[6px] bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] flex items-center justify-center shrink-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-8 h-8 rounded-[8px] bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/15 text-[#C2410C] flex items-center justify-center shrink-0">
                     <Folder className="w-4 h-4 fill-[#C2410C]/20" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
-                      {folder.name}
-                    </p>
-                    <p className="text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono">
-                      {folder.media_count || 0} file
-                    </p>
-                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-[#C4C4CC] dark:text-[#52525B] mt-1 shrink-0" />
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteFolder(folder.id, folder.name);
-                  }}
-                  className="p-1 text-[#9C9C9C] hover:text-[#EF4444]"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="min-w-0 mt-1.5">
+                  <p className="text-[12px] leading-[1.3] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
+                    {folder.name}
+                  </p>
+                  <p className="text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono mt-0.5">
+                    {folder.media_count || 0} file
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -338,6 +438,15 @@ export default function MobileAllFilesView({
           <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
             Gunakan tombol Upload di kanan bawah untuk mengunggah berkas.
           </p>
+          {currentFolder && onOpenUpload && (
+            <button
+              onClick={() => onOpenUpload(currentFolder)}
+              className="mt-3 btn-primary h-8 px-4 text-[12px] inline-flex items-center gap-1.5 rounded-full"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Upload ke Folder Ini</span>
+            </button>
+          )}
         </div>
       ) : viewMode === 'list' ? (
         /* List Mode */
@@ -445,6 +554,127 @@ export default function MobileAllFilesView({
                   className="btn-primary text-[13px] h-9 px-4"
                 >
                   {submittingFolder ? 'Membuat...' : 'Buat'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Folder Action Sheet (long press) */}
+      {folderMenu && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-enter"
+          onClick={closeFolderMenu}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white dark:bg-[#0A0A0E] border-t border-[#E8E8EC] dark:border-[#1F1F27] rounded-t-[20px] px-4 pt-3 pb-7 shadow-modal"
+          >
+            <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#272733] mx-auto mb-4" />
+            <div className="flex items-center gap-3 pb-3 mb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+              <div className="w-10 h-10 rounded-[9px] bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/15 text-[#C2410C] flex items-center justify-center shrink-0">
+                <Folder className="w-5 h-5 fill-[#C2410C]/20" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
+                  {folderMenu.name}
+                </p>
+                <p className="text-[10px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono mt-0.5">
+                  {folderMenu.media_count || 0} file
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = folderMenu;
+                closeFolderMenu();
+                openRenameFolder(target);
+              }}
+              className="w-full flex items-center gap-3 px-2 py-3 rounded-[10px] text-[14px] font-medium text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F4F4F5] dark:hover:bg-[#121218] active:bg-[#F4F4F5] dark:active:bg-[#121218]"
+            >
+              <Edit2 className="w-4 h-4 text-[#C2410C]" />
+              Ubah Nama Folder
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const target = folderMenu;
+                closeFolderMenu();
+                handleDeleteFolder(target.id, target.name);
+              }}
+              className="w-full flex items-center gap-3 px-2 py-3 rounded-[10px] text-[14px] font-medium text-left text-[#DC2626] hover:bg-[#FEF2F2] dark:hover:bg-[#2A0A0A] active:bg-[#FEF2F2] dark:active:bg-[#2A0A0A]"
+            >
+              <Trash2 className="w-4 h-4" />
+              Hapus Folder
+            </button>
+            <button
+              type="button"
+              onClick={closeFolderMenu}
+              className="mt-2 w-full h-10 rounded-[10px] bg-[#F4F4F5] dark:bg-[#121218] text-[13px] font-semibold text-[#6B6B6B] dark:text-[#A1A1AA] active:scale-[0.99]"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ubah Nama Folder */}
+      {folderToRename && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-enter"
+          onClick={() => setFolderToRename(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-5 shadow-modal"
+          >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-[#C2410C]" />
+                <h3 className="font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  Ubah Nama Folder
+                </h3>
+              </div>
+              <button
+                onClick={() => setFolderToRename(null)}
+                className="p-1 text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameFolder} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-medium text-[#6B6B6B] dark:text-[#9C9C9C] mb-1.5">
+                  Nama Folder Baru
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={renameFolderName}
+                  onChange={(e) => setRenameFolderName(e.target.value)}
+                  className="input-artisan w-full text-[13px]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setFolderToRename(null)}
+                  className="btn-secondary text-[13px] h-9 px-3.5"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={renamingFolder || !renameFolderName.trim()}
+                  className="btn-primary text-[13px] h-9 px-4"
+                >
+                  {renamingFolder ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
             </form>

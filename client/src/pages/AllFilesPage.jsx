@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Folder, FolderPlus, FileText, Image, Video, HardDrive, Search, LayoutGrid, List,
   Download, Trash2, Edit2, Heart, Lock, MoreVertical, ArrowUpDown, ChevronRight,
-  ArrowLeft, X, Check
+  ArrowLeft, X, Check, Upload
 } from 'lucide-react';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
@@ -10,6 +10,8 @@ import { formatBytes } from '../components/QuotaBar';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
 import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
+import { useLanguage, localeFor } from '../context/LanguageContext';
 
 export default function AllFilesPage({
   onOpenViewer,
@@ -20,12 +22,19 @@ export default function AllFilesPage({
   onRename,
   onContextMenu,
   onShowDetail,
-  onOpenUpload
+  onOpenUpload,
+  onFolderChange,
+  onOpenText
 }) {
+  const { t, lang } = useLanguage();
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [currentFolder, setCurrentFolder] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (onFolderChange) onFolderChange(currentFolder);
+  }, [currentFolder]);
 
   // Preference persistence (Requirement 3)
   const [filterType, setFilterType] = useState(() => localStorage.getItem('mycloud_pref_allfiles_filter') || 'all');
@@ -37,6 +46,11 @@ export default function AllFilesPage({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [submittingFolder, setSubmittingFolder] = useState(false);
+
+  // Rename folder modal state
+  const [folderToRename, setFolderToRename] = useState(null);
+  const [renameFolderName, setRenameFolderName] = useState('');
+  const [renamingFolder, setRenamingFolder] = useState(false);
 
   const changeViewMode = (mode) => {
     setViewMode(mode);
@@ -93,6 +107,22 @@ export default function AllFilesPage({
     loadFiles();
   }, [filterType, sortOption, searchQuery, currentFolder]);
 
+  // Desktop shortcut: Backspace goes back to the parent folder.
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Backspace' || !currentFolder) return;
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+      setCurrentFolder(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentFolder]);
+
   // Real-time reactive media event listener
   useEffect(() => {
     const unsub = subscribeMediaEvent((event) => {
@@ -125,14 +155,14 @@ export default function AllFilesPage({
       setCreateModalOpen(false);
       await loadFolders();
     } catch (err) {
-      alert(err.message || 'Gagal membuat folder');
+      alert(err.message || t('createFolderFailed', 'Gagal membuat folder'));
     } finally {
       setSubmittingFolder(false);
     }
   };
 
   const handleDeleteFolder = async (folderId, folderName) => {
-    if (!window.confirm(`Hapus folder "${folderName}"? File di dalam folder tidak akan terhapus.`)) return;
+    if (!window.confirm(t('deleteFolderConfirm', 'Hapus folder "{name}"? File di dalam folder tidak akan terhapus.').split('{name}').join(folderName))) return;
     try {
       await api.deleteCategory(folderId);
       triggerMediaEvent({ type: 'folder' });
@@ -141,14 +171,46 @@ export default function AllFilesPage({
       }
       await loadFolders();
     } catch (err) {
-      alert(err.message || 'Gagal menghapus folder');
+      alert(err.message || t('deleteFolderFailed', 'Gagal menghapus folder'));
+    }
+  };
+
+  const openRenameFolder = (folder) => {
+    setFolderToRename(folder);
+    setRenameFolderName(folder?.name || '');
+  };
+
+  const handleRenameFolder = async (e) => {
+    e.preventDefault();
+    if (!folderToRename || !renameFolderName.trim()) return;
+    setRenamingFolder(true);
+    try {
+      await api.renameCategory(folderToRename.id, renameFolderName.trim());
+      const nextName = renameFolderName.trim();
+      setFolders((prev) =>
+        prev.map((f) => (f.id === folderToRename.id ? { ...f, name: nextName } : f))
+      );
+      if (currentFolder?.id === folderToRename.id) {
+        setCurrentFolder((prev) => (prev ? { ...prev, name: nextName } : prev));
+      }
+      triggerMediaEvent({ type: 'folder' });
+      setFolderToRename(null);
+      await loadFolders();
+    } catch (err) {
+      alert(err.message || t('renameFolderFailed', 'Gagal mengubah nama folder.'));
+    } finally {
+      setRenamingFolder(false);
     }
   };
 
   const handleFileClick = (item, idx) => {
     recordRecentItem(item);
     if (item.media_type === 'document') {
-      window.open(api.getStreamUrl(item.id), '_blank');
+      if (isTxtFile(item) && onOpenText) {
+        onOpenText(item);
+      } else {
+        window.open(api.getStreamUrl(item.id), '_blank');
+      }
     } else {
       if (onOpenViewer) onOpenViewer(files, idx);
     }
@@ -180,10 +242,10 @@ export default function AllFilesPage({
             )}
           </div>
           <h2 className="font-serif font-bold text-2xl sm:text-3xl text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
-            {currentFolder ? `Folder: ${currentFolder.name}` : 'All Files (Direktori Utama)'}
+            {currentFolder ? currentFolder.name : t('allFilesDir', 'All Files (Direktori Utama)')}
           </h2>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5 font-mono">
-            {files.length} file {currentFolder ? 'dalam folder ini' : 'tersimpan'} • Total {formatBytes(totalBytes)}
+            {files.length} {t('fileCount', 'file')} {currentFolder ? t('filesInFolder', 'dalam folder ini') : t('filesStored', 'tersimpan')} • {t('totalLabel', 'Total')} {formatBytes(totalBytes)}
           </p>
         </div>
 
@@ -195,16 +257,26 @@ export default function AllFilesPage({
               className="btn-secondary text-[13px] h-9 px-3.5 rounded-[6px] flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Semua Folder</span>
+              <span>{t('allFolders', 'Semua Folder')}</span>
+            </button>
+          )}
+          {currentFolder && (
+            <button
+              onClick={() => openRenameFolder(currentFolder)}
+              className="btn-secondary text-[13px] h-9 px-3.5 rounded-[6px] flex items-center gap-2"
+              title={t('renameFolder', 'Ubah Nama Folder')}
+            >
+              <Edit2 className="w-4 h-4 text-[#C2410C]" />
+              <span>{t('renameShort', 'Ubah Nama')}</span>
             </button>
           )}
           <button
             onClick={() => setCreateModalOpen(true)}
             className="btn-secondary text-[13px] h-9 px-3.5 rounded-[6px] flex items-center gap-2"
-            title="Buat Folder Baru"
+            title={t('createFolderTitle', 'Buat Folder Baru')}
           >
             <FolderPlus className="w-4 h-4 text-[#C2410C]" />
-            <span>Folder Baru</span>
+            <span>{t('newFolder', 'Folder Baru')}</span>
           </button>
         </div>
       </div>
@@ -215,7 +287,7 @@ export default function AllFilesPage({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[14px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
               <Folder className="w-4 h-4 text-[#C2410C]" />
-              <span>Folder ({folders.length})</span>
+              <span>{t('folderLabel', 'Folder')} ({folders.length})</span>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -234,20 +306,32 @@ export default function AllFilesPage({
                       {folder.name}
                     </p>
                     <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono">
-                      {folder.media_count || 0} file
+                      {folder.media_count || 0} {t('fileCount', 'file')}
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteFolder(folder.id, folder.name);
-                  }}
-                  className="p-1.5 text-[#9C9C9C] hover:text-[#EF4444] rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Hapus Folder"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openRenameFolder(folder);
+                    }}
+                    className="p-1.5 text-[#9C9C9C] hover:text-[#C2410C] rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    title={t('renameFolder', 'Ubah Nama Folder')}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFolder(folder.id, folder.name);
+                    }}
+                    className="p-1.5 text-[#9C9C9C] hover:text-[#EF4444] rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    title={t('deleteFolder', 'Hapus Folder')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -262,28 +346,28 @@ export default function AllFilesPage({
             onClick={() => changeFilterType('all')}
             className={`chip-filter ${filterType === 'all' ? 'chip-filter-active' : ''}`}
           >
-            Semua File
+            {t('allFilesChip', 'Semua File')}
           </button>
           <button
             onClick={() => changeFilterType('image')}
             className={`chip-filter ${filterType === 'image' ? 'chip-filter-active' : ''}`}
           >
             <Image className="w-3 h-3" />
-            <span>Foto</span>
+            <span>{t('photos', 'Foto')}</span>
           </button>
           <button
             onClick={() => changeFilterType('video')}
             className={`chip-filter ${filterType === 'video' ? 'chip-filter-active' : ''}`}
           >
             <Video className="w-3 h-3" />
-            <span>Video</span>
+            <span>{t('videos', 'Video')}</span>
           </button>
           <button
             onClick={() => changeFilterType('document')}
             className={`chip-filter ${filterType === 'document' ? 'chip-filter-active' : ''}`}
           >
             <FileText className="w-3 h-3" />
-            <span>Dokumen</span>
+            <span>{t('documents', 'Dokumen')}</span>
           </button>
         </div>
 
@@ -294,7 +378,7 @@ export default function AllFilesPage({
             <Search className="w-3.5 h-3.5 text-[#9C9C9C] shrink-0 mr-2" />
             <input
               type="text"
-              placeholder="Cari file..."
+              placeholder={t('searchFilePlaceholder', 'Cari file...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-full bg-transparent border-none outline-none text-[12px] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C]"
@@ -317,10 +401,10 @@ export default function AllFilesPage({
               onChange={(e) => changeSortOption(e.target.value)}
               className="input-artisan h-[32px] py-0 text-[12px] bg-white dark:bg-[#000000]"
             >
-              <option value="newest">Terbaru</option>
-              <option value="oldest">Terlama</option>
-              <option value="size_desc">Ukuran Terbesar</option>
-              <option value="size_asc">Ukuran Terkecil</option>
+              <option value="newest">{t('sortNewest', 'Terbaru')}</option>
+              <option value="oldest">{t('sortOldest', 'Terlama')}</option>
+              <option value="size_desc">{t('sortLargest', 'Ukuran Terbesar')}</option>
+              <option value="size_asc">{t('sortSmallest', 'Ukuran Terkecil')}</option>
             </select>
           </div>
 
@@ -355,13 +439,22 @@ export default function AllFilesPage({
         <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
           <Folder className="w-12 h-12 text-[#C2410C] mx-auto mb-3 opacity-40" />
           <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            {currentFolder ? 'Folder ini masih kosong' : 'Tidak ada file'}
+            {currentFolder ? t('emptyFolder', 'Folder ini masih kosong') : t('noFiles', 'Tidak ada file')}
           </h4>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
             {currentFolder
-              ? 'Gunakan tombol Upload di kanan bawah atau atur file untuk memindahkannya ke folder ini.'
-              : 'Belum ada file di direktori utama Anda. Gunakan tombol Upload di kanan bawah untuk menambahkan file.'}
+              ? t('emptyFolderHint', 'Gunakan tombol Upload di kanan bawah atau atur file untuk memindahkannya ke folder ini.')
+              : t('emptyRootHint', 'Belum ada file di direktori utama Anda. Gunakan tombol Upload di kanan bawah untuk menambahkan file.')}
           </p>
+          {currentFolder && onOpenUpload && (
+            <button
+              onClick={() => onOpenUpload(currentFolder)}
+              className="mt-4 btn-primary h-9 px-4 text-[13px] inline-flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              <span>{t('uploadToThisFolder', 'Upload File ke Folder Ini')}</span>
+            </button>
+          )}
         </div>
       ) : viewMode === 'list' ? (
         /* Table / List View */
@@ -369,11 +462,11 @@ export default function AllFilesPage({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] bg-[#FAFAFA] dark:bg-[#121218] text-[11px] font-mono uppercase tracking-wider text-[#6B6B6B] dark:text-[#9C9C9C]">
-                <th className="py-3 px-4">Nama File</th>
-                <th className="py-3 px-4 hidden sm:table-cell">Jenis</th>
-                <th className="py-3 px-4">Ukuran</th>
-                <th className="py-3 px-4 hidden md:table-cell">Tanggal Diunggah</th>
-                <th className="py-3 px-4 text-right">Aksi</th>
+                <th className="py-3 px-4">{t('fileName', 'Nama File')}</th>
+                <th className="py-3 px-4 hidden sm:table-cell">{t('typeColumn', 'Jenis')}</th>
+                <th className="py-3 px-4">{t('size', 'Ukuran')}</th>
+                <th className="py-3 px-4 hidden md:table-cell">{t('uploadedDate', 'Tanggal Diunggah')}</th>
+                <th className="py-3 px-4 text-right">{t('actionColumn', 'Aksi')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27] text-[13px]">
@@ -421,7 +514,7 @@ export default function AllFilesPage({
                       {formatBytes(file.file_size)}
                     </td>
                     <td className="py-3 px-4 hidden md:table-cell font-mono text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                      {new Date(file.created_at).toLocaleDateString('id-ID', {
+                      {new Date(file.created_at).toLocaleDateString(localeFor(lang), {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric'
@@ -433,14 +526,14 @@ export default function AllFilesPage({
                           href={api.getDownloadUrl(file.id)}
                           download={file.original_name}
                           className="p-1.5 text-[#6B6B6B] hover:text-[#C2410C] rounded hover:bg-[#E8E8EC] dark:hover:bg-[#1F1F27]"
-                          title="Download"
+                          title={t('downloadShort', 'Unduh')}
                         >
                           <Download className="w-4 h-4" />
                         </a>
                         <button
                           onClick={() => onDelete && onDelete(file.id)}
                           className="p-1.5 text-[#6B6B6B] hover:text-[#EF4444] rounded hover:bg-[#E8E8EC] dark:hover:bg-[#1F1F27]"
-                          title="Hapus ke Sampah"
+                          title={t('deleteToTrash', 'Hapus ke Sampah')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -486,7 +579,7 @@ export default function AllFilesPage({
               <div className="flex items-center gap-2">
                 <FolderPlus className="w-5 h-5 text-[#C2410C]" />
                 <h3 className="font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-                  Buat Folder Baru
+                  {t('createFolderTitle', 'Buat Folder Baru')}
                 </h3>
               </div>
               <button
@@ -500,13 +593,13 @@ export default function AllFilesPage({
             <form onSubmit={handleCreateFolder} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-medium text-[#6B6B6B] dark:text-[#9C9C9C] mb-1.5">
-                  Nama Folder
+                  {t('folderNameLabel', 'Nama Folder')}
                 </label>
                 <input
                   type="text"
                   required
                   autoFocus
-                  placeholder="Misal: Kuliah, Dokumen Proyek, Liburan..."
+                  placeholder={t('folderNamePlaceholder', 'Misal: Kuliah, Dokumen Proyek, Liburan...')}
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   className="input-artisan w-full text-[13px]"
@@ -519,14 +612,75 @@ export default function AllFilesPage({
                   onClick={() => setCreateModalOpen(false)}
                   className="btn-secondary text-[13px] h-9 px-3.5"
                 >
-                  Batal
+                  {t('cancel', 'Batal')}
                 </button>
                 <button
                   type="submit"
                   disabled={submittingFolder || !newFolderName.trim()}
                   className="btn-primary text-[13px] h-9 px-4"
                 >
-                  {submittingFolder ? 'Membuat...' : 'Buat Folder'}
+                  {submittingFolder ? t('creatingText', 'Membuat...') : t('createFolder', 'Buat Folder')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ubah Nama Folder */}
+      {folderToRename && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-enter"
+          onClick={() => setFolderToRename(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-5 shadow-modal"
+          >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-[#C2410C]" />
+                <h3 className="font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  {t('renameFolder', 'Ubah Nama Folder')}
+                </h3>
+              </div>
+              <button
+                onClick={() => setFolderToRename(null)}
+                className="p-1 text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameFolder} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-medium text-[#6B6B6B] dark:text-[#9C9C9C] mb-1.5">
+                  {t('renameFolderLabel', 'Nama Folder Baru')}
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={renameFolderName}
+                  onChange={(e) => setRenameFolderName(e.target.value)}
+                  className="input-artisan w-full text-[13px]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setFolderToRename(null)}
+                  className="btn-secondary text-[13px] h-9 px-3.5"
+                >
+                  {t('cancel', 'Batal')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={renamingFolder || !renameFolderName.trim()}
+                  className="btn-primary text-[13px] h-9 px-4"
+                >
+                  {renamingFolder ? t('savingText', 'Menyimpan...') : t('save', 'Simpan')}
                 </button>
               </div>
             </form>

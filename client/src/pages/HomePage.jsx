@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Image, Video, FileText, FolderOpen, Clock, HardDrive, ArrowRight,
-  Folder, Play, Download, Trash2, Heart, ChevronRight, ChevronDown, ChevronUp
+  Folder, Play, Trash2, Heart, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { formatBytes } from '../components/QuotaBar';
 import { getRecentHistory, clearRecentHistory, recordRecentItem } from '../utils/recentHistory';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { isTxtFile } from '../utils/textFile';
 import AdminHomeDashboard from '../components/AdminHomeDashboard';
 
 function formatRelativeTime(isoString, lang = 'id') {
@@ -28,7 +29,7 @@ export default function HomePage({
   onNavigate,
   onOpenViewer,
   onOpenUpload,
-  onOpenQuotaModal
+  onOpenText
 }) {
   const { user } = useAuth();
   const { lang, t } = useLanguage();
@@ -59,9 +60,6 @@ export default function HomePage({
       return nextVal;
     });
   };
-  const [selectedDocFilter, setSelectedDocFilter] = useState(false);
-  const [documentFiles, setDocumentFiles] = useState([]);
-
   const loadData = async (silent = false) => {
     if (!user) return;
     if (!silent) setLoading(true);
@@ -82,8 +80,6 @@ export default function HomePage({
       setFallbackRecent((recentMediaRes.media || []).slice(0, 12));
       setFavoriteItems(favRes.media || []);
 
-      const docs = (recentMediaRes.media || []).filter(m => m.media_type === 'document');
-      setDocumentFiles(docs);
     } catch (err) {
       console.error('Failed to load Home data:', err);
     } finally {
@@ -111,7 +107,6 @@ export default function HomePage({
         setFallbackRecent((prev) => prev.filter((m) => m.id !== event.id));
         setFavoriteItems((prev) => prev.filter((m) => m.id !== event.id));
         setRecentItems((prev) => prev.filter((m) => m.id !== event.id));
-        setDocumentFiles((prev) => prev.filter((m) => m.id !== event.id));
         loadData(true);
       } else if (['upload', 'restore', 'unlock', 'rename', 'folder', 'organize'].includes(event.type)) {
         loadData(true);
@@ -129,8 +124,12 @@ export default function HomePage({
     if (item.type === 'folder' || item.is_folder) {
       if (onNavigate) onNavigate('allfiles', null, item.folder_id);
     } else if (item.media_type === 'document' || item.type === 'document') {
-      window.open(api.getStreamUrl(item.id), '_blank');
       recordRecentItem(item, user?.id);
+      if (isTxtFile(item) && onOpenText) {
+        onOpenText(item);
+      } else {
+        window.open(api.getStreamUrl(item.id), '_blank');
+      }
     } else {
       recordRecentItem(item, user?.id);
       if (onOpenViewer) onOpenViewer([item], 0);
@@ -220,12 +219,8 @@ export default function HomePage({
 
         {/* Card 3: Dokumen */}
         <div
-          onClick={() => setSelectedDocFilter(!selectedDocFilter)}
-          className={`group p-4 rounded-[14px] bg-white dark:bg-[#0A0A0E] border transition-all cursor-pointer flex flex-col justify-between min-h-[115px] select-none ${
-            selectedDocFilter
-              ? 'border-[#C2410C] ring-2 ring-[#C2410C]/20 shadow-[0_8px_30px_rgba(194,65,12,0.12)]'
-              : 'border-[#E8E8EC] dark:border-[#1F1F27] hover:border-[#C2410C] dark:hover:border-[#C2410C] hover:shadow-[0_8px_30px_rgba(194,65,12,0.12)]'
-          }`}
+          onClick={() => onNavigate && onNavigate('documents')}
+          className="group p-4 rounded-[14px] bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] hover:border-[#C2410C] dark:hover:border-[#C2410C] hover:shadow-[0_8px_30px_rgba(194,65,12,0.12)] transition-all cursor-pointer flex flex-col justify-between min-h-[115px] select-none"
         >
           <div className="flex items-center justify-between">
             <div className="w-10 h-10 rounded-[10px] bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] flex items-center justify-center border border-[#C2410C]/20 group-hover:scale-105 group-hover:bg-[#C2410C] group-hover:text-white transition-all">
@@ -268,55 +263,6 @@ export default function HomePage({
           </div>
         </div>
       </div>
-
-      {/* Expandable Document Section if Dokumen Card is toggled */}
-      {selectedDocFilter && (
-        <div className="p-5 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] animate-enter">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#C2410C]" />
-              <h4 className="font-serif font-bold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-                {t('documentList', 'Daftar Dokumen')}
-              </h4>
-            </div>
-            <button
-              onClick={() => setSelectedDocFilter(false)}
-              className="text-[12px] text-[#6B6B6B] hover:text-[#0A0A0A] dark:hover:text-white"
-            >
-              {t('close', 'Tutup')}
-            </button>
-          </div>
-
-          {documentFiles.length === 0 ? (
-            <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] py-4 text-center">
-              {t('noDocsText', 'Belum ada file dokumen. Gunakan tombol Upload untuk mengunggah PDF, DOCX, TXT, dll.')}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {documentFiles.map((doc) => (
-                <div
-                  key={doc.id}
-                  onClick={() => handleRecentClick(doc)}
-                  className="flex items-center justify-between p-3 rounded-[8px] border border-[#E8E8EC] dark:border-[#1F1F27] bg-[#FAFAFA] dark:bg-[#121218] hover:border-[#C2410C] cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2.5 truncate mr-2">
-                    <FileText className="w-5 h-5 text-[#C2410C] shrink-0" />
-                    <div className="truncate">
-                      <p className="text-[13px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
-                        {doc.display_name}
-                      </p>
-                      <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] font-mono">
-                        {formatBytes(doc.file_size)}
-                      </p>
-                    </div>
-                  </div>
-                  <Download className="w-4 h-4 text-[#9C9C9C] hover:text-[#C2410C] shrink-0" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Favorite Section */}
       <div className="pt-2">

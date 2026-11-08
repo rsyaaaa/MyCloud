@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Sparkles, Filter, Folder, X
+  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Eye, EyeOff, Folder, X
 } from 'lucide-react';
-import MemoriesCarousel from '../components/MemoriesCarousel';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
-import { MediaGridSkeleton, MemoriesSkeleton } from '../components/SkeletonLoader';
+import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { getRecentHistory, recordRecentItem } from '../utils/recentHistory';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { useLanguage, localeFor } from '../context/LanguageContext';
 
-function groupMediaByDate(mediaList) {
+function groupMediaByDate(mediaList, lang = 'id') {
   const groups = {};
   const today = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -20,11 +20,11 @@ function groupMediaByDate(mediaList) {
 
     let title = '';
     if (dateStr === today) {
-      title = 'Hari Ini';
+      title = lang === 'en' ? 'Today' : 'Hari Ini';
     } else if (dateStr === yesterday) {
-      title = 'Kemarin';
+      title = lang === 'en' ? 'Yesterday' : 'Kemarin';
     } else {
-      title = itemDate.toLocaleDateString('id-ID', {
+      title = itemDate.toLocaleDateString(localeFor(lang), {
         month: 'long',
         year: 'numeric'
       });
@@ -51,9 +51,13 @@ export default function GalleryPage({
   onContextMenu,
   onShowDetail
 }) {
+  const { t, lang } = useLanguage();
   const [subView, setSubView] = useState(() => initialSubView || localStorage.getItem('mycloud_pref_gallery_subview') || 'all');
   const [mediaList, setMediaList] = useState([]);
-  const [memories, setMemories] = useState([]);
+  const [favoriteMedia, setFavoriteMedia] = useState([]);
+  const [favoriteHidden, setFavoriteHidden] = useState(() => {
+    return localStorage.getItem('mycloud_gallery_favorite_hidden') === 'true';
+  });
   const [recentMedia, setRecentMedia] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCatId, setSelectedCatId] = useState(null);
@@ -77,6 +81,14 @@ export default function GalleryPage({
   const changeViewMode = (mode) => {
     setViewMode(mode);
     localStorage.setItem('mycloud_pref_gallery_view', mode);
+  };
+
+  const toggleFavoriteHidden = () => {
+    setFavoriteHidden((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem('mycloud_gallery_favorite_hidden', String(nextVal));
+      return nextVal;
+    });
   };
 
   // Sync subView if parent changes initialSubView
@@ -110,9 +122,9 @@ export default function GalleryPage({
         params.search = searchQuery;
       }
 
-      const [mediaRes, memRes, catRes] = await Promise.all([
+      const [mediaRes, favRes, catRes] = await Promise.all([
         api.listMedia(params),
-        api.getMemories(),
+        api.listMedia({ media_type: 'gallery', is_favorite: '1', sort: 'newest' }),
         api.listCategories()
       ]);
 
@@ -127,7 +139,9 @@ export default function GalleryPage({
       }
 
       setMediaList(list);
-      setMemories(memRes.memories || []);
+      setFavoriteMedia(
+        (favRes.media || []).filter((m) => m.media_type === 'image' || m.media_type === 'video')
+      );
       setCategories(catRes.categories || []);
 
       // Load recent photos/videos
@@ -152,11 +166,21 @@ export default function GalleryPage({
         setMediaList((prev) =>
           prev.map((m) => (m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m))
         );
+        setFavoriteMedia((prev) => {
+          if (!event.is_favorite) return prev.filter((m) => m.id !== event.id);
+          const candidate = mediaList.find((m) => m.id === event.id) || prev.find((m) => m.id === event.id);
+          if (!candidate) return prev;
+          const updated = { ...candidate, is_favorite: 1 };
+          return prev.some((m) => m.id === event.id)
+            ? prev.map((m) => (m.id === event.id ? updated : m))
+            : [updated, ...prev];
+        });
         if (onlyFavorite && event.is_favorite === 0) {
           setMediaList((prev) => prev.filter((m) => m.id !== event.id));
         }
       } else if (event.type === 'delete' || event.type === 'lock') {
         setMediaList((prev) => prev.filter((m) => m.id !== event.id));
+        setFavoriteMedia((prev) => prev.filter((m) => m.id !== event.id));
       } else if (event.type === 'rename') {
         setMediaList((prev) =>
           prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
@@ -174,7 +198,7 @@ export default function GalleryPage({
     if (onOpenViewer) onOpenViewer(items, index);
   };
 
-  const groupedMedia = useMemo(() => groupMediaByDate(mediaList), [mediaList]);
+  const groupedMedia = useMemo(() => groupMediaByDate(mediaList, lang), [mediaList, lang]);
   const visualFolders = useMemo(() => {
     return (categories || []).filter(c => (c.visual_media_count > 0 || c.cover_media_id));
   }, [categories]);
@@ -185,10 +209,10 @@ export default function GalleryPage({
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
         <div>
           <h2 className="font-serif font-bold text-2xl sm:text-3xl text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
-            Galeri Media
+            {t('galleryTitle', 'Galeri Media')}
           </h2>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
-            Koleksi lengkap foto, video, dan kenangan momen Anda.
+            {t('gallerySubtitle', 'Koleksi lengkap foto, video, dan kenangan momen Anda.')}
           </p>
         </div>
 
@@ -202,7 +226,7 @@ export default function GalleryPage({
                 : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
             }`}
           >
-            Semua (Campuran)
+            {t('mixedAll', 'Semua (Campuran)')}
           </button>
           <button
             onClick={() => { changeSubView('photo'); setSelectedCatId(null); }}
@@ -213,7 +237,7 @@ export default function GalleryPage({
             }`}
           >
             <Image className="w-4 h-4 stroke-[2]" />
-            <span>Foto</span>
+            <span>{t('photos', 'Foto')}</span>
           </button>
           <button
             onClick={() => { changeSubView('video'); setSelectedCatId(null); }}
@@ -224,7 +248,7 @@ export default function GalleryPage({
             }`}
           >
             <Video className="w-4 h-4 stroke-[2]" />
-            <span>Video</span>
+            <span>{t('videos', 'Video')}</span>
           </button>
         </div>
       </div>
@@ -232,16 +256,67 @@ export default function GalleryPage({
       {/* When in "Semua" mode: Show Memories Banner & Recent Carousel */}
       {subView === 'all' && (
         <>
-          {/* "Ingatkah Momen Ini?" Banner */}
+          {/* Favorite Strip (replaces the old "Ingatkah Momen Ini?" memories banner) */}
           {!searchQuery && (
-            loading ? (
-              <MemoriesSkeleton />
-            ) : memories.length > 0 ? (
-              <MemoriesCarousel
-                memories={memories}
-                onSelectMedia={(items, index) => handleMediaClick(items, index)}
-              />
-            ) : null
+            <div className="p-4 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={toggleFavoriteHidden}
+                  className="p-1.5 rounded-[6px] text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] hover:bg-[#F4F4F5] dark:hover:bg-[#1F1F27] border border-[#E8E8EC] dark:border-[#1F1F27] transition-all shrink-0"
+                  title={favoriteHidden ? t('show', 'Tampilkan') : t('hide', 'Sembunyikan')}
+                >
+                  {favoriteHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <Heart className="w-4 h-4 text-[#EF4444] stroke-[2.2]" />
+                <h4 className="font-serif font-bold text-sm text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  {t('favorite', 'Favorite')}
+                </h4>
+                {!favoriteHidden && favoriteMedia.length > 0 && (
+                  <span className="text-[10px] font-mono font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#F4F4F5] dark:bg-[#121218] px-2 py-0.5 rounded-[4px] border border-[#E8E8EC] dark:border-[#1F1F27]">
+                    {favoriteMedia.length} {t('itemCount', 'item')}
+                  </span>
+                )}
+              </div>
+
+              {!favoriteHidden && (
+                loading ? (
+                  <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">{t('loadingText', 'Memuat...')}</p>
+                ) : favoriteMedia.length === 0 ? (
+                  <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
+                    {t('noFavoriteDesc', 'Klik ikon hati pada foto atau video untuk menyimpannya di sini.')}
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
+                    {favoriteMedia.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleMediaClick(favoriteMedia, idx)}
+                        className="w-24 shrink-0 cursor-pointer group"
+                      >
+                        <div className="w-24 h-24 rounded-[8px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] relative border border-[#E8E8EC] dark:border-[#1F1F27] group-hover:border-[#C2410C] transition-colors">
+                          <img
+                            src={api.getThumbnailUrl(item.id)}
+                            alt={item.display_name}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          {item.media_type === 'video' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <Play className="w-4 h-4 fill-white text-white" />
+                            </div>
+                          )}
+                          <Heart className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-[#EF4444] fill-[#EF4444]" />
+                        </div>
+                        <p className="text-[11px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA] truncate mt-1 group-hover:text-[#C2410C]">
+                          {item.display_name || item.original_name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
           )}
 
           {/* Recent Photos/Videos Strip */}
@@ -250,7 +325,7 @@ export default function GalleryPage({
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-4 h-4 text-[#C2410C]" />
                 <h4 className="font-serif font-bold text-sm text-[#0A0A0A] dark:text-[#FAFAFA]">
-                  Baru Saja Dibuka
+                  {t('recentlyOpened', 'Baru Saja Dibuka')}
                 </h4>
               </div>
               <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
@@ -290,7 +365,7 @@ export default function GalleryPage({
             <div className="flex items-center gap-2">
               <Folder className="w-4.5 h-4.5 text-[#C2410C]" />
               <h3 className="font-serif font-bold text-base text-[#0A0A0A] dark:text-[#FAFAFA]">
-                Folder Media ({visualFolders.length})
+                {t('mediaFolders', 'Folder Media')} ({visualFolders.length})
               </h3>
             </div>
           </div>
@@ -332,7 +407,7 @@ export default function GalleryPage({
           <div className="flex items-center gap-2">
             <Folder className="w-4 h-4" />
             <span className="text-[13px] font-semibold">
-              Menampilkan media dari folder: <strong>{categories.find(c => c.id === selectedCatId)?.name || 'Folder'}</strong>
+              {t('showingFromFolder', 'Menampilkan media dari folder:')} <strong>{categories.find(c => c.id === selectedCatId)?.name || t('folderLabel', 'Folder')}</strong>
             </span>
           </div>
           <button
@@ -340,7 +415,7 @@ export default function GalleryPage({
             className="text-[12px] font-semibold hover:underline flex items-center gap-1"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Lihat Semua Media</span>
+            <span>{t('viewAllMedia', 'Lihat Semua Media')}</span>
           </button>
         </div>
       )}
@@ -352,7 +427,7 @@ export default function GalleryPage({
             onClick={() => setSelectedCatId(null)}
             className={`chip-filter shrink-0 ${!selectedCatId ? 'chip-filter-active' : ''}`}
           >
-            Semua {subView === 'photo' ? 'Album' : 'Genre'}
+            {subView === 'photo' ? t('allAlbums', 'Semua Album') : t('allGenres', 'Semua Genre')}
           </button>
           {visualFolders.map((cat) => (
             <button
@@ -376,7 +451,7 @@ export default function GalleryPage({
             className={`chip-filter ${onlyFavorite ? 'chip-filter-active' : ''}`}
           >
             <Heart className="w-3.5 h-3.5 stroke-[2.2]" />
-            <span>Favorit</span>
+            <span>{t('favorite', 'Favorit')}</span>
           </button>
 
           {/* Orientation Filter for Photos */}
@@ -388,7 +463,7 @@ export default function GalleryPage({
                   orientationFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
                 }`}
               >
-                Semua
+                {t('all', 'Semua')}
               </button>
               <button
                 onClick={() => setOrientationFilter('landscape')}
@@ -396,7 +471,7 @@ export default function GalleryPage({
                   orientationFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
                 }`}
               >
-                Lanskap
+                {t('landscapeLabel', 'Lanskap')}
               </button>
               <button
                 onClick={() => setOrientationFilter('portrait')}
@@ -404,7 +479,7 @@ export default function GalleryPage({
                   orientationFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
                 }`}
               >
-                Potret
+                {t('portraitLabel', 'Potret')}
               </button>
             </div>
           )}
@@ -418,7 +493,7 @@ export default function GalleryPage({
                   aspectFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
                 }`}
               >
-                Semua
+                {t('all', 'Semua')}
               </button>
               <button
                 onClick={() => setAspectFilter('portrait')}
@@ -443,17 +518,17 @@ export default function GalleryPage({
         {/* Right side: Sorting & Grid/List view mode */}
         <div className="flex items-center gap-3 text-[13px]">
           <div className="flex items-center gap-1.5">
-            <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">Urutkan:</span>
+            <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">{t('sortBy', 'Urutkan:')}</span>
             <select
               value={sortOption}
               onChange={(e) => changeSortOption(e.target.value)}
               className="input-artisan h-[32px] py-0 text-[12px] bg-white dark:bg-[#000000]"
             >
-              <option value="newest">Terbaru</option>
-              <option value="oldest">Terlama</option>
-              <option value="size_desc">Ukuran Terbesar</option>
-              <option value="size_asc">Ukuran Terkecil</option>
-              {subView === 'video' && <option value="duration_desc">Durasi Terpanjang</option>}
+              <option value="newest">{t('sortNewest', 'Terbaru')}</option>
+              <option value="oldest">{t('sortOldest', 'Terlama')}</option>
+              <option value="size_desc">{t('sortLargest', 'Ukuran Terbesar')}</option>
+              <option value="size_asc">{t('sortSmallest', 'Ukuran Terkecil')}</option>
+              {subView === 'video' && <option value="duration_desc">{t('sortLongest', 'Durasi Terpanjang')}</option>}
             </select>
           </div>
 
@@ -494,10 +569,10 @@ export default function GalleryPage({
             <Image className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
           )}
           <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Belum ada {subView === 'video' ? 'video' : subView === 'photo' ? 'foto' : 'media'}
+            {subView === 'video' ? t('noVideo', 'Belum ada video') : subView === 'photo' ? t('noPhotos', 'Belum ada foto') : t('noMedia', 'Belum ada media')}
           </h4>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
-            Gunakan tombol Upload di sudut kanan bawah untuk mulai menambahkan media.
+            {t('addMediaHint', 'Gunakan tombol Upload di sudut kanan bawah untuk mulai menambahkan media.')}
           </p>
         </div>
       ) : subView === 'all' ? (
@@ -510,7 +585,7 @@ export default function GalleryPage({
                   {dateGroup}
                 </h3>
                 <span className="text-[12px] font-mono text-[#6B6B6B] dark:text-[#9C9C9C] bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] px-2 py-0.5 rounded-[4px]">
-                  {items.length} item
+                  {items.length} {t('itemCount', 'item')}
                 </span>
                 <div className="flex-1 h-[1px] bg-[#E8E8EC] dark:bg-[#1F1F27]" />
               </div>

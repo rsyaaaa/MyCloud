@@ -4,6 +4,7 @@ import MediaCard from '../components/MediaCard';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function VideoHubPage({
   onOpenViewer,
@@ -13,6 +14,7 @@ export default function VideoHubPage({
   onDelete,
   onRename
 }) {
+  const { t } = useLanguage();
   const [videos, setVideos] = useState([]);
   const [genres, setGenres] = useState([]);
   const [selectedGenreId, setSelectedGenreId] = useState(null);
@@ -79,7 +81,7 @@ export default function VideoHubPage({
             </h2>
           </div>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
-            Streaming instan lokal dengan HTTP Range seekable dan aspect-ratio native.
+            {t('videoHubSubtitle', 'Streaming instan lokal dengan HTTP Range seekable dan aspect-ratio native.')}
           </p>
         </div>
 
@@ -90,10 +92,10 @@ export default function VideoHubPage({
             onChange={(e) => setSortOption(e.target.value)}
             className="input-artisan h-[36px] py-0 text-[13px] bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#1F1F27]"
           >
-            <option value="newest">Upload Terbaru</option>
-            <option value="oldest">Upload Terlama</option>
-            <option value="duration_desc">Durasi Terpanjang</option>
-            <option value="size_desc">Ukuran Terbesar</option>
+            <option value="newest">{t('uploadNewest', 'Upload Terbaru')}</option>
+            <option value="oldest">{t('uploadOldest', 'Upload Terlama')}</option>
+            <option value="duration_desc">{t('sortLongest', 'Durasi Terpanjang')}</option>
+            <option value="size_desc">{t('sortLargest', 'Ukuran Terbesar')}</option>
           </select>
         </div>
       </div>
@@ -108,7 +110,7 @@ export default function VideoHubPage({
             onClick={() => setSelectedGenreId(null)}
             className={`chip-filter ${!selectedGenreId ? 'chip-filter-active' : ''}`}
           >
-            Semua
+            {t('all', 'Semua')}
           </button>
           {genres.map((g) => (
             <button
@@ -129,10 +131,10 @@ export default function VideoHubPage({
         <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
           <Video className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
           <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Belum ada video di perpustakaan
+            {t('noVideoLibrary', 'Belum ada video di perpustakaan')}
           </h4>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
-            Upload file video MP4, MKV, MOV melalui tombol floating Upload untuk menikmati streaming native.
+            {t('videoHint', 'Upload file video MP4, MKV, MOV melalui tombol floating Upload untuk menikmati streaming native.')}
           </p>
         </div>
       ) : (

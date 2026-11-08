@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Calendar, HardDrive, FileText, Film, Image as ImageIcon, Clock, Maximize2 } from 'lucide-react';
 import { formatBytes } from './QuotaBar';
+import { useLanguage, localeFor } from '../context/LanguageContext';
 
 function formatSeconds(sec) {
   if (!sec || isNaN(sec)) return '-';
@@ -10,6 +11,7 @@ function formatSeconds(sec) {
 }
 
 export default function MediaDetailModal({ isOpen, onClose, media }) {
+  const { t, lang } = useLanguage();
   if (!isOpen || !media) return null;
 
   return (
@@ -25,7 +27,7 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
             ) : (
               <ImageIcon className="w-5 h-5 text-[#C2410C]" />
             )}
-            <h3 className="font-serif font-bold text-lg">Detail Berkas Media</h3>
+            <h3 className="font-serif font-bold text-lg">{t('mediaFileDetail', 'Detail Berkas Media')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -38,14 +40,14 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
         <div className="space-y-3 text-[13px]">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-              Nama Tampilan
+              {t('displayName', 'Nama Tampilan')}
             </span>
             <p className="font-semibold break-all">{media.display_name}</p>
           </div>
 
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-              Nama File Asli
+              {t('originalFileName', 'Nama File Asli')}
             </span>
             <p className="font-mono text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] break-all">{media.original_name}</p>
           </div>
@@ -53,14 +55,14 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
           <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-                Ukuran Berkas
+                {t('fileSizeLabel', 'Ukuran Berkas')}
               </span>
               <p className="font-mono font-semibold">{formatBytes(media.file_size)}</p>
             </div>
 
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-                Format MIME
+                {t('mimeFormat', 'Format MIME')}
               </span>
               <p className="font-mono">{media.mime_type}</p>
             </div>
@@ -70,14 +72,14 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-                  Dimensi Resolusi
+                  {t('resolutionDimension', 'Dimensi Resolusi')}
                 </span>
                 <p className="font-mono">{media.width} × {media.height} px</p>
               </div>
 
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-                  Orientasi
+                  {t('orientation', 'Orientasi')}
                 </span>
                 <p className="capitalize">
                   {media.is_portrait ? 'Portrait (9:16)' : 'Landscape (16:9)'}
@@ -89,7 +91,7 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
           {media.media_type === 'video' && (
             <div className="pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-                Durasi Video
+                {t('videoDuration', 'Durasi Video')}
               </span>
               <p className="font-mono">{formatSeconds(media.duration_seconds)}</p>
             </div>
@@ -97,10 +99,10 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
 
           <div className="pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
-              Waktu Unggah / Diambil
+              {t('uploadTime', 'Waktu Unggah / Diambil')}
             </span>
             <p className="text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
-              {new Date(media.captured_at || media.created_at).toLocaleString('id-ID', {
+              {new Date(media.captured_at || media.created_at).toLocaleString(localeFor(lang), {
                 dateStyle: 'full',
                 timeStyle: 'medium'
               })}
@@ -110,7 +112,7 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
 
         <div className="mt-5 pt-3 border-t border-[#E8E8EC] dark:border-[#1F1F27] flex justify-end">
           <button onClick={onClose} className="btn-primary h-9 text-[13px] px-4">
-            Tutup
+            {t('close', 'Tutup')}
           </button>
         </div>
       </div>

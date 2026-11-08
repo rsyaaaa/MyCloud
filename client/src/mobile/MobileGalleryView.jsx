@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Folder, X
+  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Eye, EyeOff, Folder, X
 } from 'lucide-react';
-import MemoriesCarousel from '../components/MemoriesCarousel';
 import MobileMediaCard from './MobileMediaCard';
 import MobileMediaListItem from './MobileMediaListItem';
 import MobilePagination from './MobilePagination';
 import { api } from '../api';
-import { MediaGridSkeleton, MemoriesSkeleton } from '../components/SkeletonLoader';
+import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { getRecentHistory, recordRecentItem } from '../utils/recentHistory';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { useLanguage } from '../context/LanguageContext';
 
 function groupMediaByDate(mediaList) {
   const groups = {};
@@ -52,9 +52,13 @@ export default function MobileGalleryView({
   onRename,
   onLongPress
 }) {
+  const { t } = useLanguage();
   const [subView, setSubView] = useState(() => initialSubView || localStorage.getItem('mycloud_pref_gallery_subview') || 'all');
   const [mediaList, setMediaList] = useState([]);
-  const [memories, setMemories] = useState([]);
+  const [favoriteMedia, setFavoriteMedia] = useState([]);
+  const [favoriteHidden, setFavoriteHidden] = useState(() => {
+    return localStorage.getItem('mycloud_gallery_favorite_hidden') === 'true';
+  });
   const [recentMedia, setRecentMedia] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCatId, setSelectedCatId] = useState(null);
@@ -81,6 +85,14 @@ export default function MobileGalleryView({
   const changeViewMode = (mode) => {
     setViewMode(mode);
     localStorage.setItem('mycloud_pref_gallery_view', mode);
+  };
+
+  const toggleFavoriteHidden = () => {
+    setFavoriteHidden((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem('mycloud_gallery_favorite_hidden', String(nextVal));
+      return nextVal;
+    });
   };
 
   useEffect(() => {
@@ -116,9 +128,9 @@ export default function MobileGalleryView({
         params.search = searchQuery;
       }
 
-      const [mediaRes, memRes, catRes] = await Promise.all([
+      const [mediaRes, favRes, catRes] = await Promise.all([
         api.listMedia(params),
-        api.getMemories(),
+        api.listMedia({ media_type: 'gallery', is_favorite: '1', sort: 'newest' }),
         api.listCategories()
       ]);
 
@@ -133,7 +145,9 @@ export default function MobileGalleryView({
       }
 
       setMediaList(list);
-      setMemories(memRes.memories || []);
+      setFavoriteMedia(
+        (favRes.media || []).filter((m) => m.media_type === 'image' || m.media_type === 'video')
+      );
       setCategories(catRes.categories || []);
       if (!silent) setCurrentPage(1);
 
@@ -159,11 +173,21 @@ export default function MobileGalleryView({
         setMediaList((prev) =>
           prev.map((m) => (m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m))
         );
+        setFavoriteMedia((prev) => {
+          if (!event.is_favorite) return prev.filter((m) => m.id !== event.id);
+          const candidate = mediaList.find((m) => m.id === event.id) || prev.find((m) => m.id === event.id);
+          if (!candidate) return prev;
+          const updated = { ...candidate, is_favorite: 1 };
+          return prev.some((m) => m.id === event.id)
+            ? prev.map((m) => (m.id === event.id ? updated : m))
+            : [updated, ...prev];
+        });
         if (onlyFavorite && event.is_favorite === 0) {
           setMediaList((prev) => prev.filter((m) => m.id !== event.id));
         }
       } else if (event.type === 'delete' || event.type === 'lock') {
         setMediaList((prev) => prev.filter((m) => m.id !== event.id));
+        setFavoriteMedia((prev) => prev.filter((m) => m.id !== event.id));
       } else if (event.type === 'rename') {
         setMediaList((prev) =>
           prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
@@ -235,16 +259,67 @@ export default function MobileGalleryView({
       {/* When in "Semua" mode: Show Memories Banner & Recent Carousel */}
       {subView === 'all' && (
         <>
-          {/* Memories Carousel Banner: "Ingatkah Momen Ini?" */}
+          {/* Favorite Strip (replaces the old "Ingatkah Momen Ini?" memories banner) */}
           {!searchQuery && (
-            loading ? (
-              <MemoriesSkeleton />
-            ) : memories.length > 0 ? (
-              <MemoriesCarousel
-                memories={memories}
-                onSelectMedia={(items, index) => handleMediaClick(items, index)}
-              />
-            ) : null
+            <div className="p-3 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <button
+                  type="button"
+                  onClick={toggleFavoriteHidden}
+                  className="p-1 rounded-[4px] text-[#6B6B6B] dark:text-[#A1A1AA] border border-[#E8E8EC] dark:border-[#1F1F27] shrink-0"
+                  title={favoriteHidden ? t('show', 'Tampilkan') : t('hide', 'Sembunyikan')}
+                >
+                  {favoriteHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+                <Heart className="w-3.5 h-3.5 text-[#EF4444] fill-[#EF4444]" />
+                <h4 className="font-serif font-bold text-[12px] text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  Favorite
+                </h4>
+                {!favoriteHidden && favoriteMedia.length > 0 && (
+                  <span className="text-[9px] font-mono font-semibold text-[#6B6B6B] dark:text-[#9C9C9C] bg-[#F4F4F5] dark:bg-[#121218] px-1.5 py-0.2 rounded border border-[#E8E8EC] dark:border-[#1F1F27]">
+                    {favoriteMedia.length}
+                  </span>
+                )}
+              </div>
+
+              {!favoriteHidden && (
+                loading ? (
+                  <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">Memuat...</p>
+                ) : favoriteMedia.length === 0 ? (
+                  <p className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">
+                    Belum ada media favorit.
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none">
+                    {favoriteMedia.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleMediaClick(favoriteMedia, idx)}
+                        className="w-20 shrink-0 cursor-pointer active:scale-95 transition-transform"
+                      >
+                        <div className="w-20 h-20 rounded-[8px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] relative border border-[#E8E8EC] dark:border-[#1F1F27]">
+                          <img
+                            src={api.getThumbnailUrl(item.id)}
+                            alt={item.display_name}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                          />
+                          {item.media_type === 'video' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <Play className="w-3.5 h-3.5 fill-white text-white" />
+                            </div>
+                          )}
+                          <Heart className="absolute top-1 right-1 w-3 h-3 text-[#EF4444] fill-[#EF4444]" />
+                        </div>
+                        <p className="text-[10px] text-[#0A0A0A] dark:text-[#FAFAFA] truncate mt-1">
+                          {item.display_name || item.original_name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
           )}
 
           {/* Recent Photos/Videos Strip */}

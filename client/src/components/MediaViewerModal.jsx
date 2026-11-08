@@ -7,6 +7,7 @@ import VideoPlayer from './VideoPlayer';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 import { recordRecentItem } from '../utils/recentHistory';
+import { useLanguage, localeFor } from '../context/LanguageContext';
 
 export default function MediaViewerModal({
   isOpen,
@@ -26,6 +27,7 @@ export default function MediaViewerModal({
   const [showInfo, setShowInfo] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
+  const { t, lang } = useLanguage();
 
   const currentMedia = mediaList[currentIndex];
 
@@ -45,13 +47,17 @@ export default function MediaViewerModal({
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
+
+      // In the video player, ArrowLeft/ArrowRight are reserved for -10s / +10s seeking.
+      if (currentMedia && currentMedia.media_type === 'video') return;
+
       if (e.key === 'ArrowLeft' && currentIndex > 0) onNavigate(currentIndex - 1);
       if (e.key === 'ArrowRight' && currentIndex < mediaList.length - 1) onNavigate(currentIndex + 1);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentIndex, mediaList.length]);
+  }, [isOpen, currentIndex, mediaList.length, currentMedia]);
 
   if (!isOpen || !currentMedia) return null;
 
@@ -84,14 +90,14 @@ export default function MediaViewerModal({
                 className="bg-white/10 border border-[#C2410C] text-white px-2 py-0.5 rounded text-[13px] outline-none w-28 sm:w-auto"
               />
               <button type="submit" className="text-[11px] bg-[#C2410C] px-2 py-0.5 rounded">
-                Simpan
+                {t('save', 'Simpan')}
               </button>
               <button
                 type="button"
                 onClick={() => setIsEditingName(false)}
                 className="text-[11px] text-white/70 hover:text-white"
               >
-                Batal
+                {t('cancel', 'Batal')}
               </button>
             </form>
           ) : (
@@ -102,7 +108,7 @@ export default function MediaViewerModal({
               <button
                 onClick={() => setIsEditingName(true)}
                 className="text-white/60 hover:text-white p-1 rounded transition-colors shrink-0"
-                title="Ubah Nama Tampilan"
+                title={t('renameDisplay', 'Ubah Nama Tampilan')}
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
@@ -117,7 +123,7 @@ export default function MediaViewerModal({
             className={`p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors ${
               currentMedia.is_favorite ? 'text-[#EF4444]' : 'text-white/80 hover:text-white'
             }`}
-            title="Favorit"
+            title={t('favorite', 'Favorit')}
           >
             <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${currentMedia.is_favorite ? 'fill-[#EF4444]' : ''}`} />
           </button>
@@ -126,7 +132,7 @@ export default function MediaViewerModal({
             <button
               onClick={() => onOrganize(currentMedia)}
               className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-              title="Atur ke Album"
+              title={t('organizeToAlbum', 'Atur ke Album')}
             >
               <Folder className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -136,7 +142,7 @@ export default function MediaViewerModal({
             <button
               onClick={() => onUnlock(currentMedia.id)}
               className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-              title="Keluarkan dari Brankas"
+              title={t('unlockFromVault', 'Keluarkan dari Brankas')}
             >
               <Unlock className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -144,7 +150,7 @@ export default function MediaViewerModal({
             <button
               onClick={() => onLock(currentMedia.id)}
               className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-              title="Kunci ke Brankas Rahasia"
+              title={t('lockToVaultSecret', 'Kunci ke Brankas Rahasia')}
             >
               <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -155,7 +161,7 @@ export default function MediaViewerModal({
               href={api.getDownloadUrl(currentMedia.id)}
               download
               className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-              title="Unduh Asli"
+              title={t('downloadOriginal', 'Unduh Asli')}
             >
               <Download className="w-4 h-4 sm:w-5 sm:h-5" />
             </a>
@@ -166,7 +172,7 @@ export default function MediaViewerModal({
             className={`p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors ${
               showInfo ? 'text-[#C2410C] bg-white/20' : 'text-white/80 hover:text-white'
             }`}
-            title="Info Metadata"
+            title={t('metadataDetail', 'Info Metadata')}
           >
             <Info className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
@@ -174,7 +180,7 @@ export default function MediaViewerModal({
           <button
             onClick={() => onDelete(currentMedia.id)}
             className="p-1.5 sm:p-2 rounded-full hover:bg-[#EF4444]/20 text-white/80 hover:text-[#EF4444] transition-colors"
-            title="Hapus Media"
+            title={t('deleteMedia', 'Hapus Media')}
           >
             <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
@@ -184,7 +190,7 @@ export default function MediaViewerModal({
           <button
             onClick={onClose}
             className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white transition-colors"
-            title="Tutup"
+            title={t('close', 'Tutup')}
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -233,34 +239,34 @@ export default function MediaViewerModal({
       {showInfo && (
         <div className="absolute right-0 top-16 bottom-0 w-80 bg-white dark:bg-[#0A0A0E] border-l border-[#E8E8EC] dark:border-[#1F1F27] p-6 overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA] z-30 shadow-modal animate-in slide-in-from-right duration-200">
           <h4 className="font-serif font-semibold text-lg mb-4 text-[#0A0A0A] dark:text-[#FAFAFA] pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
-            Detail File Media
+            {t('fileMediaDetail', 'Detail File Media')}
           </h4>
 
           <div className="space-y-4 text-[13px]">
             <div>
-              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Nama Tampilan</span>
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('displayName', 'Nama Tampilan')}</span>
               <span className="font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.display_name}</span>
             </div>
 
             <div>
-              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Nama File Asli</span>
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('originalFileName', 'Nama File Asli')}</span>
               <span className="font-mono text-[12px] break-all text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.original_name}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Ukuran File</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('sizeFileLabel', 'Ukuran File')}</span>
                 <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(currentMedia.file_size)}</span>
               </div>
               <div>
-                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Tipe Media</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('mediaType', 'Tipe Media')}</span>
                 <span className="uppercase font-semibold text-[#C2410C] dark:text-[#FB923C]">{currentMedia.media_type}</span>
               </div>
             </div>
 
             {currentMedia.width && currentMedia.height && (
               <div>
-                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Resolusi & Rasio</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('resolutionRatio', 'Resolusi & Rasio')}</span>
                 <span className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.width} × {currentMedia.height}</span>
                 {currentMedia.is_portrait ? (
                   <span className="ml-2 text-[11px] bg-[#FFF7ED] text-[#C2410C] dark:bg-[#2A1208] dark:text-[#FB923C] px-1.5 py-0.5 rounded border border-[#C2410C]/20">
@@ -276,15 +282,15 @@ export default function MediaViewerModal({
 
             {currentMedia.duration_seconds > 0 && (
               <div>
-                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Durasi Video</span>
-                <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.duration_seconds} Detik</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('videoDuration', 'Durasi Video')}</span>
+                <span className="font-mono font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">{currentMedia.duration_seconds} {t('seconds', 'Detik')}</span>
               </div>
             )}
 
             <div>
-              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">Waktu Momen</span>
+              <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-0.5">{t('momentTime', 'Waktu Momen')}</span>
               <span className="text-[12px] text-[#0A0A0A] dark:text-[#FAFAFA]">
-                {new Date(currentMedia.captured_at || currentMedia.created_at).toLocaleString('id-ID', {
+                {new Date(currentMedia.captured_at || currentMedia.created_at).toLocaleString(localeFor(lang), {
                   dateStyle: 'full',
                   timeStyle: 'short'
                 })}
@@ -293,7 +299,7 @@ export default function MediaViewerModal({
 
             {currentMedia.category_names && (
               <div>
-                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-1">Album / Tag</span>
+                <span className="text-[#6B6B6B] dark:text-[#9C9C9C] block mb-1">{t('albumTag', 'Album / Tag')}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {currentMedia.category_names.split(',').map((cat, i) => (
                     <span
