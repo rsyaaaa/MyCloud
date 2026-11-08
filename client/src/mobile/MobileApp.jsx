@@ -211,15 +211,15 @@ export default function MobileApp({
       {/* Floating Action Button (FAB) - Upload */}
       <button
         onClick={onOpenUpload}
-        className="fixed bottom-20 right-4 z-40 btn-primary h-12 px-4 rounded-full shadow-lg shadow-[#C2410C]/30 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-[13px] font-medium"
+        className="fixed bottom-[86px] right-4 z-40 bg-[#C2410C] hover:bg-[#EA580C] text-white h-12 px-6 rounded-full shadow-[0_8px_25px_rgba(194,65,12,0.40)] flex items-center justify-center gap-2.5 active:scale-95 transition-all text-[14px] font-semibold tracking-wide select-none"
         title="Upload Media"
       >
-        <Upload className="w-4 h-4 stroke-[2.2]" />
+        <Upload className="w-4 h-4 stroke-[2.3]" />
         <span>Upload</span>
       </button>
 
-      {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 inset-x-0 h-16 bg-white/95 dark:bg-black/95 backdrop-blur-md border-t border-[#E8E8EC] dark:border-[#1F1F27] z-40 flex items-center justify-around px-2 transition-colors">
+      {/* Floating Bottom Navigation Bar */}
+      <nav className="fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/90 dark:bg-[#0A0A0E]/90 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.70)] z-40 flex items-center justify-around px-2 transition-all">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
@@ -231,12 +231,14 @@ export default function MobileApp({
                 setTab(item.id);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${
-                isActive ? 'text-[#C2410C]' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+              className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-[16px] transition-all active:scale-95 ${
+                isActive
+                  ? 'text-[#C2410C] font-semibold bg-[#FFF7ED] dark:bg-[#2A1208]'
+                  : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA]'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
-              <span className={`text-[11px] mt-1 ${isActive ? 'font-semibold' : 'font-normal'}`}>
+              <span className="text-[11px] mt-0.5 tracking-tight">
                 {item.label}
               </span>
             </button>
