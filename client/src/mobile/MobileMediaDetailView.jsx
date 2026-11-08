@@ -7,6 +7,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import MediaDetailModal from '../components/MediaDetailModal';
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
+import { recordRecentItem } from '../utils/recentHistory';
 
 export default function MobileMediaDetailView({
   isOpen,
@@ -33,8 +34,11 @@ export default function MobileMediaDetailView({
     if (currentMedia) {
       setEditName(currentMedia.display_name || '');
       setIsEditingName(false);
+      if (isOpen) {
+        recordRecentItem(currentMedia);
+      }
     }
-  }, [currentMedia]);
+  }, [currentMedia, isOpen]);
 
   if (!isOpen || !currentMedia) return null;
 

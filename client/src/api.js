@@ -63,6 +63,7 @@ export const api = {
     const query = new URLSearchParams(params).toString();
     return apiRequest(`/media${query ? `?${query}` : ''}`);
   },
+  getMediaStats: () => apiRequest('/media/stats/summary'),
   getMedia: (id) => apiRequest(`/media/${id}`),
   uploadMedia: (formData) => apiRequest('/media/upload', { method: 'POST', body: formData }),
   updateMedia: (id, updates) => apiRequest(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),

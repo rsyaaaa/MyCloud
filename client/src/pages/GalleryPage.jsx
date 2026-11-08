@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Image, Video, Heart } from 'lucide-react';
+import {
+  Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Sparkles, Filter
+} from 'lucide-react';
 import MemoriesCarousel from '../components/MemoriesCarousel';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
 import { MediaGridSkeleton, MemoriesSkeleton } from '../components/SkeletonLoader';
+import { getRecentHistory, recordRecentItem } from '../utils/recentHistory';
 
 function groupMediaByDate(mediaList) {
   const groups = {};
@@ -36,6 +39,7 @@ function groupMediaByDate(mediaList) {
 }
 
 export default function GalleryPage({
+  initialSubView = 'all',
   searchQuery,
   onOpenViewer,
   onToggleFavorite,
@@ -46,28 +50,70 @@ export default function GalleryPage({
   onContextMenu,
   onShowDetail
 }) {
+  const [subView, setSubView] = useState(initialSubView || 'all'); // 'all', 'photo', 'video'
   const [mediaList, setMediaList] = useState([]);
   const [memories, setMemories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('all'); // 'all', 'image', 'video', 'favorite'
+  const [recentMedia, setRecentMedia] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCatId, setSelectedCatId] = useState(null);
+  const [orientationFilter, setOrientationFilter] = useState('all'); // 'all', 'landscape', 'portrait'
+  const [aspectFilter, setAspectFilter] = useState('all'); // 'all', 'portrait', 'landscape'
   const [sortOption, setSortOption] = useState('newest');
+  const [onlyFavorite, setOnlyFavorite] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
+  const [loading, setLoading] = useState(true);
 
-  const loadMedia = async () => {
+  // Sync subView if parent changes initialSubView
+  useEffect(() => {
+    if (initialSubView) setSubView(initialSubView);
+  }, [initialSubView]);
+
+  const loadData = async () => {
     setLoading(true);
     try {
       const params = { sort: sortOption };
-      if (filterType === 'image') params.media_type = 'image';
-      if (filterType === 'video') params.media_type = 'video';
-      if (filterType === 'favorite') params.is_favorite = '1';
-      if (searchQuery) params.search = searchQuery;
 
-      const [mediaRes, memRes] = await Promise.all([
+      if (subView === 'photo') {
+        params.media_type = 'image';
+      } else if (subView === 'video') {
+        params.media_type = 'video';
+      }
+
+      if (selectedCatId) {
+        params.category_id = selectedCatId;
+      }
+
+      if (onlyFavorite) {
+        params.is_favorite = '1';
+      }
+
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+
+      const [mediaRes, memRes, catRes] = await Promise.all([
         api.listMedia(params),
-        api.getMemories()
+        api.getMemories(),
+        api.listCategories(subView === 'video' ? 'genre' : null)
       ]);
 
-      setMediaList(mediaRes.media || []);
+      let list = mediaRes.media || [];
+
+      // Filter orientation if needed
+      if (subView === 'photo' && orientationFilter !== 'all') {
+        list = list.filter(m => orientationFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
+      } else if (subView === 'video' && aspectFilter !== 'all') {
+        list = list.filter(m => aspectFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
+      }
+
+      setMediaList(list);
       setMemories(memRes.memories || []);
+      setCategories(catRes.categories || []);
+
+      // Load recent photos/videos
+      const history = getRecentHistory();
+      const filteredRecent = history.filter(item => !item.is_folder && item.type !== 'folder' && item.type !== 'document' && item.media_type !== 'document');
+      setRecentMedia(filteredRecent);
     } catch (err) {
       console.error('Failed to load gallery:', err);
     } finally {
@@ -76,84 +122,278 @@ export default function GalleryPage({
   };
 
   useEffect(() => {
-    loadMedia();
-  }, [filterType, sortOption, searchQuery]);
+    loadData();
+  }, [subView, selectedCatId, orientationFilter, aspectFilter, sortOption, onlyFavorite, searchQuery]);
+
+  const handleMediaClick = (items, index) => {
+    const item = items[index];
+    if (item) recordRecentItem(item);
+    if (onOpenViewer) onOpenViewer(items, index);
+  };
 
   const groupedMedia = useMemo(() => groupMediaByDate(mediaList), [mediaList]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Memories Engine Banner: "Ingatkah Momen Ini?" */}
-      {!searchQuery && (
-        loading ? (
-          <MemoriesSkeleton />
-        ) : memories.length > 0 ? (
-          <MemoriesCarousel
-            memories={memories}
-            onSelectMedia={(items, index) => onOpenViewer(items, index)}
-          />
-        ) : null
-      )}
-
-      {/* Filter Chips & Sorting Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`chip-filter ${filterType === 'all' ? 'chip-filter-active' : ''}`}
-          >
-            Semua Media
-          </button>
-          <button
-            onClick={() => setFilterType('image')}
-            className={`chip-filter ${filterType === 'image' ? 'chip-filter-active' : ''}`}
-          >
-            <Image className="w-3.5 h-3.5" /> Foto
-          </button>
-          <button
-            onClick={() => setFilterType('video')}
-            className={`chip-filter ${filterType === 'video' ? 'chip-filter-active' : ''}`}
-          >
-            <Video className="w-3.5 h-3.5" /> Video
-          </button>
-          <button
-            onClick={() => setFilterType('favorite')}
-            className={`chip-filter ${filterType === 'favorite' ? 'chip-filter-active' : ''}`}
-          >
-            <Heart className="w-3.5 h-3.5" /> Favorit
-          </button>
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-enter">
+      {/* Gallery Header & Sub-View Switcher (Semua | Foto | Video) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+        <div>
+          <h2 className="font-serif font-bold text-2xl sm:text-3xl text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight">
+            Galeri Media
+          </h2>
+          <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-0.5">
+            Koleksi lengkap foto, video, dan kenangan momen Anda.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 text-[13px]">
-          <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">Urutkan:</span>
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-            className="input-artisan h-[34px] py-0 text-[13px] bg-white dark:bg-[#000000] border border-[#E8E8EC] dark:border-[#1F1F27]"
+        {/* 3 Main Mode Switcher: Semua (Campuran) | Foto | Video */}
+        <div className="flex items-center gap-1.5 p-1 bg-[#F4F4F5] dark:bg-[#121218] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px]">
+          <button
+            onClick={() => { setSubView('all'); setSelectedCatId(null); }}
+            className={`px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
+              subView === 'all'
+                ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
+                : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
+            }`}
           >
-            <option value="newest">Terbaru</option>
-            <option value="oldest">Terlama</option>
-            <option value="size_desc">Ukuran Terbesar</option>
-            <option value="size_asc">Ukuran Terkecil</option>
-            <option value="duration_desc">Durasi Terpanjang</option>
-          </select>
+            Semua (Campuran)
+          </button>
+          <button
+            onClick={() => { setSubView('photo'); setSelectedCatId(null); }}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
+              subView === 'photo'
+                ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
+                : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
+            }`}
+          >
+            <Image className="w-4 h-4 stroke-[2]" />
+            <span>Foto</span>
+          </button>
+          <button
+            onClick={() => { setSubView('video'); setSelectedCatId(null); }}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
+              subView === 'video'
+                ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
+                : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
+            }`}
+          >
+            <Video className="w-4 h-4 stroke-[2]" />
+            <span>Video</span>
+          </button>
         </div>
       </div>
 
-      {/* Media Feed */}
+      {/* When in "Semua" mode: Show Memories Banner & Recent Carousel */}
+      {subView === 'all' && (
+        <>
+          {/* "Ingatkah Momen Ini?" Banner */}
+          {!searchQuery && (
+            loading ? (
+              <MemoriesSkeleton />
+            ) : memories.length > 0 ? (
+              <MemoriesCarousel
+                memories={memories}
+                onSelectMedia={(items, index) => handleMediaClick(items, index)}
+              />
+            ) : null
+          )}
+
+          {/* Recent Photos/Videos Strip */}
+          {recentMedia.length > 0 && !searchQuery && (
+            <div className="p-4 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px]">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-4 h-4 text-[#C2410C]" />
+                <h4 className="font-serif font-bold text-sm text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  Baru Saja Dibuka
+                </h4>
+              </div>
+              <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
+                {recentMedia.slice(0, 10).map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    onClick={() => handleMediaClick([item], 0)}
+                    className="w-24 shrink-0 cursor-pointer group"
+                  >
+                    <div className="w-24 h-24 rounded-[8px] overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] relative border border-[#E8E8EC] dark:border-[#1F1F27] group-hover:border-[#C2410C] transition-colors">
+                      <img
+                        src={api.getThumbnailUrl(item.id)}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      {(item.media_type === 'video' || item.type === 'video') && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <Play className="w-4 h-4 fill-white text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA] truncate mt-1 group-hover:text-[#C2410C]">
+                      {item.name || item.display_name}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Category / Genre Filters (For Photo & Video Hubs) */}
+      {categories.length > 0 && subView !== 'all' && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <button
+            onClick={() => setSelectedCatId(null)}
+            className={`chip-filter shrink-0 ${!selectedCatId ? 'chip-filter-active' : ''}`}
+          >
+            Semua {subView === 'photo' ? 'Album' : 'Genre'}
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCatId(cat.id === selectedCatId ? null : cat.id)}
+              className={`chip-filter shrink-0 ${selectedCatId === cat.id ? 'chip-filter-active' : ''}`}
+            >
+              <Tag className="w-3 h-3" />
+              <span>{cat.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Toolbar: Orientation / Aspect Ratio, Favorites & Sorting */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px]">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Favorite Toggle */}
+          <button
+            onClick={() => setOnlyFavorite(!onlyFavorite)}
+            className={`chip-filter ${onlyFavorite ? 'chip-filter-active' : ''}`}
+          >
+            <Heart className="w-3.5 h-3.5 stroke-[2.2]" />
+            <span>Favorit</span>
+          </button>
+
+          {/* Orientation Filter for Photos */}
+          {subView === 'photo' && (
+            <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <button
+                onClick={() => setOrientationFilter('all')}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
+                  orientationFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+              >
+                Semua
+              </button>
+              <button
+                onClick={() => setOrientationFilter('landscape')}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
+                  orientationFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+              >
+                Lanskap
+              </button>
+              <button
+                onClick={() => setOrientationFilter('portrait')}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
+                  orientationFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+              >
+                Potret
+              </button>
+            </div>
+          )}
+
+          {/* Aspect Ratio Filter for Videos */}
+          {subView === 'video' && (
+            <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <button
+                onClick={() => setAspectFilter('all')}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
+                  aspectFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+              >
+                Semua
+              </button>
+              <button
+                onClick={() => setAspectFilter('portrait')}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
+                  aspectFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+              >
+                9:16
+              </button>
+              <button
+                onClick={() => setAspectFilter('landscape')}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
+                  aspectFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+              >
+                16:9
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right side: Sorting & Grid/List view mode */}
+        <div className="flex items-center gap-3 text-[13px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">Urutkan:</span>
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              className="input-artisan h-[32px] py-0 text-[12px] bg-white dark:bg-[#000000]"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="size_desc">Ukuran Terbesar</option>
+              <option value="size_asc">Ukuran Terkecil</option>
+              {subView === 'video' && <option value="duration_desc">Durasi Terpanjang</option>}
+            </select>
+          </div>
+
+          {/* Grid vs List toggle */}
+          {subView !== 'all' && (
+            <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-[4px] transition-colors ${
+                  viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-[4px] transition-colors ${
+                  viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
+                title="List View"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Media Feed Rendering */}
       {loading ? (
         <MediaGridSkeleton count={10} />
       ) : mediaList.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-[#0A0A0E] border border-dashed border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-8">
-          <Image className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          {subView === 'video' ? (
+            <Video className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          ) : (
+            <Image className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
+          )}
           <h4 className="font-serif font-semibold text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Belum ada foto atau video
+            Belum ada {subView === 'video' ? 'video' : subView === 'photo' ? 'foto' : 'media'}
           </h4>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1 max-w-sm mx-auto">
-            Mulai simpan kenangan Anda di Personal Cloud lokal ini dengan menekan tombol floating <strong>Upload</strong> di sudut kanan bawah.
+            Gunakan tombol Upload di sudut kanan bawah untuk mulai menambahkan media.
           </p>
         </div>
-      ) : (
+      ) : subView === 'all' ? (
+        /* Timeline Date Grouped Feed for "Semua" */
         <div className="space-y-8">
           {Object.entries(groupedMedia).map(([dateGroup, items]) => (
             <section key={dateGroup}>
@@ -164,10 +404,9 @@ export default function GalleryPage({
                 <span className="text-[12px] font-mono text-[#6B6B6B] dark:text-[#9C9C9C] bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] px-2 py-0.5 rounded-[4px]">
                   {items.length} item
                 </span>
-                <div className="flex-1 h-[1px] bg-[#E7E5E4] dark:bg-[#1F1F1F]" />
+                <div className="flex-1 h-[1px] bg-[#E8E8EC] dark:bg-[#1F1F27]" />
               </div>
 
-              {/* Responsive Dynamic Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {items.map((media) => {
                   const globalIdx = mediaList.findIndex((m) => m.id === media.id);
@@ -175,7 +414,7 @@ export default function GalleryPage({
                     <MediaCard
                       key={media.id}
                       media={media}
-                      onClick={() => onOpenViewer(mediaList, globalIdx)}
+                      onClick={() => handleMediaClick(mediaList, globalIdx)}
                       onToggleFavorite={onToggleFavorite}
                       onLock={onLock}
                       onOrganize={onOrganize}
@@ -188,6 +427,24 @@ export default function GalleryPage({
                 })}
               </div>
             </section>
+          ))}
+        </div>
+      ) : (
+        /* Dedicated Hub Layout for "Foto" or "Video" */
+        <div className={viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" : "space-y-3"}>
+          {mediaList.map((media, idx) => (
+            <MediaCard
+              key={media.id}
+              media={media}
+              onClick={() => handleMediaClick(mediaList, idx)}
+              onToggleFavorite={onToggleFavorite}
+              onLock={onLock}
+              onOrganize={onOrganize}
+              onDelete={onDelete}
+              onRename={onRename}
+              onContextMenu={onContextMenu}
+              onShowDetail={onShowDetail}
+            />
           ))}
         </div>
       )}

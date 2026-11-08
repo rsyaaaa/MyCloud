@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Image, Video, Folder, Trash2, Settings, HardDrive
+  Home, Images, Folder, Trash2, Settings, HardDrive
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import QuotaBar from './QuotaBar';
@@ -9,9 +9,9 @@ export default function Sidebar({ currentTab, setTab, onRequestIncreaseQuota }) 
   const { user } = useAuth();
 
   const navItems = [
-    { id: 'gallery', label: 'Galeri Utama', icon: Image },
-    { id: 'videos', label: 'Video Hub', icon: Video },
-    { id: 'albums', label: 'Album & Folder', icon: Folder },
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'gallery', label: 'Galeri', icon: Images },
+    { id: 'allfiles', label: 'All Files', icon: Folder },
     { id: 'trash', label: 'Tempat Sampah', icon: Trash2 },
   ];
 

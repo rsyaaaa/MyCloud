@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, Heart, Lock, Unlock, MoreVertical, Folder, Trash2, Edit2, Download, Info } from 'lucide-react';
+import { Play, Heart, Lock, Unlock, MoreVertical, Folder, Trash2, Edit2, Download, Info, FileText } from 'lucide-react';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 
@@ -66,12 +66,23 @@ export default function MediaCard({
         onClick={onClick}
         className="relative overflow-hidden bg-[#F4F4F5] dark:bg-[#121217] flex items-center justify-center aspect-square"
       >
-        <img
-          src={thumbSrc}
-          alt={media.display_name}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-        />
+        {media.media_type === 'document' ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-[#FFF7ED] to-[#FAFAFA] dark:from-[#1A0E08] dark:to-[#0A0A0E] text-center select-none">
+            <div className="w-12 h-12 rounded-[10px] bg-[#C2410C]/10 dark:bg-[#C2410C]/20 text-[#C2410C] flex items-center justify-center mb-2">
+              <FileText className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#C2410C] text-white">
+              {media.original_name ? media.original_name.split('.').pop().toUpperCase() : 'DOC'}
+            </span>
+          </div>
+        ) : (
+          <img
+            src={thumbSrc}
+            alt={media.display_name}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        )}
 
         {/* Video Overlay Badge */}
         {isVideo && (

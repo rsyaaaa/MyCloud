@@ -3,6 +3,7 @@ import { Folder, FolderPlus, ArrowLeft, Trash2, Layers } from 'lucide-react';
 import MediaCard from '../components/MediaCard';
 import { api } from '../api';
 import { AlbumsSkeleton, MediaGridSkeleton } from '../components/SkeletonLoader';
+import { recordRecentItem } from '../utils/recentHistory';
 
 export default function AlbumsPage({
   onOpenViewer,
@@ -35,6 +36,9 @@ export default function AlbumsPage({
 
   const loadCategoryMedia = async (cat) => {
     setSelectedCategory(cat);
+    if (cat) {
+      recordRecentItem({ folder_id: cat.id, name: cat.name, is_folder: true });
+    }
     setLoading(true);
     try {
       const data = await api.listMedia({ category_id: cat.id });

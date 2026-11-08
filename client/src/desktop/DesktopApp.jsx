@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import HomePage from '../pages/HomePage';
 import GalleryPage from '../pages/GalleryPage';
 import VideoHubPage from '../pages/VideoHubPage';
+import AllFilesPage from '../pages/AllFilesPage';
 import VaultPage from '../pages/VaultPage';
 import AlbumsPage from '../pages/AlbumsPage';
 import AdminPage from '../pages/AdminPage';
@@ -27,7 +29,8 @@ export default function DesktopApp({
 }) {
   const { user, refreshUser } = useAuth();
   const { notifyTabChange } = useVault();
-  const [currentTab, setCurrentTabState] = useState('gallery'); // 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
+  const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'albums', 'vault', 'trash', 'admin'
+  const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
   const [searchQuery, setSearchQuery] = useState('');
 
   // Context Menu & Modals
@@ -38,6 +41,11 @@ export default function DesktopApp({
   const setTab = (newTab) => {
     setCurrentTabState(newTab);
     notifyTabChange(newTab);
+  };
+
+  const handleNavigate = (tab, subView = 'all', folderId = null) => {
+    if (subView) setGallerySubView(subView);
+    setTab(tab);
   };
 
   const handleOpenContextMenu = (e, media) => {
@@ -74,8 +82,18 @@ export default function DesktopApp({
 
         {/* Main Desktop Content Area */}
         <main className="flex-1 overflow-y-auto min-h-[calc(100vh-64px)] animate-enter">
+          {currentTab === 'home' && (
+            <HomePage
+              onNavigate={handleNavigate}
+              onOpenViewer={onOpenViewer}
+              onOpenUpload={onOpenUpload}
+              onOpenQuotaModal={onOpenQuotaModal}
+            />
+          )}
+
           {currentTab === 'gallery' && (
             <GalleryPage
+              initialSubView={gallerySubView}
               searchQuery={searchQuery}
               onOpenViewer={onOpenViewer}
               onToggleFavorite={onToggleFavorite}
@@ -85,6 +103,20 @@ export default function DesktopApp({
               onRename={onRenameMedia}
               onContextMenu={handleOpenContextMenu}
               onShowDetail={(media) => setDetailModalMedia(media)}
+            />
+          )}
+
+          {currentTab === 'allfiles' && (
+            <AllFilesPage
+              onOpenViewer={onOpenViewer}
+              onToggleFavorite={onToggleFavorite}
+              onLock={onLockMedia}
+              onOrganize={onOrganizeMedia}
+              onDelete={onDeleteMedia}
+              onRename={onRenameMedia}
+              onContextMenu={handleOpenContextMenu}
+              onShowDetail={(media) => setDetailModalMedia(media)}
+              onOpenUpload={onOpenUpload}
             />
           )}
 

@@ -121,18 +121,18 @@ export default function UploadModal({ isOpen, onClose, user, onUploadSuccess, on
             ref={fileInputRef}
             onChange={handleFileChange}
             multiple
-            accept="image/*,video/*"
+            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
             className="hidden"
           />
           <UploadCloud className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
           <p className="text-[15px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
-            Tarik & Lepas Foto atau Video ke Sini
+            Tarik & Lepas File ke Sini
           </p>
           <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1">
             atau <span className="text-[#C2410C] font-semibold underline">pilih file dari perangkat</span>
           </p>
           <p className="text-[11px] text-[#9C9C9C] mt-3">
-            Mendukung MP4, MKV, MOV, JPG, PNG, WEBP, HEIC, GIF, dll.
+            Mendukung Foto (JPG, PNG, HEIC), Video (MP4, MKV), Dokumen (PDF, DOCX, TXT, XLS, ZIP)
           </p>
         </div>
 

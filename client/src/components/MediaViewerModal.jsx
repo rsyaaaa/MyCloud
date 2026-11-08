@@ -6,6 +6,7 @@ import {
 import VideoPlayer from './VideoPlayer';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
+import { recordRecentItem } from '../utils/recentHistory';
 
 export default function MediaViewerModal({
   isOpen,
@@ -32,8 +33,11 @@ export default function MediaViewerModal({
     if (currentMedia) {
       setEditName(currentMedia.display_name || '');
       setIsEditingName(false);
+      if (isOpen) {
+        recordRecentItem(currentMedia);
+      }
     }
-  }, [currentMedia]);
+  }, [currentMedia, isOpen]);
 
   // Keyboard navigation (Arrow keys, Escape)
   useEffect(() => {

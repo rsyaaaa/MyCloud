@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
 import {
-  Cloud, Image, Film, Folder, Shield, ShieldCheck, Server,
+  Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
   Moon, Sun, Trash2, Camera
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import { useTheme } from '../context/ThemeContext';
+import MobileHomeView from './MobileHomeView';
 import MobileGalleryView from './MobileGalleryView';
 import MobileVideoHubView from './MobileVideoHubView';
+import MobileAllFilesView from './MobileAllFilesView';
 import MobileAlbumsView from './MobileAlbumsView';
 import MobileVaultView from './MobileVaultView';
 import MobileAdminView from './MobileAdminView';
 import MobileTrashView from './MobileTrashView';
+import MobileSearchView from './MobileSearchView';
 import MobileMediaDetailView from './MobileMediaDetailView';
 import MediaContextMenu from '../components/MediaContextMenu';
 import MediaDetailModal from '../components/MediaDetailModal';
 import AvatarModal from '../components/AvatarModal';
 import QuotaBar from '../components/QuotaBar';
 import { api } from '../api';
+import { recordRecentItem } from '../utils/recentHistory';
 
 export default function MobileApp({
   onOpenUpload,
@@ -35,7 +39,8 @@ export default function MobileApp({
   const { isUnlocked, remainingSeconds, notifyTabChange } = useVault();
   const { isDark, toggleTheme } = useTheme();
 
-  const [currentTab, setCurrentTabState] = useState('gallery'); // 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
+  const [currentTab, setCurrentTabState] = useState('home'); // 'home', 'gallery', 'videos', 'albums', 'vault', 'trash', 'admin'
+  const [gallerySubView, setGallerySubView] = useState('all'); // 'all', 'photo', 'video'
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
@@ -59,18 +64,24 @@ export default function MobileApp({
     notifyTabChange(newTab);
   };
 
-  const navItems = [
-    { id: 'gallery', label: 'Galeri', icon: Image },
-    { id: 'videos', label: 'Video', icon: Film },
-    { id: 'albums', label: 'Album', icon: Folder },
-  ];
+  const handleNavigate = (tab, subView = 'all', folderId = null) => {
+    if (subView) setGallerySubView(subView);
+    setTab(tab);
+  };
 
-  if (user?.role === 'admin') {
-    navItems.push({ id: 'admin', label: 'Admin', icon: Server });
-  }
+  const navItems = [
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'gallery', label: 'Galeri', icon: Images },
+    { id: 'search', label: 'Search', icon: Search },
+    { id: 'allfiles', label: 'All Files', icon: Folder },
+    { id: 'trash', label: 'Trash', icon: Trash2 },
+  ];
 
   // Open full-screen dedicated mobile media viewer
   const handleMobileOpenViewer = (list, index, isVault = false, vaultToken = null) => {
+    if (list && list[index]) {
+      recordRecentItem(list[index]);
+    }
     setDetailViewer({
       isOpen: true,
       mediaList: list,
@@ -96,18 +107,8 @@ export default function MobileApp({
           </h1>
         </div>
 
-        {/* Right actions: Search toggle & Profile Avatar */}
+        {/* Right actions: Profile Avatar */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className={`p-2 rounded-[6px] transition-colors ${
-              showSearch ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-            }`}
-            title="Cari"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
           {/* User Avatar Circle */}
           <button
             onClick={() => setProfileDrawerOpen(true)}
@@ -122,36 +123,43 @@ export default function MobileApp({
         </div>
       </header>
 
-      {/* Expandable Search Input on Mobile */}
-      {showSearch && (
-        <div className="p-3 bg-white dark:bg-[#0A0A0E] border-b border-[#E8E8EC] dark:border-[#1F1F27] animate-enter">
-          <div className="relative">
-            <Search className="w-4 h-4 text-[#9C9C9C] absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              autoFocus
-              placeholder="Cari foto, video, judul..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-artisan w-full pl-9 h-9 text-[13px]"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E] hover:text-[#1C1917]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Main Mobile Screen View Area */}
       <main className="flex-1 w-full animate-enter">
+        {currentTab === 'home' && (
+          <MobileHomeView
+            onNavigate={handleNavigate}
+            onOpenViewer={handleMobileOpenViewer}
+          />
+        )}
+
         {currentTab === 'gallery' && (
           <MobileGalleryView
+            initialSubView={gallerySubView}
             searchQuery={searchQuery}
+            onOpenViewer={handleMobileOpenViewer}
+            onToggleFavorite={onToggleFavorite}
+            onLock={onLockMedia}
+            onOrganize={onOrganizeMedia}
+            onDelete={onDeleteMedia}
+            onRename={onRenameMedia}
+            onLongPress={(media) => setContextMenuMedia(media)}
+          />
+        )}
+
+        {currentTab === 'search' && (
+          <MobileSearchView
+            onOpenViewer={handleMobileOpenViewer}
+            onToggleFavorite={onToggleFavorite}
+            onLock={onLockMedia}
+            onOrganize={onOrganizeMedia}
+            onDelete={onDeleteMedia}
+            onRename={onRenameMedia}
+            onLongPress={(media) => setContextMenuMedia(media)}
+          />
+        )}
+
+        {currentTab === 'allfiles' && (
+          <MobileAllFilesView
             onOpenViewer={handleMobileOpenViewer}
             onToggleFavorite={onToggleFavorite}
             onLock={onLockMedia}
@@ -371,6 +379,22 @@ export default function MobileApp({
                   <span>Tempat Sampah (Trash)</span>
                 </div>
               </button>
+
+              {/* Admin Dashboard (jika admin) */}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => {
+                    setProfileDrawerOpen(false);
+                    setTab('admin');
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
+                >
+                  <div className="flex items-center gap-2.5 text-[#C2410C]">
+                    <Server className="w-4 h-4" />
+                    <span>Admin Dashboard</span>
+                  </div>
+                </button>
+              )}
             </div>
 
             {/* Server IP Info */}

@@ -69,25 +69,30 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     const mimeType = uploadedFile.mimetype || 'application/octet-stream';
     const isVideo = mimeType.startsWith('video/') || /\.(mp4|mkv|mov|avi|webm|flv|m4v)$/i.test(uploadedFile.originalname);
     const isImage = mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp|heic|svg)$/i.test(uploadedFile.originalname);
+    const isDoc = mimeType.startsWith('application/') || mimeType.startsWith('text/') || /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar|tar|gz|7z)$/i.test(uploadedFile.originalname);
 
-    if (!isVideo && !isImage) {
+    if (!isVideo && !isImage && !isDoc) {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      return res.status(400).json({ error: 'Hanya format gambar dan video yang didukung.' });
+      return res.status(400).json({ error: 'Format file tidak didukung. Unggah foto, video, atau dokumen (PDF, DOCX, XLS, TXT, dll).' });
     }
 
-    const mediaType = isVideo ? 'video' : 'image';
+    const mediaType = isVideo ? 'video' : isImage ? 'image' : 'document';
     const mediaId = path.basename(filePath, path.extname(filePath));
 
-    // 3. Extract dimensions, orientation & duration via FFprobe
-    const probe = await probeMedia(filePath);
+    // 3. Extract metadata / probe
+    let probe = { width: 0, height: 0, duration_seconds: 0, is_portrait: 0, captured_at: new Date().toISOString() };
+    let thumbPath = null;
 
-    // 4. Generate WebP thumbnail
-    const thumbDir = path.join(config.USERS_DIR, req.user.id, 'thumbnails');
-    if (!fs.existsSync(thumbDir)) {
-      fs.mkdirSync(thumbDir, { recursive: true });
+    if (mediaType !== 'document') {
+      probe = await probeMedia(filePath);
+      // 4. Generate WebP thumbnail
+      const thumbDir = path.join(config.USERS_DIR, req.user.id, 'thumbnails');
+      if (!fs.existsSync(thumbDir)) {
+        fs.mkdirSync(thumbDir, { recursive: true });
+      }
+      thumbPath = path.join(thumbDir, `${mediaId}.webp`);
+      await generateThumbnail(filePath, thumbPath, mediaType);
     }
-    const thumbPath = path.join(thumbDir, `${mediaId}.webp`);
-    await generateThumbnail(filePath, thumbPath, mediaType);
 
     // 5. Save to database
     const originalName = uploadedFile.originalname;
@@ -207,6 +212,47 @@ router.get('/', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[GET /api/media] Error:', err);
     return res.status(500).json({ error: 'Gagal mengambil data media.' });
+  }
+});
+
+// GET /api/media/stats/summary (Quick counts for Home Cards)
+router.get('/stats/summary', authMiddleware, async (req, res) => {
+  try {
+    const counts = await db.all(
+      `SELECT media_type, COUNT(*) as count, SUM(file_size) as total_size
+       FROM media_files
+       WHERE user_id = ? AND is_locked = 0 AND is_trash = 0
+       GROUP BY media_type`,
+      [req.user.id]
+    );
+
+    const folderCount = await db.get(
+      `SELECT COUNT(*) as count FROM categories_folders WHERE user_id = ?`,
+      [req.user.id]
+    );
+
+    let photos = 0;
+    let videos = 0;
+    let documents = 0;
+    let total = 0;
+
+    for (const row of counts) {
+      total += row.count;
+      if (row.media_type === 'image') photos = row.count;
+      else if (row.media_type === 'video') videos = row.count;
+      else if (row.media_type === 'document') documents = row.count;
+    }
+
+    return res.json({
+      photos,
+      videos,
+      documents,
+      folders: folderCount ? folderCount.count : 0,
+      total
+    });
+  } catch (err) {
+    console.error('[GET /api/media/stats/summary] Error:', err);
+    return res.status(500).json({ error: 'Gagal mengambil ringkasan statistik.' });
   }
 });
 
