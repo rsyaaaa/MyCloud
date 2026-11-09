@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Image, Video, FileText, HardDrive, Play, Star, Clock,
+  Image, Video, FileText, HardDrive, Play, Star, Clock, Heart,
   Folder, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { api } from '../api';
@@ -250,7 +250,7 @@ export default function MobileHomeView({
                   : 'font-medium text-[#71717A] dark:text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-white'
               }`}
             >
-              <span>{lang === 'en' ? 'Starred' : 'Favorit'}</span>
+              <span>{lang === 'en' ? 'Favorite' : 'Favorit'}</span>
               {homeTab === 'favorite' && (
                 <div className="absolute -bottom-2.5 left-0 right-0 h-[2.5px] bg-[#C2410C] dark:bg-white rounded-full transition-all" />
               )}
@@ -290,9 +290,9 @@ export default function MobileHomeView({
               </>
             ) : (
               <>
-                <Star className="w-8 h-8 text-[#F59E0B] mx-auto mb-2 opacity-40" />
+                <Heart className="w-8 h-8 text-[#EF4444] mx-auto mb-2 opacity-40" />
                 <p className="text-[13px] text-[#71717A] dark:text-[#8E8E9E]">
-                  {t('noFavoriteDesc', 'Belum ada file yang ditandai favorit (Starred).')}
+                  {t('noFavoriteDesc', 'Belum ada file yang ditandai favorit.')}
                 </p>
               </>
             )}
@@ -370,7 +370,7 @@ export default function MobileHomeView({
 
                     <div className="flex items-center gap-1.5 text-[11px] text-[#71717A] dark:text-[#8E8E9E] mt-0.5 font-mono">
                       {homeTab === 'favorite' ? (
-                        <Star className="w-3 h-3 text-[#F59E0B] fill-[#F59E0B] shrink-0" />
+                        <Heart className="w-3 h-3 text-[#EF4444] fill-[#EF4444] shrink-0" />
                       ) : (
                         <Clock className="w-3 h-3 text-[#71717A] dark:text-[#8E8E9E] shrink-0" />
                       )}

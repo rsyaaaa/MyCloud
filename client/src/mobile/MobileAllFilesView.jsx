@@ -412,7 +412,11 @@ export default function MobileAllFilesView({
       {/* 1. TOP NAVBAR (Google Drive Mobile Style) */}
       {!currentFolder ? (
         /* Root View Navbar: MyCloud Brand + Integrated Capsule Search Bar + Avatar */
-        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 transition-colors">
+        <header
+          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 transition-transform duration-300 ease-in-out ${
+            showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
+          }`}
+        >
           {/* Brand - Clickable to open Mobile Pagelist */}
           <button
             type="button"
@@ -480,7 +484,11 @@ export default function MobileAllFilesView({
         </header>
       ) : (
         /* Folder View Navbar (Screenshot 2): ← Folder Name ... 🔍 ... ⋮ */
-        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3 h-14 flex items-center justify-between gap-2 transition-colors relative">
+        <header
+          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3 h-14 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out relative ${
+            showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
+          }`}
+        >
           {/* Back button & Folder Name */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <button

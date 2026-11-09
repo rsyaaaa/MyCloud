@@ -82,25 +82,45 @@ export default function MobileApp({
     }
   }, [user?.role]);
 
-  // Floating Upload Button Hide-on-scroll state
-  const [showUploadBtn, setShowUploadBtn] = useState(true);
+  // Mobile Navbar Auto-Hide on Scroll (Strictly disabled on 'home' tab)
+  const [showNavbar, setShowNavbar] = useState(true);
   const lastScrollYRef = useRef(0);
+  const tickingRef = useRef(false);
 
   useEffect(() => {
+    // If on home tab, navbar is ALWAYS fixed and NEVER hides
+    if (currentTab === 'home') {
+      setShowNavbar(true);
+      return;
+    }
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const diff = currentScrollY - lastScrollYRef.current;
-      if (diff > 8 && currentScrollY > 50) {
-        setShowUploadBtn(false);
-      } else if (diff < -8 || currentScrollY <= 50) {
-        setShowUploadBtn(true);
-      }
-      lastScrollYRef.current = currentScrollY;
+      if (tickingRef.current) return;
+      tickingRef.current = true;
+
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        const diff = currentScrollY - lastScrollYRef.current;
+
+        // When near top (<= 30px), always show navbar
+        if (currentScrollY <= 30) {
+          setShowNavbar(true);
+        } else if (diff > 8) {
+          // Scrolling down -> hide navbar with animation
+          setShowNavbar(false);
+        } else if (diff < -8) {
+          // Scrolling up -> reveal navbar with animation
+          setShowNavbar(true);
+        }
+
+        lastScrollYRef.current = currentScrollY;
+        tickingRef.current = false;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [currentTab]);
 
   // Dedicated Mobile Media Viewer State (Full-Screen View)
   const [detailViewer, setDetailViewer] = useState({
@@ -213,7 +233,13 @@ export default function MobileApp({
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0B0B0E] flex flex-col text-[#0A0A0A] dark:text-[#F4F4F5] selection:bg-[#FFEDD5] selection:text-[#C2410C] transition-colors">
       {/* Mobile Top App Bar (Always present on all tabs except allfiles root, which has its own Drive header) */}
       {currentTab !== 'allfiles' && (
-        <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
+        <header
+          className={`sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-transform duration-300 ease-in-out ${
+            currentTab === 'home' || showNavbar
+              ? 'translate-y-0'
+              : '-translate-y-full pointer-events-none'
+          }`}
+        >
           {/* Brand & Page Title */}
           {currentTab === 'transfer' ? (
             <div className="flex items-center gap-2">
@@ -421,7 +447,7 @@ export default function MobileApp({
       {/* Floating Action Button (FAB) - Upload & Background Transfer Progress */}
       {currentTab !== 'terminal' && currentTab !== 'trash' && currentTab !== 'transfer' && currentTab !== 'allfiles' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
         <MobileFloatingTransferButton
-          show={showUploadBtn}
+          show={currentTab === 'home' || showNavbar}
           onClickUpload={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
           onClickTransferList={() => {
             setPreviousTab(currentTab);
@@ -430,8 +456,14 @@ export default function MobileApp({
         />
       )}
 
-      {/* Floating Bottom Navigation Bar (Always visible on mobile) */}
-      <nav className="fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.60)] z-40 flex items-center justify-around px-2 transition-all">
+      {/* Floating Bottom Navigation Bar (Auto-hides on scroll down on non-home pages) */}
+      <nav
+        className={`fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.60)] z-40 flex items-center justify-around px-2 transition-all duration-300 ease-in-out ${
+          currentTab === 'home' || showNavbar
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : 'translate-y-24 opacity-0 pointer-events-none'
+        }`}
+      >
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
