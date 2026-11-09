@@ -143,6 +143,9 @@ async function initDb() {
   try {
     await exec(`
       CREATE INDEX IF NOT EXISTS idx_media_files_user_status ON media_files(user_id, is_locked, is_trash);
+      CREATE INDEX IF NOT EXISTS idx_media_user_timeline ON media_files(user_id, is_locked, is_trash, captured_at DESC, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_media_user_created ON media_files(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_media_locked ON media_files(user_id, is_locked);
       CREATE INDEX IF NOT EXISTS idx_media_files_type ON media_files(media_type);
       CREATE INDEX IF NOT EXISTS idx_media_files_fav ON media_files(is_favorite);
       CREATE INDEX IF NOT EXISTS idx_media_files_created ON media_files(created_at);

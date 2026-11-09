@@ -126,6 +126,10 @@ export default function MobileGalleryView({
   });
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [loading, setLoading] = useState(() => mediaList.length === 0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
 
   // Independent Memories (Moments Carousel): remains stable even when Favorite / Collection filter is clicked
   const [memoriesList, setMemoriesList] = useState([]);
@@ -229,7 +233,9 @@ export default function MobileGalleryView({
 
       const params = {
         media_type: mediaTypeParam,
-        sort: sortOption
+        sort: sortOption,
+        page: 1,
+        limit: 50
       };
 
       if (selectedCatId) {
@@ -251,6 +257,8 @@ export default function MobileGalleryView({
           (m) => m.media_type === 'image' || m.media_type === 'video'
         );
         setMediaList(list);
+        setHasMore(cached.hasMore ?? (list.length >= 50));
+        setPage(1);
         if (!silent) setLoading(false);
       } else if (!silent) {
         setLoading(true);
@@ -266,6 +274,8 @@ export default function MobileGalleryView({
       );
 
       setMediaList(list);
+      setPage(1);
+      setHasMore(mediaRes.hasMore ?? (list.length >= 50));
       setCategories(catRes.categories || []);
     } catch (err) {
       console.error('Failed to load mobile gallery:', err);
@@ -274,16 +284,77 @@ export default function MobileGalleryView({
     }
   };
 
+  // Infinite Scroll fetcher for subsequent pages
+  const loadMore = async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      let mediaTypeParam = 'gallery';
+      if (typeFilter === 'photo') mediaTypeParam = 'image';
+      else if (typeFilter === 'video') mediaTypeParam = 'video';
+
+      const params = {
+        media_type: mediaTypeParam,
+        sort: sortOption,
+        page: nextPage,
+        limit: 50
+      };
+
+      if (selectedCatId) params.category_id = selectedCatId;
+      if (onlyFavorite) params.is_favorite = '1';
+      if (searchQuery) params.search = searchQuery;
+
+      const mediaRes = await api.listMedia(params);
+      const newItems = (mediaRes.media || []).filter(
+        (m) => m.media_type === 'image' || m.media_type === 'video'
+      );
+
+      if (newItems.length > 0) {
+        setMediaList((prev) => {
+          const ids = new Set(prev.map((m) => m.id));
+          const fresh = newItems.filter((m) => !ids.has(m.id));
+          return [...prev, ...fresh];
+        });
+        setPage(nextPage);
+      }
+      setHasMore(mediaRes.hasMore ?? (newItems.length >= 50));
+    } catch (err) {
+      console.error('Failed to load more media:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [selectedCatId, sortOption, onlyFavorite, typeFilter, searchQuery]);
+
+  // Infinite Scroll IntersectionObserver (300px lookahead buffer)
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMore();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, page, sortOption, selectedCatId, onlyFavorite, typeFilter, searchQuery]);
 
   // Load 15 random memories independently from all visual media so it stays stable regardless of filter/sort/favorite state
   const loadMemories = async () => {
     try {
       const res = await api.listMedia({
         media_type: 'gallery',
-        sort: 'newest'
+        sort: 'newest',
+        limit: 40
       });
       const allVisuals = (res.media || []).filter(
         (m) => m.media_type === 'image' || m.media_type === 'video'
@@ -650,6 +721,7 @@ export default function MobileGalleryView({
                         alt={media.display_name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        decoding="async"
                       />
 
                       {/* Video Duration Pill Badge (Google Photos Style: e.g. 0:02 ▶) */}
@@ -708,6 +780,7 @@ export default function MobileGalleryView({
                     alt={media.display_name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
+                    decoding="async"
                   />
 
                   {/* Video Duration Pill Badge */}
@@ -735,6 +808,23 @@ export default function MobileGalleryView({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* 5. INFINITE SCROLL SENTINEL & STATUS INDICATOR */}
+      {mediaList.length > 0 && (
+        <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center gap-2">
+          {loadingMore && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] shadow-xs text-[12px] text-[#8E8E9E]">
+              <div className="w-4 h-4 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin" />
+              <span>Memuat foto & video lainnya...</span>
+            </div>
+          )}
+          {!hasMore && (
+            <div className="text-[11px] text-[#8E8E9E] font-mono tracking-wide py-2">
+              ✓ Semua media telah dimuat ({mediaList.length} berkas)
+            </div>
+          )}
         </div>
       )}
     </div>

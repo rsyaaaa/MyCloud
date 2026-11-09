@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Image, Video, Heart, Clock, Play, Tag, LayoutGrid, List, Eye, EyeOff, Folder, X
 } from 'lucide-react';
@@ -100,6 +100,10 @@ export default function GalleryPage({
   const [onlyFavorite, setOnlyFavorite] = useState(false);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('mycloud_pref_gallery_view') || 'grid');
   const [loading, setLoading] = useState(() => mediaList.length === 0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
 
   const changeSubView = (sub) => {
     setSubView(sub);
@@ -131,7 +135,11 @@ export default function GalleryPage({
 
   const loadData = async (silent = false) => {
     try {
-      const params = { sort: sortOption };
+      const params = {
+        sort: sortOption,
+        page: 1,
+        limit: 50
+      };
 
       if (subView === 'photo') {
         params.media_type = 'image';
@@ -164,6 +172,8 @@ export default function GalleryPage({
           list = list.filter(m => aspectFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
         }
         setMediaList(list);
+        setPage(1);
+        setHasMore(cached.hasMore ?? (list.length >= 50));
         if (!silent) setLoading(false);
       } else if (!silent) {
         setLoading(true);
@@ -171,7 +181,7 @@ export default function GalleryPage({
 
       const [mediaRes, favRes, catRes] = await Promise.all([
         api.listMedia(params, { forceRefresh: !cached }),
-        api.listMedia({ media_type: 'gallery', is_favorite: '1', sort: 'newest' }),
+        api.listMedia({ media_type: 'gallery', is_favorite: '1', sort: 'newest', limit: 30 }),
         api.listCategories()
       ]);
 
@@ -186,6 +196,8 @@ export default function GalleryPage({
       }
 
       setMediaList(list);
+      setPage(1);
+      setHasMore(mediaRes.hasMore ?? (list.length >= 50));
       setFavoriteMedia(
         (favRes.media || []).filter((m) => m.media_type === 'image' || m.media_type === 'video')
       );
@@ -202,9 +214,78 @@ export default function GalleryPage({
     }
   };
 
+  // Infinite Scroll fetcher for subsequent batches
+  const loadMore = async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const params = {
+        sort: sortOption,
+        page: nextPage,
+        limit: 50
+      };
+
+      if (subView === 'photo') {
+        params.media_type = 'image';
+      } else if (subView === 'video') {
+        params.media_type = 'video';
+      } else {
+        params.media_type = 'gallery';
+      }
+
+      if (selectedCatId) params.category_id = selectedCatId;
+      if (onlyFavorite) params.is_favorite = '1';
+      if (searchQuery) params.search = searchQuery;
+
+      const mediaRes = await api.listMedia(params);
+      let newItems = (mediaRes.media || []).filter(
+        (m) => m.media_type === 'image' || m.media_type === 'video'
+      );
+
+      if (subView === 'photo' && orientationFilter !== 'all') {
+        newItems = newItems.filter(m => orientationFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
+      } else if (subView === 'video' && aspectFilter !== 'all') {
+        newItems = newItems.filter(m => aspectFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
+      }
+
+      if (newItems.length > 0) {
+        setMediaList((prev) => {
+          const ids = new Set(prev.map((m) => m.id));
+          const fresh = newItems.filter((m) => !ids.has(m.id));
+          return [...prev, ...fresh];
+        });
+        setPage(nextPage);
+      }
+      setHasMore(mediaRes.hasMore ?? (newItems.length >= 50));
+    } catch (err) {
+      console.error('Failed to load more gallery media:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [subView, selectedCatId, orientationFilter, aspectFilter, sortOption, onlyFavorite, searchQuery]);
+
+  // Desktop Infinite Scroll Observer
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMore();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, page, subView, selectedCatId, orientationFilter, aspectFilter, sortOption, onlyFavorite, searchQuery]);
 
   // Real-time reactive media listener for 0ms refresh-free UI
   useEffect(() => {
@@ -675,6 +756,23 @@ export default function GalleryPage({
               onShowDetail={onShowDetail}
             />
           ))}
+        </div>
+      )}
+
+      {/* Infinite Scroll Sentinel */}
+      {mediaList.length > 0 && (
+        <div ref={sentinelRef} className="py-8 flex flex-col items-center justify-center gap-2">
+          {loadingMore && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] shadow-xs text-[13px] text-[#8E8E9E]">
+              <div className="w-4 h-4 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin" />
+              <span>Memuat foto & video lainnya...</span>
+            </div>
+          )}
+          {!hasMore && (
+            <div className="text-[12px] text-[#8E8E9E] font-mono tracking-wide py-2">
+              ✓ Semua media telah dimuat ({mediaList.length} berkas)
+            </div>
+          )}
         </div>
       )}
     </div>

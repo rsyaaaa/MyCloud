@@ -88,6 +88,7 @@ export default function MediaCard({
                 src={thumbSrc}
                 alt={media.display_name}
                 loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -122,6 +123,7 @@ export default function MediaCard({
             src={thumbSrc}
             alt={media.display_name}
             loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         )}

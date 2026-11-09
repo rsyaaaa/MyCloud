@@ -77,6 +77,7 @@ export default function MobileMediaListItem({
             src={thumbSrc}
             alt={media.display_name}
             loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover object-top"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
@@ -94,6 +95,7 @@ export default function MobileMediaListItem({
               src={thumbSrc}
               alt={media.display_name}
               loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
           ) : null}

@@ -88,6 +88,10 @@ export default function MobileAllFilesView({
   });
 
   const [loading, setLoading] = useState(() => files.length === 0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -298,7 +302,11 @@ export default function MobileAllFilesView({
 
     const fetchFiles = async () => {
       const activeSort = currentFolder ? folderSortOption : rootSortOption;
-      const params = { sort: activeSort };
+      const params = {
+        sort: activeSort,
+        page: 1,
+        limit: 50
+      };
       if (searchQuery.trim()) {
         params.search = searchQuery.trim();
       }
@@ -312,6 +320,8 @@ export default function MobileAllFilesView({
       const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
       if (cached && cached.media) {
         setFiles(cached.media);
+        setPage(1);
+        setHasMore(cached.hasMore ?? (cached.media.length >= 50));
         setLoading(false);
       } else {
         setLoading(true);
@@ -321,25 +331,85 @@ export default function MobileAllFilesView({
         const res = await api.listMedia(params, { forceRefresh: !cached });
         if (!ignore) {
           setFiles(res.media || []);
+          setPage(1);
+          setHasMore(res.hasMore ?? ((res.media || []).length >= 50));
         }
       } catch (err) {
         console.error('Failed to load mobile all files:', err);
-          if (!ignore && !cached) {
-            setFiles([]);
-          }
-        } finally {
-          if (!ignore) {
-            setLoading(false);
-          }
+        if (!ignore && !cached) {
+          setFiles([]);
         }
-      };
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
 
-      fetchFiles();
+    fetchFiles();
 
-      return () => {
-        ignore = true;
+    return () => {
+      ignore = true;
+    };
+  }, [currentFolder, rootSortOption, folderSortOption, searchQuery]);
+
+  // Infinite Scroll loader for files
+  const loadMoreFiles = async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const activeSort = currentFolder ? folderSortOption : rootSortOption;
+      const params = {
+        sort: activeSort,
+        page: nextPage,
+        limit: 50
       };
-    }, [currentFolder, rootSortOption, folderSortOption, searchQuery]);
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      if (currentFolder) {
+        params.category_id = currentFolder.id;
+      } else if (!searchQuery.trim()) {
+        params.root_only = 'true';
+      }
+
+      const res = await api.listMedia(params);
+      const newItems = res.media || [];
+
+      if (newItems.length > 0) {
+        setFiles((prev) => {
+          const ids = new Set(prev.map((f) => f.id));
+          const fresh = newItems.filter((f) => !ids.has(f.id));
+          return [...prev, ...fresh];
+        });
+        setPage(nextPage);
+      }
+      setHasMore(res.hasMore ?? (newItems.length >= 50));
+    } catch (err) {
+      console.error('Failed to load more files:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // IntersectionObserver for Infinite Scroll (300px lookahead buffer)
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMoreFiles();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, page, currentFolder, rootSortOption, folderSortOption, searchQuery]);
 
   useEffect(() => {
     loadFolders();
@@ -829,6 +899,7 @@ export default function MobileAllFilesView({
                             alt={file.display_name}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            decoding="async"
                           />
                         ) : file.media_type === 'image' ? (
                           <Image className="w-5 h-5" />
@@ -839,6 +910,7 @@ export default function MobileAllFilesView({
                               alt={file.display_name}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              decoding="async"
                             />
                             <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                               <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
@@ -966,6 +1038,7 @@ export default function MobileAllFilesView({
                             alt={file.display_name}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            decoding="async"
                           />
                         ) : file.media_type === 'video' ? (
                           <div className="relative w-full h-full">
@@ -974,6 +1047,7 @@ export default function MobileAllFilesView({
                               alt={file.display_name}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              decoding="async"
                             />
                             <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
                               <div className="w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center">
@@ -1016,6 +1090,23 @@ export default function MobileAllFilesView({
                     <Upload className="w-4 h-4 stroke-[2.2]" />
                     <span>Upload ke {currentFolder.name}</span>
                   </button>
+                )}
+              </div>
+            )}
+
+            {/* Infinite Scroll Sentinel */}
+            {files.length > 0 && (
+              <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center gap-2">
+                {loadingMore && (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] shadow-xs text-[12px] text-[#8E8E9E]">
+                    <div className="w-4 h-4 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin" />
+                    <span>Memuat berkas lainnya...</span>
+                  </div>
+                )}
+                {!hasMore && (
+                  <div className="text-[11px] text-[#8E8E9E] font-mono tracking-wide py-2">
+                    ✓ Semua berkas telah dimuat ({files.length} berkas)
+                  </div>
                 )}
               </div>
             )}

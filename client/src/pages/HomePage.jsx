@@ -73,8 +73,8 @@ export default function HomePage({
       setRecentItems(history);
 
       const [recentMediaRes, favRes] = await Promise.all([
-        api.listMedia({ sort: 'newest' }),
-        api.listMedia({ is_favorite: '1', sort: 'newest' })
+        api.listMedia({ sort: 'newest', limit: 20 }),
+        api.listMedia({ is_favorite: '1', sort: 'newest', limit: 20 })
       ]);
 
       setFallbackRecent((recentMediaRes.media || []).slice(0, 12));

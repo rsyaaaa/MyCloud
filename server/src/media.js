@@ -203,81 +203,144 @@ router.get('/', authMiddleware, async (req, res) => {
       category_id,
       search,
       sort = 'newest',
-      root_only
+      root_only,
+      page = 1,
+      limit = 50,
+      no_limit
     } = req.query;
 
-    let query = `
-      SELECT m.*,
-        GROUP_CONCAT(c.name, ',') as category_names,
-        GROUP_CONCAT(c.id, ',') as category_ids
-      FROM media_files m
+    const whereConditions = ['m.user_id = ?', 'm.is_locked = 0', 'm.is_trash = 0'];
+    const baseParams = [req.user.id];
+    const joinClause = `
       LEFT JOIN media_category_rel r ON m.id = r.media_id
       LEFT JOIN categories_folders c ON r.category_id = c.id
-      WHERE m.user_id = ? AND m.is_locked = 0 AND m.is_trash = 0
     `;
-    const params = [req.user.id];
 
     if (media_type) {
       if (media_type === 'gallery') {
-        query += ` AND m.media_type IN ('image', 'video')`;
+        whereConditions.push(`m.media_type IN ('image', 'video')`);
       } else {
-        query += ` AND m.media_type = ?`;
-        params.push(media_type);
+        whereConditions.push(`m.media_type = ?`);
+        baseParams.push(media_type);
       }
     }
 
     if (is_favorite === '1' || is_favorite === 'true') {
-      query += ` AND m.is_favorite = 1`;
+      whereConditions.push(`m.is_favorite = 1`);
     }
 
     if (root_only === 'true' || root_only === '1' || category_id === 'root') {
-      query += ` AND m.id NOT IN (
+      whereConditions.push(`m.id NOT IN (
         SELECT r2.media_id
         FROM media_category_rel r2
         JOIN categories_folders c2 ON r2.category_id = c2.id
         WHERE c2.type = 'folder'
-      )`;
+      )`);
     } else if (category_id) {
-      query += ` AND r.category_id = ?`;
-      params.push(category_id);
+      whereConditions.push(`r.category_id = ?`);
+      baseParams.push(category_id);
     }
 
     if (search && search.trim()) {
-      query += ` AND (m.display_name LIKE ? OR m.original_name LIKE ?)`;
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+      whereConditions.push(`(m.display_name LIKE ? OR m.original_name LIKE ?)`);
+      baseParams.push(`%${search.trim()}%`, `%${search.trim()}%`);
     }
 
-    query += ` GROUP BY m.id`;
+    const whereSql = whereConditions.join(' AND ');
 
-    // Sorting
+    // 1. Fast count query for pagination metadata
+    const countSql = `
+      SELECT COUNT(DISTINCT m.id) as total
+      FROM media_files m
+      ${joinClause}
+      WHERE ${whereSql}
+    `;
+    const countResult = await db.get(countSql, baseParams);
+    const total = countResult ? countResult.total : 0;
+
+    // 2. Sorting
+    let orderSql = ` ORDER BY COALESCE(m.captured_at, m.created_at) DESC`;
     switch (sort) {
       case 'oldest':
-        query += ` ORDER BY COALESCE(m.captured_at, m.created_at) ASC`;
+        orderSql = ` ORDER BY COALESCE(m.captured_at, m.created_at) ASC`;
         break;
       case 'size_desc':
-        query += ` ORDER BY m.file_size DESC`;
+        orderSql = ` ORDER BY m.file_size DESC`;
         break;
       case 'size_asc':
-        query += ` ORDER BY m.file_size ASC`;
+        orderSql = ` ORDER BY m.file_size ASC`;
         break;
       case 'duration_desc':
-        query += ` ORDER BY m.duration_seconds DESC`;
+        orderSql = ` ORDER BY m.duration_seconds DESC`;
         break;
       case 'name_asc':
-        query += ` ORDER BY LOWER(COALESCE(m.display_name, m.original_name)) ASC`;
+        orderSql = ` ORDER BY LOWER(COALESCE(m.display_name, m.original_name)) ASC`;
         break;
       case 'name_desc':
-        query += ` ORDER BY LOWER(COALESCE(m.display_name, m.original_name)) DESC`;
+        orderSql = ` ORDER BY LOWER(COALESCE(m.display_name, m.original_name)) DESC`;
         break;
       case 'modified_desc':
       case 'newest':
       default:
-        query += ` ORDER BY COALESCE(m.captured_at, m.created_at) DESC`;
+        orderSql = ` ORDER BY COALESCE(m.captured_at, m.created_at) DESC`;
         break;
     }
 
-    const rows = await db.all(query, params);
-    return res.json({ media: rows });
+    // 3. Pagination calculation
+    const isAll = limit === 'all' || no_limit === 'true';
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = isAll ? 0 : Math.max(1, Math.min(500, parseInt(limit, 10) || 50));
+    const offset = (pageNum - 1) * limitNum;
+
+    let dataSql = `
+      SELECT 
+        m.id,
+        m.user_id,
+        m.original_name,
+        m.display_name,
+        m.file_path,
+        m.thumbnail_path,
+        m.file_size,
+        m.mime_type,
+        m.media_type,
+        m.width,
+        m.height,
+        m.duration_seconds,
+        m.is_portrait,
+        m.is_locked,
+        m.is_favorite,
+        m.is_trash,
+        m.captured_at,
+        m.created_at,
+        GROUP_CONCAT(c.name, ',') as category_names,
+        GROUP_CONCAT(c.id, ',') as category_ids
+      FROM media_files m
+      ${joinClause}
+      WHERE ${whereSql}
+      GROUP BY m.id
+      ${orderSql}
+    `;
+
+    const dataParams = [...baseParams];
+    if (!isAll) {
+      dataSql += ` LIMIT ? OFFSET ?`;
+      dataParams.push(limitNum, offset);
+    }
+
+    const rows = await db.all(dataSql, dataParams);
+    const totalPages = isAll ? 1 : Math.ceil(total / limitNum);
+    const hasMore = isAll ? false : offset + rows.length < total;
+
+    return res.json({
+      media: rows, // Backward compatibility for existing callers
+      items: rows, // New spec format
+      total,
+      page: pageNum,
+      limit: isAll ? total : limitNum,
+      totalPages,
+      hasMore,
+      nextPage: hasMore ? pageNum + 1 : null
+    });
   } catch (err) {
     console.error('[GET /api/media] Error:', err);
     return res.status(500).json({ error: 'Gagal mengambil data media.' });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Folder, FolderPlus, FileText, Image, Video, HardDrive, Search, LayoutGrid, List,
   Download, Trash2, Edit2, Heart, Lock, MoreVertical, ArrowUpDown, ChevronRight,
@@ -65,6 +65,10 @@ export default function AllFilesPage({
   });
 
   const [loading, setLoading] = useState(() => files.length === 0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
     if (onFolderChange) onFolderChange(currentFolder);
@@ -130,7 +134,11 @@ export default function AllFilesPage({
 
   const loadFiles = async (silent = false) => {
     try {
-      const params = { sort: sortOption };
+      const params = {
+        sort: sortOption,
+        page: 1,
+        limit: 50
+      };
       if (filterType !== 'all') {
         params.media_type = filterType;
       }
@@ -147,6 +155,8 @@ export default function AllFilesPage({
       const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
       if (cached && cached.media) {
         setFiles(cached.media);
+        setPage(1);
+        setHasMore(cached.hasMore ?? (cached.media.length >= 50));
         if (!silent) setLoading(false);
       } else if (!silent) {
         setLoading(true);
@@ -154,10 +164,55 @@ export default function AllFilesPage({
 
       const res = await api.listMedia(params, { forceRefresh: !cached });
       setFiles(res.media || []);
+      setPage(1);
+      setHasMore(res.hasMore ?? ((res.media || []).length >= 50));
     } catch (err) {
       console.error('Failed to load all files:', err);
     } finally {
       if (!silent) setLoading(false);
+    }
+  };
+
+  // Infinite Scroll fetcher for subsequent pages
+  const loadMoreFiles = async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const params = {
+        sort: sortOption,
+        page: nextPage,
+        limit: 50
+      };
+      if (filterType !== 'all') {
+        params.media_type = filterType;
+      }
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      if (currentFolder) {
+        params.category_id = currentFolder.id;
+      } else if (!searchQuery.trim()) {
+        params.root_only = 'true';
+      }
+
+      const res = await api.listMedia(params);
+      const newItems = res.media || [];
+
+      if (newItems.length > 0) {
+        setFiles((prev) => {
+          const ids = new Set(prev.map((f) => f.id));
+          const fresh = newItems.filter((f) => !ids.has(f.id));
+          return [...prev, ...fresh];
+        });
+        setPage(nextPage);
+      }
+      setHasMore(res.hasMore ?? (newItems.length >= 50));
+    } catch (err) {
+      console.error('Failed to load more files:', err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -168,6 +223,23 @@ export default function AllFilesPage({
   useEffect(() => {
     loadFiles();
   }, [filterType, sortOption, searchQuery, currentFolder]);
+
+  // Desktop Infinite Scroll IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMoreFiles();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, page, filterType, sortOption, searchQuery, currentFolder]);
 
   // Desktop shortcut: Backspace goes back to the parent folder.
   useEffect(() => {
@@ -621,6 +693,23 @@ export default function AllFilesPage({
               onShowDetail={onShowDetail}
             />
           ))}
+        </div>
+      )}
+
+      {/* Infinite Scroll Sentinel */}
+      {files.length > 0 && (
+        <div ref={sentinelRef} className="py-8 flex flex-col items-center justify-center gap-2">
+          {loadingMore && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] shadow-xs text-[13px] text-[#8E8E9E]">
+              <div className="w-4 h-4 border-2 border-[#C2410C] border-t-transparent rounded-full animate-spin" />
+              <span>Memuat berkas lainnya...</span>
+            </div>
+          )}
+          {!hasMore && (
+            <div className="text-[12px] text-[#8E8E9E] font-mono tracking-wide py-2">
+              ✓ Semua berkas telah dimuat ({files.length} berkas)
+            </div>
+          )}
         </div>
       )}
 
