@@ -83,6 +83,76 @@ export default function MobileMediaDetailView({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [folderSheetOpen, setFolderSheetOpen] = useState(false);
 
+  const showDetailModalRef = useRef(showDetailModal);
+  showDetailModalRef.current = showDetailModal;
+  const moreMenuOpenRef = useRef(moreMenuOpen);
+  moreMenuOpenRef.current = moreMenuOpen;
+  const folderSheetOpenRef = useRef(folderSheetOpen);
+  folderSheetOpenRef.current = folderSheetOpen;
+
+  // History helpers for viewer sub-sheets
+  const openDetailModal = () => {
+    window.history.pushState({ type: 'viewer_subsheet', sheet: 'detail' }, '', '#detail');
+    setShowDetailModal(true);
+  };
+  const closeDetailModal = () => {
+    if (window.history.state?.type === 'viewer_subsheet') {
+      window.history.back();
+    } else {
+      setShowDetailModal(false);
+    }
+  };
+
+  const openMoreMenu = () => {
+    window.history.pushState({ type: 'viewer_subsheet', sheet: 'more' }, '', '#more');
+    setMoreMenuOpen(true);
+  };
+  const closeMoreMenu = () => {
+    if (window.history.state?.type === 'viewer_subsheet') {
+      window.history.back();
+    } else {
+      setMoreMenuOpen(false);
+    }
+  };
+
+  const openFolderSheet = () => {
+    window.history.pushState({ type: 'viewer_subsheet', sheet: 'folder' }, '', '#folder');
+    setFolderSheetOpen(true);
+  };
+  const closeFolderSheet = () => {
+    if (window.history.state?.type === 'viewer_subsheet') {
+      window.history.back();
+    } else {
+      setFolderSheetOpen(false);
+    }
+  };
+
+  // Popstate listener inside viewer to close sub-sheets without exiting viewer
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleViewerPopState = (e) => {
+      if (showDetailModalRef.current) {
+        setShowDetailModal(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (moreMenuOpenRef.current) {
+        setMoreMenuOpen(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (folderSheetOpenRef.current) {
+        setFolderSheetOpen(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+    };
+
+    window.addEventListener('popstate', handleViewerPopState);
+    return () => window.removeEventListener('popstate', handleViewerPopState);
+  }, [isOpen]);
+
   // Folders & Organization State
   const [categories, setCategories] = useState([]);
   const [mediaFolderId, setMediaFolderId] = useState(null);
@@ -107,6 +177,28 @@ export default function MobileMediaDetailView({
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [slideState, setSlideState] = useState('idle'); // 'idle' | 'sliding-out-right' | 'sliding-out-left' | 'entering-from-left' | 'entering-from-right'
+
+  // Zoom & Pan State (Google Photos Style: 2-finger pinch, 1-finger pan, double-tap toggle)
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomTranslate, setZoomTranslate] = useState({ x: 0, y: 0 });
+  const [isPinching, setIsPinching] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+
+  const zoomScaleRef = useRef(zoomScale);
+  zoomScaleRef.current = zoomScale;
+  const zoomTranslateRef = useRef(zoomTranslate);
+  zoomTranslateRef.current = zoomTranslate;
+
+  const pinchStartRef = useRef(null);
+  const panStartRef = useRef(null);
+
+  // Reset zoom on media change or close
+  useEffect(() => {
+    setZoomScale(1);
+    setZoomTranslate({ x: 0, y: 0 });
+    setIsPinching(false);
+    setIsPanning(false);
+  }, [currentIndex, isOpen]);
 
   // 1. Auto-hide timer functions
   const clearAutoHideTimer = () => {
@@ -215,7 +307,12 @@ export default function MobileMediaDetailView({
     clearAutoHideTimer();
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     setTimeout(() => {
-      onClose();
+      // If history was pushed for this viewer, use history.back() so history stays consistent
+      if (window.history.state?.type === 'viewer') {
+        window.history.back();
+      } else {
+        onClose();
+      }
       setIsClosing(false);
     }, 220);
   };
@@ -303,6 +400,10 @@ export default function MobileMediaDetailView({
     ? api.getVaultStreamUrl(currentMedia.id, vaultToken)
     : api.getStreamUrl(currentMedia.id);
 
+  const posterUrl = isVault
+    ? api.getVaultThumbnailUrl(currentMedia.id, vaultToken)
+    : api.getThumbnailUrl(currentMedia.id);
+
   const { dateStr, timeStr } = formatGooglePhotosDate(
     currentMedia.captured_at || currentMedia.created_at || currentMedia.upload_date,
     lang
@@ -345,9 +446,9 @@ export default function MobileMediaDetailView({
     }, 700);
   };
 
-  // Screen Click: Single Tap (Toggle UI) vs Double Tap (Rewind / Fast Forward 5s)
+  // Screen Click: Single Tap (Toggle UI) vs Double Tap (Toggle Zoom or Skip Video)
   const handleScreenClick = (e) => {
-    // If user just finished dragging, ignore click so it doesn't trigger tap
+    // If user just finished dragging/panning, ignore click
     if (didDragRef.current) {
       didDragRef.current = false;
       return;
@@ -360,37 +461,55 @@ export default function MobileMediaDetailView({
 
     const now = Date.now();
     const tapX = e.clientX;
+    const tapY = e.clientY;
     const timeDiff = now - lastTapRef.current.time;
-    const distDiff = Math.abs(tapX - lastTapRef.current.x);
+    const distDiff = Math.abs(tapX - lastTapRef.current.x) + Math.abs(tapY - (lastTapRef.current.y || 0));
 
-    // Double-tap threshold: < 300ms and close proximity
-    if (timeDiff < 300 && distDiff < 70) {
+    // Double-tap threshold: < 300ms and close proximity (< 80px)
+    if (timeDiff < 300 && distDiff < 80) {
       if (singleTapTimeoutRef.current) {
         clearTimeout(singleTapTimeoutRef.current);
         singleTapTimeoutRef.current = null;
       }
 
-      // If video, execute 5s skip
-      if (currentMedia.media_type === 'video' && videoRef.current) {
-        setResumePromptSeconds(null);
-        const screenWidth = window.innerWidth;
-        const isLeft = tapX < screenWidth / 2;
+      // 1. If currently zoomed in (> 1.05x), double-tap anywhere (especially center) resets to normal!
+      if (zoomScaleRef.current > 1.05) {
+        setZoomScale(1);
+        setZoomTranslate({ x: 0, y: 0 });
+        lastTapRef.current = { time: 0, x: 0, y: 0 };
+        return;
+      }
 
-        if (isLeft) {
-          // Rewind 5 seconds
+      // 2. If at normal 1x scale:
+      const screenWidth = window.innerWidth;
+      const isCenter = tapX >= screenWidth * 0.22 && tapX <= screenWidth * 0.78;
+
+      // On video: if tapped near outer edges (< 22% or > 78%), skip -5s / +5s
+      // If tapped in center area on video, OR double-tapped anywhere on photo: ZOOM IN to 2.5x!
+      if (currentMedia.media_type === 'video' && videoRef.current && !isCenter) {
+        setResumePromptSeconds(null);
+        if (tapX < screenWidth * 0.22) {
           videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
           triggerSeekFeedback('left', '-5s');
         } else {
-          // Forward 5 seconds
           const maxDur = videoRef.current.duration || duration || 99999;
           videoRef.current.currentTime = Math.min(maxDur, videoRef.current.currentTime + 5);
           triggerSeekFeedback('right', '+5s');
         }
         resetAutoHideTimer();
+      } else {
+        // Double-tap in center on video OR anywhere on photo: ZOOM IN to 2.5x!
+        setZoomScale(2.5);
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const offsetX = (centerX - tapX) * 0.75;
+        const offsetY = (centerY - tapY) * 0.75;
+        setZoomTranslate({ x: offsetX, y: offsetY });
       }
-      lastTapRef.current = { time: 0, x: 0 };
+
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
     } else {
-      lastTapRef.current = { time: now, x: tapX };
+      lastTapRef.current = { time: now, x: tapX, y: tapY };
 
       if (singleTapTimeoutRef.current) {
         clearTimeout(singleTapTimeoutRef.current);
@@ -413,26 +532,119 @@ export default function MobileMediaDetailView({
   };
 
   // Touch Gesture Handling:
-  // - Real-time horizontal touch slide physics
-  // - Swipe Left (diffX < 0) -> BERIKUTNYA (Next item), animasi geser ke kiri
-  // - Swipe Right (diffX > 0) -> SEBELUMNYA (Prev item), animasi geser ke kanan
-  // - Swipe Down -> Close Viewer with Zoom-Out
+  // - 2-Finger Pinch: Smooth Pinch-to-Zoom (up to 5x)
+  // - 1-Finger Pan (when zoomed): Drag around to inspect photo/video details
+  // - 1-Finger Swipe (when 1x normal): Real-time horizontal slide physics & swipe-down to close
   const handleTouchStart = (e) => {
-    if (e.touches.length !== 1 || isClosing || slideState !== 'idle') return;
+    if (isClosing || slideState !== 'idle') return;
     if (e.target.closest('button, input, [role="button"], a, .interactive-control')) {
       return;
     }
 
-    touchStartRef.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      time: Date.now(),
-      isHorizontal: null
-    };
+    // 1. Two-finger pinch gesture start
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      pinchStartRef.current = {
+        dist,
+        initialScale: zoomScaleRef.current,
+        initialX: zoomTranslateRef.current.x,
+        initialY: zoomTranslateRef.current.y,
+        center: {
+          x: (t1.clientX + t2.clientX) / 2,
+          y: (t1.clientY + t2.clientY) / 2
+        }
+      };
+      setIsPinching(true);
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+        singleTapTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    // 2. One-finger touch start
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+
+      // If already zoomed in (> 1.05x), single finger pans the zoomed photo/video
+      if (zoomScaleRef.current > 1.05) {
+        panStartRef.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          initialX: zoomTranslateRef.current.x,
+          initialY: zoomTranslateRef.current.y,
+          time: Date.now()
+        };
+        setIsPanning(true);
+        if (singleTapTimeoutRef.current) {
+          clearTimeout(singleTapTimeoutRef.current);
+          singleTapTimeoutRef.current = null;
+        }
+        return;
+      }
+
+      // If normal scale (1x), single finger prepares horizontal slide or swipe-down to close
+      touchStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        time: Date.now(),
+        isHorizontal: null
+      };
+    }
   };
 
   const handleTouchMove = (e) => {
-    if (!touchStartRef.current.time || slideState !== 'idle' || isClosing) return;
+    if (isClosing || slideState !== 'idle') return;
+
+    // 1. Pinching with 2 fingers
+    if (e.touches.length === 2 && pinchStartRef.current) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const ratio = currentDist / Math.max(1, pinchStartRef.current.dist);
+      let nextScale = pinchStartRef.current.initialScale * ratio;
+      nextScale = Math.min(5, Math.max(0.8, nextScale));
+      setZoomScale(nextScale);
+
+      const currentCenter = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2
+      };
+      const diffCenterX = currentCenter.x - pinchStartRef.current.center.x;
+      const diffCenterY = currentCenter.y - pinchStartRef.current.center.y;
+      setZoomTranslate({
+        x: pinchStartRef.current.initialX + diffCenterX,
+        y: pinchStartRef.current.initialY + diffCenterY
+      });
+      return;
+    }
+
+    // 2. Panning with 1 finger when zoomed in
+    if (e.touches.length === 1 && panStartRef.current && zoomScaleRef.current > 1.05) {
+      const touch = e.touches[0];
+      const diffX = touch.clientX - panStartRef.current.x;
+      const diffY = touch.clientY - panStartRef.current.y;
+
+      const scale = zoomScaleRef.current;
+      const maxPanX = (scale - 1) * window.innerWidth * 0.5;
+      const maxPanY = (scale - 1) * window.innerHeight * 0.5;
+
+      const rawX = panStartRef.current.initialX + diffX;
+      const rawY = panStartRef.current.initialY + diffY;
+
+      // Allow slight elastic rubber-banding beyond boundaries
+      const clampedX = Math.max(-maxPanX * 1.15, Math.min(maxPanX * 1.15, rawX));
+      const clampedY = Math.max(-maxPanY * 1.15, Math.min(maxPanY * 1.15, rawY));
+
+      setZoomTranslate({ x: clampedX, y: clampedY });
+      didDragRef.current = true;
+      return;
+    }
+
+    // 3. Normal horizontal slide / swipe-down handling (when at 1x)
+    if (!touchStartRef.current.time) return;
 
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
@@ -455,8 +667,6 @@ export default function MobileMediaDetailView({
     }
 
     if (touchStartRef.current.isHorizontal) {
-      // Swipe Left (diffX < 0) -> Moving towards Next (resistance if !hasNext)
-      // Swipe Right (diffX > 0) -> Moving towards Prev (resistance if !hasPrev)
       if (diffX < 0 && !hasNext) {
         setDragX(diffX * 0.25);
       } else if (diffX > 0 && !hasPrev) {
@@ -468,6 +678,44 @@ export default function MobileMediaDetailView({
   };
 
   const handleTouchEnd = (e) => {
+    // 1. Release pinch gesture
+    if (pinchStartRef.current) {
+      pinchStartRef.current = null;
+      setIsPinching(false);
+      if (zoomScaleRef.current < 1.08) {
+        setZoomScale(1);
+        setZoomTranslate({ x: 0, y: 0 });
+      } else {
+        const finalScale = Math.min(4.5, zoomScaleRef.current);
+        setZoomScale(finalScale);
+        const maxPanX = (finalScale - 1) * window.innerWidth * 0.5;
+        const maxPanY = (finalScale - 1) * window.innerHeight * 0.5;
+        setZoomTranslate((prev) => ({
+          x: Math.max(-maxPanX, Math.min(maxPanX, prev.x)),
+          y: Math.max(-maxPanY, Math.min(maxPanY, prev.y))
+        }));
+      }
+      return;
+    }
+
+    // 2. Release pan gesture
+    if (panStartRef.current) {
+      panStartRef.current = null;
+      setIsPanning(false);
+      const scale = zoomScaleRef.current;
+      const maxPanX = (scale - 1) * window.innerWidth * 0.5;
+      const maxPanY = (scale - 1) * window.innerHeight * 0.5;
+      setZoomTranslate((prev) => ({
+        x: Math.max(-maxPanX, Math.min(maxPanX, prev.x)),
+        y: Math.max(-maxPanY, Math.min(maxPanY, prev.y))
+      }));
+      setTimeout(() => {
+        didDragRef.current = false;
+      }, 200);
+      return;
+    }
+
+    // 3. Normal horizontal slide / swipe-down handling
     if (!touchStartRef.current.time) return;
 
     const diffX = e.changedTouches[0].clientX - touchStartRef.current.x;
@@ -477,7 +725,6 @@ export default function MobileMediaDetailView({
 
     setIsDragging(false);
 
-    // Identify if the gesture was primarily horizontal
     const isHorizontal = touchStartRef.current.isHorizontal === true ||
       (touchStartRef.current.isHorizontal === null && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 18);
 
@@ -491,8 +738,6 @@ export default function MobileMediaDetailView({
       const isFlick = timeDiff < 350 && Math.abs(diffX) > 15 && velocityX > 0.2;
 
       if ((diffX < -threshold || (diffX < 0 && isFlick)) && hasNext) {
-        // SWIPE LEFT (diffX < 0) -> BERIKUTNYA (Next item)
-        // Animasi: media saat ini meluncur keluar ke KIRI, media baru masuk dari KANAN
         setSlideState('sliding-out-left');
         setTimeout(() => {
           onNavigate(currentIndex + 1);
@@ -501,8 +746,6 @@ export default function MobileMediaDetailView({
           setTimeout(() => setSlideState('idle'), 220);
         }, 180);
       } else if ((diffX > threshold || (diffX > 0 && isFlick)) && hasPrev) {
-        // SWIPE RIGHT (diffX > 0) -> SEBELUMNYA (Prev item)
-        // Animasi: media saat ini meluncur keluar ke KANAN, media baru masuk dari KIRI
         setSlideState('sliding-out-right');
         setTimeout(() => {
           onNavigate(currentIndex - 1);
@@ -511,11 +754,9 @@ export default function MobileMediaDetailView({
           setTimeout(() => setSlideState('idle'), 220);
         }, 180);
       } else {
-        // Insufficient drag -> spring back to center
         setDragX(0);
       }
     } else {
-      // Vertical swipe: check swipe down to close
       if (diffY > 80 && Math.abs(diffY) > Math.abs(diffX) * 1.5 && timeDiff < 400) {
         handleAnimatedClose();
       }
@@ -526,6 +767,10 @@ export default function MobileMediaDetailView({
 
   const handleTouchCancel = () => {
     setIsDragging(false);
+    setIsPinching(false);
+    setIsPanning(false);
+    pinchStartRef.current = null;
+    panStartRef.current = null;
     setDragX(0);
     touchStartRef.current = { x: 0, y: 0, time: 0, isHorizontal: null };
   };
@@ -591,6 +836,14 @@ export default function MobileMediaDetailView({
     };
   }
 
+  // Google Photos style Media Zoom & Pan CSS style
+  const mediaZoomStyle = {
+    transform: `translate(${zoomTranslate.x}px, ${zoomTranslate.y}px) scale(${zoomScale})`,
+    transformOrigin: 'center center',
+    transition: isPinching || isPanning ? 'none' : 'transform 240ms cubic-bezier(0.16, 1, 0.3, 1)',
+    willChange: 'transform'
+  };
+
   return (
     <div
       onClick={handleScreenClick}
@@ -621,7 +874,7 @@ export default function MobileMediaDetailView({
 
         {/* Center: Google Photos Date & Time */}
         <div
-          onClick={() => setShowDetailModal(true)}
+          onClick={openDetailModal}
           className="flex flex-col items-center justify-center cursor-pointer active:opacity-75 transition-opacity px-2"
         >
           <div className="flex items-center gap-1">
@@ -656,7 +909,7 @@ export default function MobileMediaDetailView({
 
           {/* Three Dots More Menu */}
           <button
-            onClick={() => setMoreMenuOpen(true)}
+            onClick={openMoreMenu}
             className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/10 active:scale-90 transition-transform"
             title="Menu lainnya"
           >
@@ -703,7 +956,7 @@ export default function MobileMediaDetailView({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
-        className={`relative flex-1 w-full h-full flex items-center justify-center overflow-hidden touch-pan-y ${
+        className={`relative flex-1 w-full min-h-0 h-full flex items-center justify-center overflow-hidden touch-pan-y ${
           isClosing ? 'animate-media-zoom-out' : 'animate-media-zoom-in'
         }`}
       >
@@ -713,26 +966,33 @@ export default function MobileMediaDetailView({
           className={`w-full h-full flex items-center justify-center select-none touch-pan-y ${slideClassName}`}
         >
           {currentMedia.media_type === 'video' ? (
-            <div className="relative w-full h-full flex items-center justify-center p-1 sm:p-2">
-              <video
-                ref={videoRef}
-                src={mediaSrc}
-                autoPlay
-                playsInline
-                onTimeUpdate={() => {
-                  if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-                }}
-                onLoadedMetadata={() => {
-                  if (videoRef.current) setDuration(videoRef.current.duration || 0);
-                }}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onEnded={() => {
-                  setIsPlaying(false);
-                  api.saveProgress(currentMedia.id, 0).catch(() => {});
-                }}
-                className="max-w-full max-h-full object-contain pointer-events-none"
-              />
+            <div className="relative w-full h-full flex items-center justify-center p-1 sm:p-2 overflow-hidden">
+              <div
+                style={mediaZoomStyle}
+                className="w-full h-full flex items-center justify-center pointer-events-none"
+              >
+                <video
+                  ref={videoRef}
+                  src={mediaSrc}
+                  poster={posterUrl}
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  onTimeUpdate={() => {
+                    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+                  }}
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) setDuration(videoRef.current.duration || 0);
+                  }}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => {
+                    setIsPlaying(false);
+                    api.saveProgress(currentMedia.id, 0).catch(() => {});
+                  }}
+                  className="max-w-full max-h-full object-contain select-none"
+                />
+              </div>
 
               {/* Center Big Play Icon when Paused */}
               {!isPlaying && (
@@ -745,16 +1005,37 @@ export default function MobileMediaDetailView({
               )}
             </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center p-1">
-              <img
-                key={currentMedia.id}
-                src={mediaSrc}
-                alt={currentMedia.display_name}
-                className="max-w-full max-h-full object-contain pointer-events-none select-none"
-              />
+            <div className="w-full h-full flex items-center justify-center p-1 overflow-hidden">
+              <div
+                style={mediaZoomStyle}
+                className="w-full h-full flex items-center justify-center pointer-events-none"
+              >
+                <img
+                  key={currentMedia.id}
+                  src={mediaSrc}
+                  alt={currentMedia.display_name}
+                  className="max-w-full max-h-full object-contain select-none"
+                />
+              </div>
             </div>
           )}
         </div>
+
+        {/* Floating Zoom Indicator & Quick Reset Badge */}
+        {zoomScale > 1.05 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoomScale(1);
+              setZoomTranslate({ x: 0, y: 0 });
+            }}
+            className="absolute bottom-20 right-4 z-40 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[12px] font-mono font-medium shadow-2xl active:scale-90 transition-transform flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-auto"
+            title="Ketuk untuk kembali ke ukuran normal (1x)"
+          >
+            <span className="font-bold text-[#EA580C]">{Math.round(zoomScale * 10) / 10}x</span>
+            <span className="text-white/60 text-[10px]">✕ Reset</span>
+          </button>
+        )}
 
         {/* Double-Tap 5s Skip Animated Feedback Indicator */}
         {seekFeedback && (
@@ -774,8 +1055,8 @@ export default function MobileMediaDetailView({
           </div>
         )}
 
-        {/* Previous / Next Subtle Nav Chevrons (shown when UI is visible) */}
-        {hasPrev && (
+        {/* Previous / Next Subtle Nav Chevrons (shown only when not zoomed in) */}
+        {hasPrev && zoomScale <= 1.05 && (
           <button
             onClick={() => navigateWithSlide(currentIndex - 1, 'prev')}
             className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center active:scale-90 transition-all duration-300 ${
@@ -786,7 +1067,7 @@ export default function MobileMediaDetailView({
           </button>
         )}
 
-        {hasNext && (
+        {hasNext && zoomScale <= 1.05 && (
           <button
             onClick={() => navigateWithSlide(currentIndex + 1, 'next')}
             className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center active:scale-90 transition-all duration-300 ${
@@ -877,7 +1158,7 @@ export default function MobileMediaDetailView({
         <footer className="h-16 px-6 pb-2 flex items-center justify-around text-white border-t border-white/10">
           {/* Add to / Move to Folder Button */}
           <button
-            onClick={() => setFolderSheetOpen(true)}
+            onClick={openFolderSheet}
             className="flex flex-col items-center gap-1 text-white/90 active:scale-95 transition-all"
           >
             {isInFolder ? (
@@ -909,7 +1190,7 @@ export default function MobileMediaDetailView({
       {moreMenuOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-enter"
-          onClick={() => setMoreMenuOpen(false)}
+          onClick={closeMoreMenu}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -920,8 +1201,8 @@ export default function MobileMediaDetailView({
             {/* About this Photo / Video */}
             <button
               onClick={() => {
-                setMoreMenuOpen(false);
-                setShowDetailModal(true);
+                closeMoreMenu();
+                openDetailModal();
               }}
               className="w-full flex items-center gap-3.5 p-3.5 rounded-[14px] hover:bg-white/10 text-[14px] font-medium transition-colors text-left"
             >
@@ -936,7 +1217,7 @@ export default function MobileMediaDetailView({
             {/* Download */}
             <button
               onClick={() => {
-                setMoreMenuOpen(false);
+                closeMoreMenu();
                 startDownload(currentMedia);
               }}
               className="w-full flex items-center gap-3.5 p-3.5 rounded-[14px] hover:bg-white/10 text-[14px] font-medium transition-colors text-left"
@@ -956,7 +1237,7 @@ export default function MobileMediaDetailView({
       {folderSheetOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-enter"
-          onClick={() => setFolderSheetOpen(false)}
+          onClick={closeFolderSheet}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -971,7 +1252,7 @@ export default function MobileMediaDetailView({
                   : lang === 'en' ? 'Add to Folder / Vault' : 'Tambahkan ke Folder / Brankas'}
               </h3>
               <button
-                onClick={() => setFolderSheetOpen(false)}
+                onClick={closeFolderSheet}
                 className="p-1 rounded-full text-white/70 hover:text-white"
               >
                 <X className="w-5 h-5" />
@@ -981,7 +1262,7 @@ export default function MobileMediaDetailView({
             {/* Option A: Move to Safe Vault (Brankas Rahasia) */}
             <button
               onClick={() => {
-                setFolderSheetOpen(false);
+                closeFolderSheet();
                 onLock(currentMedia.id);
               }}
               className="w-full p-3.5 rounded-[16px] bg-[#2A140A] border border-[#C2410C]/40 flex items-center justify-between text-left active:scale-98 transition-transform"
@@ -1078,7 +1359,7 @@ export default function MobileMediaDetailView({
       {/* 6. METADATA INFO MODAL (Opened from Date / Three-Dots About) */}
       <MediaDetailModal
         isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
+        onClose={closeDetailModal}
         media={currentMedia}
       />
     </div>

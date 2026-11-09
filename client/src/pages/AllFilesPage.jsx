@@ -29,8 +29,6 @@ export default function AllFilesPage({
 }) {
   const { t, lang } = useLanguage();
   const { startDownload } = useTransfer();
-  const [files, setFiles] = useState([]);
-  const [folders, setFolders] = useState([]);
   const [currentFolder, setCurrentFolder] = useState(() => {
     try {
       const saved = localStorage.getItem('mycloud_active_folder');
@@ -39,7 +37,34 @@ export default function AllFilesPage({
       return null;
     }
   });
-  const [loading, setLoading] = useState(true);
+
+  const [files, setFiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mycloud_active_folder');
+      const folder = saved ? JSON.parse(saved) : null;
+      const sort = localStorage.getItem('mycloud_pref_allfiles_sort') || 'newest';
+      const filter = localStorage.getItem('mycloud_pref_allfiles_filter') || 'all';
+      const params = { sort };
+      if (filter !== 'all') params.media_type = filter;
+      if (folder) params.category_id = folder.id;
+      else params.root_only = 'true';
+      const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
+      return (cached && cached.media) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [folders, setFolders] = useState(() => {
+    try {
+      const cached = api.getCachedCategories ? api.getCachedCategories() : null;
+      return (cached && cached.categories) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [loading, setLoading] = useState(() => files.length === 0);
 
   useEffect(() => {
     if (onFolderChange) onFolderChange(currentFolder);
@@ -104,7 +129,6 @@ export default function AllFilesPage({
   };
 
   const loadFiles = async (silent = false) => {
-    if (!silent) setLoading(true);
     try {
       const params = { sort: sortOption };
       if (filterType !== 'all') {
@@ -119,7 +143,16 @@ export default function AllFilesPage({
         params.root_only = 'true';
       }
 
-      const res = await api.listMedia(params);
+      // Check cache first: if present, render instantly in 0ms!
+      const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
+      if (cached && cached.media) {
+        setFiles(cached.media);
+        if (!silent) setLoading(false);
+      } else if (!silent) {
+        setLoading(true);
+      }
+
+      const res = await api.listMedia(params, { forceRefresh: !cached });
       setFiles(res.media || []);
     } catch (err) {
       console.error('Failed to load all files:', err);
@@ -441,18 +474,16 @@ export default function AllFilesPage({
           <div className="flex items-center gap-0.5 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
             <button
               onClick={() => changeViewMode('list')}
-              className={`p-1.5 rounded-[4px] transition-colors ${
-                viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-              }`}
+              className={`p-1.5 rounded-[4px] transition-colors ${viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
               title="Table View"
             >
               <List className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => changeViewMode('grid')}
-              className={`p-1.5 rounded-[4px] transition-colors ${
-                viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-              }`}
+              className={`p-1.5 rounded-[4px] transition-colors ${viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                }`}
               title="Grid View"
             >
               <LayoutGrid className="w-3.5 h-3.5" />

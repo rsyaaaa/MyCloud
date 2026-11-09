@@ -246,3 +246,25 @@ button:active:not(:disabled), a:active {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Suppress Android WebView / Chromium default video play buttons, gray box & placeholder icons */
+video {
+  background-color: transparent !important;
+}
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+video::-webkit-media-controls-panel {
+  display: none !important;
+}
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+}
+

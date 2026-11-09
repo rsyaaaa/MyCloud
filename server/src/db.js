@@ -56,6 +56,9 @@ async function initDb() {
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
     PRAGMA synchronous = NORMAL;
+    PRAGMA cache_size = -64000;
+    PRAGMA temp_store = MEMORY;
+    PRAGMA mmap_size = 268435456;
 
     CREATE TABLE IF NOT EXISTS users (
       id VARCHAR(36) PRIMARY KEY,
@@ -135,6 +138,20 @@ async function initDb() {
   try {
     await exec("ALTER TABLE media_files ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE NULL;");
   } catch (e) {}
+
+  // Performance Indexes for HDD seek optimization & fast folder/gallery listing
+  try {
+    await exec(`
+      CREATE INDEX IF NOT EXISTS idx_media_files_user_status ON media_files(user_id, is_locked, is_trash);
+      CREATE INDEX IF NOT EXISTS idx_media_files_type ON media_files(media_type);
+      CREATE INDEX IF NOT EXISTS idx_media_files_fav ON media_files(is_favorite);
+      CREATE INDEX IF NOT EXISTS idx_media_files_created ON media_files(created_at);
+      CREATE INDEX IF NOT EXISTS idx_media_category_rel_cat ON media_category_rel(category_id);
+      CREATE INDEX IF NOT EXISTS idx_categories_user_type ON categories_folders(user_id, type);
+    `);
+  } catch (e) {
+    console.warn('Index migration note:', e.message);
+  }
 
   console.log('Database tables & migrations verified in WAL mode.');
 

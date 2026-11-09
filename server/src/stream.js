@@ -17,6 +17,13 @@ function streamFile(filePath, mimeType, req, res) {
 
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
+  const etag = `"${fileSize.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
+  const lastModified = stat.mtime.toUTCString();
+
+  if (req.headers['if-none-match'] === etag) {
+    return res.status(304).end();
+  }
+
   const range = req.headers.range;
 
   if (range) {
@@ -40,7 +47,9 @@ function streamFile(filePath, mimeType, req, res) {
       'Accept-Ranges': 'bytes',
       'Content-Length': chunksize,
       'Content-Type': mimeType || 'application/octet-stream',
-      'Cache-Control': 'no-cache'
+      'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+      'ETag': etag,
+      'Last-Modified': lastModified
     };
 
     res.writeHead(206, headers);
@@ -51,7 +60,9 @@ function streamFile(filePath, mimeType, req, res) {
       'Content-Length': fileSize,
       'Content-Type': mimeType || 'application/octet-stream',
       'Accept-Ranges': 'bytes',
-      'Cache-Control': 'public, max-age=3600'
+      'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+      'ETag': etag,
+      'Last-Modified': lastModified
     };
 
     res.writeHead(200, headers);
@@ -102,7 +113,32 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET /api/stream/thumbnail/:id (Thumbnail preview)
+// In-memory thumbnail metadata cache to eliminate repetitive SQLite queries on HDD
+const thumbMetaCache = new Map();
+const MAX_THUMB_CACHE = 5000;
+
+function setThumbCache(key, val) {
+  if (thumbMetaCache.size >= MAX_THUMB_CACHE) {
+    const firstKey = thumbMetaCache.keys().next().value;
+    thumbMetaCache.delete(firstKey);
+  }
+  thumbMetaCache.set(key, val);
+}
+
+function invalidateStreamCache(mediaId) {
+  if (!mediaId) {
+    thumbMetaCache.clear();
+  } else {
+    for (const key of thumbMetaCache.keys()) {
+      if (key.endsWith(`:${mediaId}`)) {
+        thumbMetaCache.delete(key);
+      }
+    }
+  }
+}
+router.invalidateStreamCache = invalidateStreamCache;
+
+// GET /api/stream/thumbnail/:id (Thumbnail preview with high-performance caching)
 router.get('/thumbnail/:id', async (req, res) => {
   try {
     const user = await authenticateMediaRequest(req);
@@ -110,9 +146,18 @@ router.get('/thumbnail/:id', async (req, res) => {
       return res.status(401).json({ error: 'Autentikasi diperlukan.' });
     }
 
-    const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ?', [req.params.id, user.id]);
+    const cacheKey = `${user.id}:${req.params.id}`;
+    let media = thumbMetaCache.get(cacheKey);
+
     if (!media) {
-      return res.status(404).json({ error: 'Media tidak ditemukan.' });
+      media = await db.get(
+        'SELECT id, file_path, thumbnail_path, mime_type, is_locked FROM media_files WHERE id = ? AND user_id = ?',
+        [req.params.id, user.id]
+      );
+      if (!media) {
+        return res.status(404).json({ error: 'Media tidak ditemukan.' });
+      }
+      setThumbCache(cacheKey, media);
     }
 
     if (media.is_locked) {
@@ -121,9 +166,16 @@ router.get('/thumbnail/:id', async (req, res) => {
 
     const thumbPath = media.thumbnail_path;
     if (thumbPath && fs.existsSync(thumbPath)) {
-      res.setHeader('Content-Type', 'image/webp');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      return fs.createReadStream(thumbPath).pipe(res);
+      return res.sendFile(path.resolve(thumbPath), {
+        maxAge: '30d',
+        immutable: true,
+        lastModified: true,
+        etag: true,
+        headers: {
+          'Content-Type': 'image/webp',
+          'Cache-Control': 'public, max-age=2592000, immutable'
+        }
+      });
     }
 
     // Fallback to streaming original file if thumbnail not available
@@ -202,45 +254,45 @@ router.get(['/media/:id', '/vault/media/:id'], async (req, res) => {
 });
 
 // GET /api/vault/thumbnail/:id and /api/stream/vault/thumbnail/:id
-router.get(['/thumbnail/:id', '/vault/thumbnail/:id'], async (req, res) => {
-  try {
-    const user = await authenticateMediaRequest(req);
-    if (!user) {
-      return res.status(401).json({ error: 'Autentikasi diperlukan.' });
-    }
-
-    // Verify vault token
-    const vaultToken = req.headers['x-vault-token'] || req.query.vault_token;
-    if (!vaultToken) {
-      return res.status(403).json({ error: 'Akses brankas terkunci.' });
-    }
-
+  router.get('/vault/thumbnail/:id', async (req, res) => {
     try {
-      const decoded = jwt.verify(vaultToken, config.VAULT_SECRET);
-      if (decoded.id !== user.id) {
-        return res.status(403).json({ error: 'Token brankas tidak sah.' });
+      const user = await authenticateMediaRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Autentikasi diperlukan.' });
       }
-    } catch (e) {
-      return res.status(403).json({ error: 'Sesi brankas telah kedaluwarsa.' });
+
+      // Verify vault token
+      const vaultToken = req.headers['x-vault-token'] || req.query.vault_token;
+      if (!vaultToken) {
+        return res.status(403).json({ error: 'Akses brankas terkunci.' });
+      }
+
+      try {
+        const decoded = jwt.verify(vaultToken, config.VAULT_SECRET);
+        if (decoded.id !== user.id) {
+          return res.status(403).json({ error: 'Token brankas tidak sah.' });
+        }
+      } catch (e) {
+        return res.status(403).json({ error: 'Sesi brankas telah kedaluwarsa.' });
+      }
+
+      const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ? AND is_locked = 1', [req.params.id, user.id]);
+      if (!media) {
+        return res.status(404).json({ error: 'Media brankas tidak ditemukan.' });
+      }
+
+      const thumbPath = media.thumbnail_path;
+      if (thumbPath && fs.existsSync(thumbPath)) {
+        res.setHeader('Content-Type', 'image/webp');
+        res.setHeader('Cache-Control', 'no-cache');
+        return fs.createReadStream(thumbPath).pipe(res);
+      }
+
+      streamFile(media.file_path, media.mime_type, req, res);
+    } catch (err) {
+      console.error('[Vault Thumbnail] Error:', err);
+      if (!res.headersSent) res.status(500).json({ error: 'Gagal memuat thumbnail brankas.' });
     }
+  });
 
-    const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ? AND is_locked = 1', [req.params.id, user.id]);
-    if (!media) {
-      return res.status(404).json({ error: 'Media brankas tidak ditemukan.' });
-    }
-
-    const thumbPath = media.thumbnail_path;
-    if (thumbPath && fs.existsSync(thumbPath)) {
-      res.setHeader('Content-Type', 'image/webp');
-      res.setHeader('Cache-Control', 'no-cache');
-      return fs.createReadStream(thumbPath).pipe(res);
-    }
-
-    streamFile(media.file_path, media.mime_type, req, res);
-  } catch (err) {
-    console.error('[Vault Thumbnail] Error:', err);
-    if (!res.headersSent) res.status(500).json({ error: 'Gagal memuat thumbnail brankas.' });
-  }
-});
-
-module.exports = router;
+  module.exports = router;

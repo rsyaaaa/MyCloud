@@ -51,8 +51,6 @@ export default function MobileAllFilesView({
     overallProgress
   } = useTransfer();
 
-  const [files, setFiles] = useState([]);
-  const [folders, setFolders] = useState([]);
   const [currentFolder, setCurrentFolder] = useState(() => {
     try {
       const saved = localStorage.getItem('mycloud_active_folder');
@@ -61,7 +59,35 @@ export default function MobileAllFilesView({
       return null;
     }
   });
-  const [loading, setLoading] = useState(true);
+
+  // Try initializing from cache for instant 0ms first paint
+  const [files, setFiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mycloud_active_folder');
+      const folder = saved ? JSON.parse(saved) : null;
+      const sort = folder
+        ? (localStorage.getItem('mycloud_pref_folder_sort') || 'name_asc')
+        : (localStorage.getItem('mycloud_pref_root_sort') || 'name_asc');
+      const params = { sort };
+      if (folder) params.category_id = folder.id;
+      else params.root_only = 'true';
+      const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
+      return (cached && cached.media) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [folders, setFolders] = useState(() => {
+    try {
+      const cached = api.getCachedCategories ? api.getCachedCategories() : null;
+      return (cached && cached.categories) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [loading, setLoading] = useState(() => files.length === 0);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,6 +125,76 @@ export default function MobileAllFilesView({
   const [folderMenu, setFolderMenu] = useState(null);
   const [folderHeaderMenuOpen, setFolderHeaderMenuOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+
+  const currentFolderRef = useRef(currentFolder);
+  currentFolderRef.current = currentFolder;
+  const folderMenuRef = useRef(folderMenu);
+  folderMenuRef.current = folderMenu;
+  const createModalOpenRef = useRef(createModalOpen);
+  createModalOpenRef.current = createModalOpen;
+  const folderToRenameRef = useRef(folderToRename);
+  folderToRenameRef.current = folderToRename;
+  const actionSheetOpenRef = useRef(actionSheetOpen);
+  actionSheetOpenRef.current = actionSheetOpen;
+  const folderHeaderMenuOpenRef = useRef(folderHeaderMenuOpen);
+  folderHeaderMenuOpenRef.current = folderHeaderMenuOpen;
+  const folderSearchOpenRef = useRef(folderSearchOpen);
+  folderSearchOpenRef.current = folderSearchOpen;
+
+  useEffect(() => {
+    const handleAllFilesPopState = (e) => {
+      // 1. Close internal action sheets / modals first
+      if (actionSheetOpenRef.current) {
+        setActionSheetOpen(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (folderHeaderMenuOpenRef.current) {
+        setFolderHeaderMenuOpen(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (folderMenuRef.current) {
+        setFolderMenu(null);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (createModalOpenRef.current) {
+        setCreateModalOpen(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (folderToRenameRef.current) {
+        setFolderToRename(null);
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (folderSearchOpenRef.current) {
+        setFolderSearchOpen(false);
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      // 2. If inside a folder, step back to AllFiles root
+      if (currentFolderRef.current) {
+        if (!e.state || e.state.type !== 'folder' || e.state.folder?.id !== currentFolderRef.current.id) {
+          const cached = api.getCachedMedia ? api.getCachedMedia({ sort: rootSortOption, root_only: 'true' }) : null;
+          if (cached && cached.media) {
+            setFiles(cached.media);
+            setLoading(false);
+          } else {
+            setFiles([]);
+            setLoading(true);
+          }
+          setCurrentFolder(null);
+          e.stopImmediatePropagation();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handleAllFilesPopState);
+    return () => window.removeEventListener('popstate', handleAllFilesPopState);
+  }, []);
 
   // Hide-on-scroll state for Floating + FAB
   const [showFab, setShowFab] = useState(true);
@@ -201,41 +297,49 @@ export default function MobileAllFilesView({
     let ignore = false;
 
     const fetchFiles = async () => {
-      setLoading(true);
-      try {
-        const activeSort = currentFolder ? folderSortOption : rootSortOption;
-        const params = { sort: activeSort };
-        if (searchQuery.trim()) {
-          params.search = searchQuery.trim();
-        }
-        if (currentFolder) {
-          params.category_id = currentFolder.id;
-        } else if (!searchQuery.trim()) {
-          params.root_only = 'true';
-        }
+      const activeSort = currentFolder ? folderSortOption : rootSortOption;
+      const params = { sort: activeSort };
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      if (currentFolder) {
+        params.category_id = currentFolder.id;
+      } else if (!searchQuery.trim()) {
+        params.root_only = 'true';
+      }
 
-        const res = await api.listMedia(params);
+      // Check cache first: if cached data exists, render instantly (0ms) without skeletons!
+      const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
+      if (cached && cached.media) {
+        setFiles(cached.media);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const res = await api.listMedia(params, { forceRefresh: !cached });
         if (!ignore) {
           setFiles(res.media || []);
         }
       } catch (err) {
         console.error('Failed to load mobile all files:', err);
-        if (!ignore) {
-          setFiles([]);
+          if (!ignore && !cached) {
+            setFiles([]);
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false);
+          }
         }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
+      };
 
-    fetchFiles();
+      fetchFiles();
 
-    return () => {
-      ignore = true;
-    };
-  }, [currentFolder, rootSortOption, folderSortOption, searchQuery]);
+      return () => {
+        ignore = true;
+      };
+    }, [currentFolder, rootSortOption, folderSortOption, searchQuery]);
 
   useEffect(() => {
     loadFolders();
@@ -265,22 +369,45 @@ export default function MobileAllFilesView({
         } else if (!searchQuery.trim()) {
           params.root_only = 'true';
         }
-        api.listMedia(params).then((res) => setFiles(res.media || [])).catch(() => {});
+        api.listMedia(params).then((res) => setFiles(res.media || [])).catch(() => { });
       }
     });
     return unsub;
   }, [currentFolder, rootSortOption, folderSortOption, searchQuery]);
 
   const handleFolderClick = (folder) => {
-    setFiles([]); // Instantly clear so previous folder's files never leak
-    setLoading(true);
+    const activeSort = folderSortOption;
+    const cached = api.getCachedMedia ? api.getCachedMedia({ sort: activeSort, category_id: folder.id }) : null;
+    if (cached && cached.media) {
+      setFiles(cached.media);
+      setLoading(false);
+    } else {
+      setFiles([]);
+      setLoading(true);
+    }
     setCurrentFolder(folder);
+    window.history.pushState(
+      { type: 'folder', folder: { id: folder.id, name: folder.name } },
+      '',
+      '#folder-' + folder.id
+    );
   };
 
   const handleBackToRoot = () => {
-    setFiles([]); // Instantly clear so folder's files never leak into root
-    setLoading(true);
-    setCurrentFolder(null);
+    if (window.history.state?.type === 'folder') {
+      window.history.back();
+    } else {
+      const activeSort = rootSortOption;
+      const cached = api.getCachedMedia ? api.getCachedMedia({ sort: activeSort, root_only: 'true' }) : null;
+      if (cached && cached.media) {
+        setFiles(cached.media);
+        setLoading(false);
+      } else {
+        setFiles([]);
+        setLoading(true);
+      }
+      setCurrentFolder(null);
+    }
   };
 
   const handleCreateFolder = async (e) => {
@@ -415,9 +542,8 @@ export default function MobileAllFilesView({
       {!currentFolder ? (
         /* Root View Navbar: MyCloud Brand + Integrated Capsule Search Bar + Avatar */
         <header
-          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 transition-transform duration-300 ease-in-out ${
-            showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
-          }`}
+          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 transition-transform duration-300 ease-in-out ${showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
+            }`}
         >
           {/* Brand - Clickable to open Mobile Pagelist */}
           <button
@@ -464,9 +590,8 @@ export default function MobileAllFilesView({
             <ArrowUpDown className="w-4 h-4 stroke-[2.2]" />
             {(activeTransfersCount > 0 || hasFailure) && (
               <span
-                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0B0B0E] ${
-                  hasFailure ? 'bg-[#EF4444]' : isUploading ? 'bg-[#C2410C]' : 'bg-[#10B981]'
-                } animate-pulse`}
+                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0B0B0E] ${hasFailure ? 'bg-[#EF4444]' : isUploading ? 'bg-[#C2410C]' : 'bg-[#10B981]'
+                  } animate-pulse`}
               />
             )}
           </button>
@@ -487,9 +612,8 @@ export default function MobileAllFilesView({
       ) : (
         /* Folder View Navbar (Screenshot 2): ← Folder Name ... 🔍 ... ⋮ */
         <header
-          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3 h-14 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out relative ${
-            showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
-          }`}
+          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3 h-14 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out relative ${showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
+            }`}
         >
           {/* Back button & Folder Name */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -509,11 +633,10 @@ export default function MobileAllFilesView({
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => setFolderSearchOpen((prev) => !prev)}
-              className={`p-2 rounded-full transition-colors ${
-                folderSearchOpen
+              className={`p-2 rounded-full transition-colors ${folderSearchOpen
                   ? 'text-[#C2410C] bg-[#FFF7ED] dark:bg-[#25150D]'
                   : 'text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA]'
-              }`}
+                }`}
               title="Cari dalam folder"
             >
               <Search className="w-5 h-5" />
@@ -611,22 +734,20 @@ export default function MobileAllFilesView({
         <div className="flex items-center bg-[#F4F4F6] dark:bg-[#14141B] p-1 rounded-full border border-[#E8E8EC] dark:border-[#22222E]">
           <button
             onClick={() => changeViewMode('list')}
-            className={`p-1.5 rounded-full transition-all ${
-              activeViewMode === 'list'
+            className={`p-1.5 rounded-full transition-all ${activeViewMode === 'list'
                 ? 'bg-white dark:bg-[#252534] text-[#C2410C] dark:text-white shadow-sm'
                 : 'text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-white'
-            }`}
+              }`}
             title="List View"
           >
             <List className="w-4 h-4 stroke-[2.2]" />
           </button>
           <button
             onClick={() => changeViewMode('grid')}
-            className={`p-1.5 rounded-full transition-all ${
-              activeViewMode === 'grid'
+            className={`p-1.5 rounded-full transition-all ${activeViewMode === 'grid'
                 ? 'bg-white dark:bg-[#252534] text-[#C2410C] dark:text-white shadow-sm'
                 : 'text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-white'
-            }`}
+              }`}
             title="Grid View"
           >
             <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
@@ -695,13 +816,12 @@ export default function MobileAllFilesView({
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
                       {/* Media Icon Badge / Thumbnail (Google Drive Style: Red for image, Purple for video, Blue for doc) */}
                       <div
-                        className={`w-11 h-11 rounded-[14px] overflow-hidden flex items-center justify-center shrink-0 border border-[#E8E8EC] dark:border-[#22222E] ${
-                          file.media_type === 'image'
+                        className={`w-11 h-11 rounded-[14px] overflow-hidden flex items-center justify-center shrink-0 border border-[#E8E8EC] dark:border-[#22222E] ${file.media_type === 'image'
                             ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#EA580C]'
                             : file.media_type === 'video'
-                            ? 'bg-[#FAF5FF] dark:bg-[#1E1428] text-[#A855F7]'
-                            : 'bg-[#EFF6FF] dark:bg-[#101B2E] text-[#3B82F6]'
-                        }`}
+                              ? 'bg-[#FAF5FF] dark:bg-[#1E1428] text-[#A855F7]'
+                              : 'bg-[#EFF6FF] dark:bg-[#101B2E] text-[#3B82F6]'
+                          }`}
                       >
                         {file.media_type === 'image' && file.thumbnail_path ? (
                           <img
@@ -808,13 +928,12 @@ export default function MobileAllFilesView({
                       <div className="flex items-center justify-between gap-1.5 mb-2">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                           <div
-                            className={`w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 ${
-                              file.media_type === 'image'
+                            className={`w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 ${file.media_type === 'image'
                                 ? 'bg-[#EF4444] text-white'
                                 : file.media_type === 'video'
-                                ? 'bg-[#A855F7] text-white'
-                                : 'bg-[#3B82F6] text-white'
-                            }`}
+                                  ? 'bg-[#A855F7] text-white'
+                                  : 'bg-[#3B82F6] text-white'
+                              }`}
                           >
                             {file.media_type === 'image' ? (
                               <Image className="w-2.5 h-2.5" />
@@ -931,21 +1050,19 @@ export default function MobileAllFilesView({
         return (
           <button
             onClick={() => setActionSheetOpen(true)}
-            className={`fixed bottom-[84px] right-4 z-40 w-14 h-14 ${
-              isSpecialState ? 'rounded-full' : 'rounded-[20px]'
-            } ${bgGradient} text-white ${shadowGlow} flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${
-              showFab || isSpecialState
+            className={`fixed bottom-[84px] right-4 z-40 w-14 h-14 ${isSpecialState ? 'rounded-full' : 'rounded-[20px]'
+              } ${bgGradient} text-white ${shadowGlow} flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${showFab || isSpecialState
                 ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
                 : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
-            }`}
+              }`}
             title={
               hasFailure
                 ? 'Tambah baru (Transfer sebelumnya gagal)'
                 : isUploading
-                ? `Mengunggah (${displayProgress}%) - Ketuk untuk tambah baru`
-                : isDownloading
-                ? `Mengunduh (${displayProgress}%) - Ketuk untuk tambah baru`
-                : 'Tambah berkas atau folder baru'
+                  ? `Mengunggah (${displayProgress}%) - Ketuk untuk tambah baru`
+                  : isDownloading
+                    ? `Mengunduh (${displayProgress}%) - Ketuk untuk tambah baru`
+                    : 'Tambah berkas atau folder baru'
             }
           >
             {/* SVG Circular Progress Ring (Visible when transferring or failed) */}

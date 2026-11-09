@@ -41,11 +41,21 @@ const clientDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
 if (fs.existsSync(clientDistPath)) {
   console.log(`Serving static client files from ${clientDistPath}`);
   app.use(express.static(clientDistPath, {
+    maxAge: '7d',
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.html')) {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
+      } else if (filePath.endsWith('sw.js')) {
+        res.setHeader('Service-Worker-Allowed', '/');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } else if (filePath.endsWith('manifest.json')) {
+        res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } else if (filePath.includes('/assets/')) {
+        // Content-hashed Vite bundle files - safe to cache long-term
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
       }
     }
   }));

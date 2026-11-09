@@ -23,3 +23,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ThemeProvider>
   </React.StrictMode>
 );
+
+// Register PWA Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((registration) => {
+        console.log('[PWA] Service Worker registered with scope:', registration.scope);
+      })
+      .catch((error) => {
+        console.warn('[PWA] Service Worker registration error:', error);
+      });
+  });
+}

@@ -53,20 +53,53 @@ export default function GalleryPage({
 }) {
   const { t, lang } = useLanguage();
   const [subView, setSubView] = useState(() => initialSubView || localStorage.getItem('mycloud_pref_gallery_subview') || 'all');
-  const [mediaList, setMediaList] = useState([]);
-  const [favoriteMedia, setFavoriteMedia] = useState([]);
+  const [sortOption, setSortOption] = useState(() => localStorage.getItem('mycloud_pref_gallery_sort') || 'newest');
+
+  const [mediaList, setMediaList] = useState(() => {
+    try {
+      const sub = initialSubView || localStorage.getItem('mycloud_pref_gallery_subview') || 'all';
+      const sort = localStorage.getItem('mycloud_pref_gallery_sort') || 'newest';
+      let mediaType = 'gallery';
+      if (sub === 'photo') mediaType = 'image';
+      else if (sub === 'video') mediaType = 'video';
+      const cached = api.getCachedMedia ? api.getCachedMedia({ media_type: mediaType, sort }) : null;
+      if (cached && cached.media) {
+        return cached.media.filter(m => m.media_type === 'image' || m.media_type === 'video');
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [favoriteMedia, setFavoriteMedia] = useState(() => {
+    try {
+      const cached = api.getCachedMedia ? api.getCachedMedia({ media_type: 'gallery', is_favorite: '1', sort: 'newest' }) : null;
+      return (cached && cached.media) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [categories, setCategories] = useState(() => {
+    try {
+      const cached = api.getCachedCategories ? api.getCachedCategories() : null;
+      return (cached && cached.categories) || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [favoriteHidden, setFavoriteHidden] = useState(() => {
     return localStorage.getItem('mycloud_gallery_favorite_hidden') === 'true';
   });
   const [recentMedia, setRecentMedia] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [orientationFilter, setOrientationFilter] = useState('all'); // 'all', 'landscape', 'portrait'
   const [aspectFilter, setAspectFilter] = useState('all'); // 'all', 'portrait', 'landscape'
-  const [sortOption, setSortOption] = useState(() => localStorage.getItem('mycloud_pref_gallery_sort') || 'newest');
   const [onlyFavorite, setOnlyFavorite] = useState(false);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('mycloud_pref_gallery_view') || 'grid');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => mediaList.length === 0);
 
   const changeSubView = (sub) => {
     setSubView(sub);
@@ -97,7 +130,6 @@ export default function GalleryPage({
   }, [initialSubView]);
 
   const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
     try {
       const params = { sort: sortOption };
 
@@ -122,8 +154,23 @@ export default function GalleryPage({
         params.search = searchQuery;
       }
 
+      // Check cache first: if present, paint instantly in 0ms!
+      const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
+      if (cached && cached.media) {
+        let list = cached.media.filter(m => m.media_type === 'image' || m.media_type === 'video');
+        if (subView === 'photo' && orientationFilter !== 'all') {
+          list = list.filter(m => orientationFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
+        } else if (subView === 'video' && aspectFilter !== 'all') {
+          list = list.filter(m => aspectFilter === 'portrait' ? m.is_portrait === 1 : m.is_portrait === 0);
+        }
+        setMediaList(list);
+        if (!silent) setLoading(false);
+      } else if (!silent) {
+        setLoading(true);
+      }
+
       const [mediaRes, favRes, catRes] = await Promise.all([
-        api.listMedia(params),
+        api.listMedia(params, { forceRefresh: !cached }),
         api.listMedia({ media_type: 'gallery', is_favorite: '1', sort: 'newest' }),
         api.listCategories()
       ]);
@@ -230,32 +277,29 @@ export default function GalleryPage({
         <div className="flex items-center gap-1.5 p-1 bg-[#F4F4F5] dark:bg-[#121218] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px]">
           <button
             onClick={() => { changeSubView('all'); setSelectedCatId(null); }}
-            className={`px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
-              subView === 'all'
+            className={`px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${subView === 'all'
                 ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
                 : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
-            }`}
+              }`}
           >
             {t('mixedAll', 'Semua (Campuran)')}
           </button>
           <button
             onClick={() => { changeSubView('photo'); setSelectedCatId(null); }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
-              subView === 'photo'
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${subView === 'photo'
                 ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
                 : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
-            }`}
+              }`}
           >
             <Image className="w-4 h-4 stroke-[2]" />
             <span>{t('photos', 'Foto')}</span>
           </button>
           <button
             onClick={() => { changeSubView('video'); setSelectedCatId(null); }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${
-              subView === 'video'
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-all ${subView === 'video'
                 ? 'bg-[#C2410C] text-white shadow-primary-glow font-semibold'
                 : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
-            }`}
+              }`}
           >
             <Video className="w-4 h-4 stroke-[2]" />
             <span>{t('videos', 'Video')}</span>
@@ -469,25 +513,22 @@ export default function GalleryPage({
             <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
               <button
                 onClick={() => setOrientationFilter('all')}
-                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
-                  orientationFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${orientationFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
               >
                 {t('all', 'Semua')}
               </button>
               <button
                 onClick={() => setOrientationFilter('landscape')}
-                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
-                  orientationFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${orientationFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
               >
                 {t('landscapeLabel', 'Lanskap')}
               </button>
               <button
                 onClick={() => setOrientationFilter('portrait')}
-                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
-                  orientationFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${orientationFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
               >
                 {t('portraitLabel', 'Potret')}
               </button>
@@ -499,25 +540,22 @@ export default function GalleryPage({
             <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
               <button
                 onClick={() => setAspectFilter('all')}
-                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
-                  aspectFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${aspectFilter === 'all' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
               >
                 {t('all', 'Semua')}
               </button>
               <button
                 onClick={() => setAspectFilter('portrait')}
-                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
-                  aspectFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${aspectFilter === 'portrait' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
               >
                 9:16
               </button>
               <button
                 onClick={() => setAspectFilter('landscape')}
-                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${
-                  aspectFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`px-2.5 py-1 text-[12px] font-semibold rounded-[4px] transition-colors ${aspectFilter === 'landscape' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
               >
                 16:9
               </button>
@@ -547,18 +585,16 @@ export default function GalleryPage({
             <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#121218] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#1F1F27]">
               <button
                 onClick={() => changeViewMode('grid')}
-                className={`p-1.5 rounded-[4px] transition-colors ${
-                  viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`p-1.5 rounded-[4px] transition-colors ${viewMode === 'grid' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
                 title="Grid View"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => changeViewMode('list')}
-                className={`p-1.5 rounded-[4px] transition-colors ${
-                  viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                }`}
+                className={`p-1.5 rounded-[4px] transition-colors ${viewMode === 'list' ? 'bg-[#C2410C] text-white' : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
+                  }`}
                 title="List View"
               >
                 <List className="w-3.5 h-3.5" />

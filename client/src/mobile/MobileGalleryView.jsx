@@ -102,10 +102,30 @@ export default function MobileGalleryView({
 }) {
   const { lang, t } = useLanguage();
 
-  const [mediaList, setMediaList] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [mediaList, setMediaList] = useState(() => {
+    try {
+      const type = localStorage.getItem('mycloud_pref_gallery_type') || 'all';
+      const sort = localStorage.getItem('mycloud_pref_gallery_sort') || 'newest';
+      const mediaTypeParam = type === 'all' ? 'gallery' : type;
+      const cached = api.getCachedMedia ? api.getCachedMedia({ media_type: mediaTypeParam, sort }) : null;
+      if (cached && cached.media) {
+        return cached.media.filter((m) => m.media_type === 'image' || m.media_type === 'video');
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [categories, setCategories] = useState(() => {
+    try {
+      const cached = api.getCachedCategories ? api.getCachedCategories() : null;
+      return (cached && cached.categories) || [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [selectedCatId, setSelectedCatId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => mediaList.length === 0);
 
   // Independent Memories (Moments Carousel): remains stable even when Favorite / Collection filter is clicked
   const [memoriesList, setMemoriesList] = useState([]);
@@ -202,7 +222,6 @@ export default function MobileGalleryView({
   };
 
   const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
     try {
       let mediaTypeParam = 'gallery';
       if (typeFilter === 'photo') mediaTypeParam = 'image';
@@ -225,8 +244,20 @@ export default function MobileGalleryView({
         params.search = searchQuery;
       }
 
+      // Check cache first: if present, render instantly in 0ms!
+      const cached = api.getCachedMedia ? api.getCachedMedia(params) : null;
+      if (cached && cached.media) {
+        const list = (cached.media || []).filter(
+          (m) => m.media_type === 'image' || m.media_type === 'video'
+        );
+        setMediaList(list);
+        if (!silent) setLoading(false);
+      } else if (!silent) {
+        setLoading(true);
+      }
+
       const [mediaRes, catRes] = await Promise.all([
-        api.listMedia(params),
+        api.listMedia(params, { forceRefresh: !cached }),
         api.listCategories()
       ]);
 
@@ -376,21 +407,21 @@ export default function MobileGalleryView({
                 onClick={() => handleMediaClick(memoriesList, idx)}
                 className="w-[142px] h-[195px] rounded-[22px] overflow-hidden shrink-0 relative cursor-pointer active:scale-95 transition-transform shadow-md border border-[#E8E8EC]/40 dark:border-[#22222E]/80 group select-none"
               >
-                  {/* Thumbnail */}
-                  <img
-                    src={api.getThumbnailUrl(item.id)}
-                    alt=""
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
+                {/* Thumbnail */}
+                <img
+                  src={api.getThumbnailUrl(item.id)}
+                  alt=""
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
 
-                  {/* Video duration pill */}
-                  {item.media_type === 'video' && (
-                    <div className="absolute top-2.5 right-2.5 bg-black/65 backdrop-blur-xs text-white text-[9.5px] font-mono font-medium px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                      <span>{formatSeconds(item.duration_seconds)}</span>
-                      <Play className="w-2.5 h-2.5 fill-white" />
-                    </div>
-                  )}
+                {/* Video duration pill */}
+                {item.media_type === 'video' && (
+                  <div className="absolute top-2.5 right-2.5 bg-black/65 backdrop-blur-xs text-white text-[9.5px] font-mono font-medium px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                    <span>{formatSeconds(item.duration_seconds)}</span>
+                    <Play className="w-2.5 h-2.5 fill-white" />
+                  </div>
+                )}
 
                 {/* Dark gradient overlay + Random Caption */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-3">
@@ -428,11 +459,10 @@ export default function MobileGalleryView({
                       changeSortOption(opt.id);
                       setSortDropdownOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-[10px] text-[12px] text-left transition-colors ${
-                      sortOption === opt.id
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-[10px] text-[12px] text-left transition-colors ${sortOption === opt.id
                         ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] font-semibold'
                         : 'hover:bg-[#F4F4F6] dark:hover:bg-[#1E1E2A] text-[#0A0A0A] dark:text-[#FAFAFA]'
-                    }`}
+                      }`}
                   >
                     <span>{opt.label}</span>
                     {sortOption === opt.id && <Check className="w-3.5 h-3.5 text-[#C2410C]" />}
@@ -448,11 +478,10 @@ export default function MobileGalleryView({
           {/* Button Filter Jenis Media: Semua -> Foto -> Video */}
           <button
             onClick={handleCycleTypeFilter}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${
-              typeFilter !== 'all'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${typeFilter !== 'all'
                 ? 'bg-[#FFF7ED] dark:bg-[#2A140A] text-[#C2410C] border-[#C2410C]/40 font-semibold shadow-xs'
                 : 'bg-white dark:bg-[#14141B] border-[#E8E8EC] dark:border-[#22222E] text-[#0A0A0A] dark:text-[#FAFAFA]'
-            }`}
+              }`}
             title="Filter Media (Semua / Foto / Video)"
           >
             {typeFilter === 'photo' ? (
@@ -466,19 +495,18 @@ export default function MobileGalleryView({
               {typeFilter === 'photo'
                 ? (lang === 'en' ? 'Photos' : 'Foto')
                 : typeFilter === 'video'
-                ? (lang === 'en' ? 'Videos' : 'Video')
-                : (lang === 'en' ? 'All' : 'Semua')}
+                  ? (lang === 'en' ? 'Videos' : 'Video')
+                  : (lang === 'en' ? 'All' : 'Semua')}
             </span>
           </button>
 
           {/* Button Favorit */}
           <button
             onClick={handleToggleFavorite}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${
-              onlyFavorite
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${onlyFavorite
                 ? 'bg-[#FEF2F2] dark:bg-[#2A0E0E] text-[#EF4444] border-[#EF4444]/40 font-semibold shadow-xs'
                 : 'bg-white dark:bg-[#14141B] border-[#E8E8EC] dark:border-[#22222E] text-[#0A0A0A] dark:text-[#FAFAFA]'
-            }`}
+              }`}
           >
             <Heart className={`w-3.5 h-3.5 ${onlyFavorite ? 'fill-[#EF4444] text-[#EF4444]' : 'text-[#8E8E9E]'}`} />
             <span>Favorit</span>
@@ -487,11 +515,10 @@ export default function MobileGalleryView({
           {/* Button Koleksi (Collection Mode) */}
           <button
             onClick={handleToggleCollection}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${
-              collectionMode
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${collectionMode
                 ? 'bg-[#FFF7ED] dark:bg-[#2A140A] text-[#C2410C] border-[#C2410C]/40 font-semibold shadow-xs'
                 : 'bg-white dark:bg-[#14141B] border-[#E8E8EC] dark:border-[#22222E] text-[#0A0A0A] dark:text-[#FAFAFA]'
-            }`}
+              }`}
           >
             <Folder className={`w-3.5 h-3.5 ${collectionMode ? 'fill-[#C2410C]/20 text-[#C2410C]' : 'text-[#8E8E9E]'}`} />
             <span>Koleksi</span>

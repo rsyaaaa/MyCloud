@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon, ArrowUp, ArrowUpDown, ChevronLeft
+  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon, ArrowUp, ArrowUpDown, ChevronLeft,
+  Smartphone, Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
@@ -163,11 +164,197 @@ export default function MobileApp({
   }, []);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
+  // References to preserve latest state in popstate listener without closures
+  const historyDepthRef = useRef(0);
+  const currentTabRef = useRef(currentTab);
+  currentTabRef.current = currentTab;
+  const detailViewerRef = useRef(detailViewer);
+  detailViewerRef.current = detailViewer;
+  const pagelistDrawerOpenRef = useRef(pagelistDrawerOpen);
+  pagelistDrawerOpenRef.current = pagelistDrawerOpen;
+  const profileDrawerOpenRef = useRef(profileDrawerOpen);
+  profileDrawerOpenRef.current = profileDrawerOpen;
+  const contextMenuMediaRef = useRef(contextMenuMedia);
+  contextMenuMediaRef.current = contextMenuMedia;
+  const detailModalMediaRef = useRef(detailModalMedia);
+  detailModalMediaRef.current = detailModalMedia;
+  const avatarModalOpenRef = useRef(avatarModalOpen);
+  avatarModalOpenRef.current = avatarModalOpen;
+
+  // Initialize root history state
+  useEffect(() => {
+    if (!window.history.state || !window.history.state.tab) {
+      window.history.replaceState({ type: 'tab', tab: 'home', depth: 0 }, '', window.location.pathname);
+      historyDepthRef.current = 0;
+    } else {
+      historyDepthRef.current = typeof window.history.state.depth === 'number' ? window.history.state.depth : 0;
+      if (window.history.state.tab) {
+        setCurrentTabState(window.history.state.tab);
+      }
+    }
+  }, []);
+
   const setTab = (newTab) => {
+    if (newTab === currentTabRef.current) return;
+
+    setPreviousTab(currentTabRef.current);
     setCurrentTabState(newTab);
     localStorage.setItem('mycloud_active_tab', newTab);
     notifyTabChange(newTab);
+
+    if (newTab === 'home') {
+      historyDepthRef.current = 0;
+      window.history.replaceState({ type: 'tab', tab: 'home', depth: 0 }, '', window.location.pathname);
+    } else {
+      const nextDepth = (historyDepthRef.current || 0) + 1;
+      historyDepthRef.current = nextDepth;
+      window.history.pushState({ type: 'tab', tab: newTab, depth: nextDepth }, '', '#' + newTab);
+    }
   };
+
+  // Helper functions with history state integration
+  const openPagelistDrawer = () => {
+    const nextDepth = (historyDepthRef.current || 0) + 1;
+    historyDepthRef.current = nextDepth;
+    window.history.pushState({ type: 'drawer', name: 'pagelist', depth: nextDepth }, '', '#menu');
+    setPagelistDrawerOpen(true);
+  };
+  const closePagelistDrawer = () => {
+    if (window.history.state?.type === 'drawer' && window.history.state?.name === 'pagelist') {
+      window.history.back();
+    } else {
+      setPagelistDrawerOpen(false);
+    }
+  };
+
+  const openProfileDrawer = () => {
+    const nextDepth = (historyDepthRef.current || 0) + 1;
+    historyDepthRef.current = nextDepth;
+    window.history.pushState({ type: 'drawer', name: 'profile', depth: nextDepth }, '', '#profile');
+    setProfileDrawerOpen(true);
+  };
+  const closeProfileDrawer = () => {
+    if (window.history.state?.type === 'drawer' && window.history.state?.name === 'profile') {
+      window.history.back();
+    } else {
+      setProfileDrawerOpen(false);
+    }
+  };
+
+  const openContextMenu = (media) => {
+    const nextDepth = (historyDepthRef.current || 0) + 1;
+    historyDepthRef.current = nextDepth;
+    window.history.pushState({ type: 'modal', name: 'context', depth: nextDepth }, '', '#action');
+    setContextMenuMedia(media);
+  };
+  const closeContextMenu = () => {
+    if (window.history.state?.type === 'modal' && window.history.state?.name === 'context') {
+      window.history.back();
+    } else {
+      setContextMenuMedia(null);
+    }
+  };
+
+  const openDetailModal = (media) => {
+    const nextDepth = (historyDepthRef.current || 0) + 1;
+    historyDepthRef.current = nextDepth;
+    window.history.pushState({ type: 'modal', name: 'detail', depth: nextDepth }, '', '#info');
+    setDetailModalMedia(media);
+  };
+  const closeDetailModal = () => {
+    if (window.history.state?.type === 'modal' && window.history.state?.name === 'detail') {
+      window.history.back();
+    } else {
+      setDetailModalMedia(null);
+    }
+  };
+
+  const openAvatarModal = () => {
+    const nextDepth = (historyDepthRef.current || 0) + 1;
+    historyDepthRef.current = nextDepth;
+    window.history.pushState({ type: 'modal', name: 'avatar', depth: nextDepth }, '', '#avatar');
+    setAvatarModalOpen(true);
+  };
+  const closeAvatarModal = () => {
+    if (window.history.state?.type === 'modal' && window.history.state?.name === 'avatar') {
+      window.history.back();
+    } else {
+      setAvatarModalOpen(false);
+    }
+  };
+
+  // Open full-screen dedicated mobile media viewer with history state
+  const handleMobileOpenViewer = (list, index, isVault = false, vaultToken = null) => {
+    if (list && list[index]) {
+      recordRecentItem(list[index]);
+    }
+    const nextDepth = (historyDepthRef.current || 0) + 1;
+    historyDepthRef.current = nextDepth;
+    window.history.pushState({ type: 'viewer', depth: nextDepth }, '', '#viewer');
+    setDetailViewer({
+      isOpen: true,
+      mediaList: list,
+      currentIndex: index,
+      isVault,
+      vaultToken
+    });
+  };
+  const closeMobileViewer = () => {
+    setDetailViewer((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // Central Popstate Listener for Back Navigation
+  useEffect(() => {
+    const handlePopState = (e) => {
+      // 1. Modals & Drawers have priority
+      if (avatarModalOpenRef.current) {
+        setAvatarModalOpen(false);
+        return;
+      }
+      if (detailModalMediaRef.current) {
+        setDetailModalMedia(null);
+        return;
+      }
+      if (contextMenuMediaRef.current) {
+        setContextMenuMedia(null);
+        return;
+      }
+      if (profileDrawerOpenRef.current) {
+        setProfileDrawerOpen(false);
+        return;
+      }
+      if (pagelistDrawerOpenRef.current) {
+        setPagelistDrawerOpen(false);
+        return;
+      }
+      if (detailViewerRef.current.isOpen) {
+        setDetailViewer((prev) => ({ ...prev, isOpen: false }));
+        return;
+      }
+
+      // If already on Home and popstate occurs, trigger double-back exit
+      if (currentTabRef.current === 'home') {
+        if (window.AndroidBridge && window.AndroidBridge.exitApp) {
+          window.AndroidBridge.exitApp();
+        }
+        return;
+      }
+
+      // 2. Tab Navigation
+      const targetState = e.state || {};
+      const targetTab = targetState.tab || 'home';
+      const targetDepth = typeof targetState.depth === 'number' ? targetState.depth : 0;
+      historyDepthRef.current = targetDepth;
+
+      setPreviousTab(currentTabRef.current);
+      setCurrentTabState(targetTab);
+      localStorage.setItem('mycloud_active_tab', targetTab);
+      notifyTabChange(targetTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Browser tab title follows the active menu.
   useEffect(() => {
@@ -213,19 +400,6 @@ export default function MobileApp({
     navItems.push({ id: 'terminal', label: 'Terminal', icon: TerminalIcon });
   }
 
-  // Open full-screen dedicated mobile media viewer
-  const handleMobileOpenViewer = (list, index, isVault = false, vaultToken = null) => {
-    if (list && list[index]) {
-      recordRecentItem(list[index]);
-    }
-    setDetailViewer({
-      isOpen: true,
-      mediaList: list,
-      currentIndex: index,
-      isVault,
-      vaultToken
-    });
-  };
 
   const avatarUrl = api.getAvatarUrl(user);
 
@@ -260,7 +434,7 @@ export default function MobileApp({
           ) : (
             <button
               type="button"
-              onClick={() => setPagelistDrawerOpen(true)}
+              onClick={openPagelistDrawer}
               className="flex items-center gap-2 -ml-1 px-1.5 py-1 rounded-[10px] hover:bg-[#F4F4F6] dark:hover:bg-[#1A1A24] active:scale-95 transition-all text-left"
               title="Buka Pagelist / Menu"
             >
@@ -298,7 +472,7 @@ export default function MobileApp({
 
             {/* User Avatar Circle */}
             <button
-              onClick={() => setProfileDrawerOpen(true)}
+              onClick={openProfileDrawer}
               className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] overflow-hidden ml-0.5 active:scale-95 transition-transform"
             >
               <img
@@ -331,7 +505,7 @@ export default function MobileApp({
             onOrganize={onOrganizeMedia}
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
           />
         )}
 
@@ -344,7 +518,7 @@ export default function MobileApp({
             onOrganize={onOrganizeMedia}
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
           />
         )}
 
@@ -357,11 +531,11 @@ export default function MobileApp({
             onOrganize={onOrganizeMedia}
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
             onOpenUpload={onOpenUpload}
             onFolderChange={setActiveFolder}
-            onOpenProfile={() => setProfileDrawerOpen(true)}
-            onOpenPagelist={() => setPagelistDrawerOpen(true)}
+            onOpenProfile={openProfileDrawer}
+            onOpenPagelist={openPagelistDrawer}
             onOpenTransferList={() => {
               setPreviousTab('allfiles');
               setTab('transfer');
@@ -377,7 +551,7 @@ export default function MobileApp({
             onOrganize={onOrganizeMedia}
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
           />
         )}
 
@@ -389,7 +563,7 @@ export default function MobileApp({
             onOrganize={onOrganizeMedia}
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
           />
         )}
 
@@ -402,7 +576,7 @@ export default function MobileApp({
             onOrganize={onOrganizeMedia}
             onDelete={onDeleteMedia}
             onRename={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
           />
         )}
 
@@ -412,7 +586,7 @@ export default function MobileApp({
             onUnlockMedia={onUnlockMedia}
             onDeleteMedia={onDeleteMedia}
             onRenameMedia={onRenameMedia}
-            onLongPress={(media) => setContextMenuMedia(media)}
+            onLongPress={openContextMenu}
           />
         )}
 
@@ -494,7 +668,7 @@ export default function MobileApp({
       {pagelistDrawerOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex animate-enter"
-          onClick={() => setPagelistDrawerOpen(false)}
+          onClick={closePagelistDrawer}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -503,13 +677,22 @@ export default function MobileApp({
             <Sidebar
               currentTab={currentTab}
               setTab={(tab) => {
-                setTab(tab);
-                setPagelistDrawerOpen(false);
+                if (window.history.state?.type === 'drawer') {
+                  window.history.replaceState({ type: 'tab', tab, depth: historyDepthRef.current }, '', '#' + tab);
+                  setPreviousTab(currentTabRef.current);
+                  setCurrentTabState(tab);
+                  localStorage.setItem('mycloud_active_tab', tab);
+                  notifyTabChange(tab);
+                  setPagelistDrawerOpen(false);
+                } else {
+                  setTab(tab);
+                  setPagelistDrawerOpen(false);
+                }
               }}
-              onHide={() => setPagelistDrawerOpen(false)}
+              onHide={closePagelistDrawer}
               onOpenAvatarModal={() => {
                 setPagelistDrawerOpen(false);
-                setAvatarModalOpen(true);
+                openAvatarModal();
               }}
               isMobile={true}
             />
@@ -521,7 +704,7 @@ export default function MobileApp({
       {profileDrawerOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setProfileDrawerOpen(false)}
+          onClick={closeProfileDrawer}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -536,7 +719,7 @@ export default function MobileApp({
                 {t('userProfile', 'Profil Pengguna')}
               </h2>
               <button
-                onClick={() => setProfileDrawerOpen(false)}
+                onClick={closeProfileDrawer}
                 className="p-1 rounded-full text-[#6B6B6B] dark:text-[#9C9C9C] hover:bg-[#F4F4F6] dark:hover:bg-[#1A1A24] active:scale-90 transition-transform"
               >
                 <X className="w-5 h-5" />
@@ -615,9 +798,22 @@ export default function MobileApp({
               <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
             </div>
 
+            {/* Download Android Native APK Button */}
+            <a
+              href="/download/MyCloud.apk"
+              download="MyCloud.apk"
+              className="flex items-center justify-between px-3.5 py-2.5 bg-[#FFF7ED] dark:bg-[#1F130B] border border-[#C2410C]/30 rounded-[14px] text-[13px] font-medium text-[#C2410C] hover:bg-[#FFEDD5] dark:hover:bg-[#2F1D11] active:scale-98 transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <Smartphone className="w-4 h-4 text-[#C2410C]" />
+                <span>Unduh Aplikasi MyCloud.apk</span>
+              </div>
+              <Download className="w-4 h-4 text-[#C2410C]" />
+            </a>
+
             {/* 3. Fitur Switch User di Perangkat */}
             <div className="border border-[#E8E8EC] dark:border-[#262636] rounded-[16px] bg-[#F8F9FA] dark:bg-[#1A1A24] overflow-hidden">
-              <SwitchUserSection onAfterSwitch={() => setProfileDrawerOpen(false)} />
+              <SwitchUserSection onAfterSwitch={closeProfileDrawer} />
             </div>
 
             {/* 4. Logout Button */}
@@ -642,7 +838,7 @@ export default function MobileApp({
         currentIndex={detailViewer.currentIndex}
         isVault={detailViewer.isVault}
         vaultToken={detailViewer.vaultToken}
-        onClose={() => setDetailViewer((prev) => ({ ...prev, isOpen: false }))}
+        onClose={closeMobileViewer}
         onNavigate={(idx) => setDetailViewer((prev) => ({ ...prev, currentIndex: idx }))}
         onToggleFavorite={onToggleFavorite}
         onLock={onLockMedia}
@@ -655,7 +851,7 @@ export default function MobileApp({
       {/* Long-Press Mobile Context Menu (Bottom Sheet) */}
       <MediaContextMenu
         isOpen={Boolean(contextMenuMedia)}
-        onClose={() => setContextMenuMedia(null)}
+        onClose={closeContextMenu}
         media={contextMenuMedia}
         isMobile={true}
         isVault={currentTab === 'vault'}
@@ -665,20 +861,20 @@ export default function MobileApp({
         onOrganize={onOrganizeMedia}
         onRename={onRenameMedia}
         onDelete={onDeleteMedia}
-        onShowDetail={(media) => setDetailModalMedia(media)}
+        onShowDetail={(media) => openDetailModal(media)}
       />
 
       {/* Media Detail Metadata Modal */}
       <MediaDetailModal
         isOpen={Boolean(detailModalMedia)}
-        onClose={() => setDetailModalMedia(null)}
+        onClose={closeDetailModal}
         media={detailModalMedia}
       />
 
       {/* Avatar Modal */}
       <AvatarModal
         isOpen={avatarModalOpen}
-        onClose={() => setAvatarModalOpen(false)}
+        onClose={closeAvatarModal}
         onUpdated={refreshUser}
       />
     </div>

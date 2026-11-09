@@ -118,6 +118,78 @@ export function uploadWithProgress(endpoint, formData, { onProgress, signal, vau
   });
 }
 
+// ==========================================
+// In-Memory Multi-Layer Cache System
+// Provides 0ms instant display when navigating folders, gallery, and tabs
+// ==========================================
+const apiCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 1 minute fresh TTL
+const CACHE_MAX_AGE_MS = 15 * 60 * 1000; // 15 minutes stale usable for 0ms transitions
+
+export function getCachedMedia(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const cacheKey = `media:${query}`;
+  const entry = apiCache.get(cacheKey);
+  if (entry && (Date.now() - entry.timestamp < CACHE_MAX_AGE_MS) && entry.data) {
+    return entry.data;
+  }
+  return null;
+}
+
+export function getCachedCategories(type = '') {
+  const cacheKey = `categories:${type || 'all'}`;
+  const entry = apiCache.get(cacheKey);
+  if (entry && (Date.now() - entry.timestamp < CACHE_MAX_AGE_MS) && entry.data) {
+    return entry.data;
+  }
+  return null;
+}
+
+export function invalidateApiCache(prefix = '') {
+  if (!prefix) {
+    apiCache.clear();
+  } else {
+    for (const key of Array.from(apiCache.keys())) {
+      if (key.startsWith(prefix)) {
+        apiCache.delete(key);
+      }
+    }
+  }
+}
+
+// Auto-sync with reactive media mutations
+if (typeof window !== 'undefined') {
+  window.addEventListener('mycloud:media_mutation', (e) => {
+    const event = e.detail || {};
+    if (event.type === 'favorite') {
+      for (const [key, entry] of apiCache.entries()) {
+        if (key.startsWith('media:') && entry.data && Array.isArray(entry.data.media)) {
+          entry.data.media = entry.data.media.map((m) =>
+            m.id === event.id ? { ...m, is_favorite: event.is_favorite } : m
+          );
+        }
+      }
+    } else if (event.type === 'rename') {
+      for (const [key, entry] of apiCache.entries()) {
+        if (key.startsWith('media:') && entry.data && Array.isArray(entry.data.media)) {
+          entry.data.media = entry.data.media.map((m) =>
+            m.id === event.id ? { ...m, display_name: event.name } : m
+          );
+        }
+      }
+    } else if (event.type === 'delete' || event.type === 'lock') {
+      for (const [key, entry] of apiCache.entries()) {
+        if (key.startsWith('media:') && entry.data && Array.isArray(entry.data.media)) {
+          entry.data.media = entry.data.media.filter((m) => m.id !== event.id);
+        }
+      }
+    } else {
+      invalidateApiCache('media:');
+      invalidateApiCache('categories:');
+    }
+  });
+}
+
 export const api = {
   // Auth
   login: (username, password) => apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
@@ -141,56 +213,195 @@ export const api = {
   verifyPin: (pin) => apiRequest('/auth/vault/verify-pin', { method: 'POST', body: JSON.stringify({ pin }) }),
 
   // Media
-  listMedia: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    return apiRequest(`/media${query ? `?${query}` : ''}`);
-  },
-  getMediaStats: () => apiRequest('/media/stats/summary'),
-  getMedia: (id) => apiRequest(`/media/${id}`),
-  getTextContent: (id) => apiRequest(`/media/${id}/text`),
-  saveTextContent: (id, content) => apiRequest(`/media/${id}/text`, { method: 'PUT', body: JSON.stringify({ content }) }),
-  uploadMedia: (formData, onProgress, signal) => uploadWithProgress('/media/upload', formData, { onProgress, signal }),
-  updateMedia: (id, updates) => apiRequest(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
-  lockMedia: (id) => apiRequest(`/media/${id}/lock`, { method: 'POST' }),
-  unlockMedia: (id, vaultToken) => apiRequest(`/media/${id}/unlock`, { method: 'POST', vaultToken }),
-  deleteMedia: (id, vaultToken) => apiRequest(`/media/${id}`, { method: 'DELETE', vaultToken }),
-  listVaultMedia: (vaultToken) => apiRequest('/media/vault/list', { vaultToken }),
+    listMedia: async (params = {}, options = {}) => {
+      const query = new URLSearchParams(params).toString();
+      const cacheKey = `media:${query}`;
+      const cached = apiCache.get(cacheKey);
+      const now = Date.now();
 
-  // Trash System (Folder Sampah)
-  listTrash: () => apiRequest('/media/trash/list'),
-  restoreFromTrash: (id) => apiRequest(`/media/trash/${id}/restore`, { method: 'POST' }),
-  deletePermanently: (id) => apiRequest(`/media/trash/${id}/permanent`, { method: 'DELETE' }),
-  emptyTrash: () => apiRequest('/media/trash/empty', { method: 'POST' }),
+      // Return fresh cached data immediately (0ms)
+      if (!options.forceRefresh && cached && cached.data && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+      }
 
-  // Streaming URLs
-  getStreamUrl: (id) => `${API_BASE}/stream/${id}`,
-  getThumbnailUrl: (id) => `${API_BASE}/stream/thumbnail/${id}`,
-  getDownloadUrl: (id) => `${API_BASE}/stream/download/${id}`,
-  getVaultStreamUrl: (id, vaultToken) => `${API_BASE}/stream/vault/media/${id}?vault_token=${encodeURIComponent(vaultToken)}`,
-  getVaultThumbnailUrl: (id, vaultToken) => `${API_BASE}/stream/vault/thumbnail/${id}?vault_token=${encodeURIComponent(vaultToken)}`,
+      // Deduplicate in-flight fetch
+      if (cached && cached.inflightPromise) {
+        return cached.inflightPromise;
+      }
 
-  // Memories Engine
-  getMemories: () => apiRequest('/memories'),
+      const inflightPromise = apiRequest(`/media${query ? `?${query}` : ''}`)
+        .then((data) => {
+          apiCache.set(cacheKey, { data, timestamp: Date.now(), inflightPromise: null });
+          return data;
+        })
+        .catch((err) => {
+          if (cached) cached.inflightPromise = null;
+          throw err;
+        });
 
-  // Categories & Folders
-  listCategories: (type) => apiRequest(`/categories${type ? `?type=${type}` : ''}`),
-  createCategory: (name, type = 'folder') => apiRequest('/categories', { method: 'POST', body: JSON.stringify({ name, type }) }),
-  renameCategory: (id, name) => apiRequest(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
-  deleteCategory: (id) => apiRequest(`/categories/${id}`, { method: 'DELETE' }),
-  assignCategories: (media_id, category_ids) => apiRequest('/categories/assign', { method: 'POST', body: JSON.stringify({ media_id, category_ids }) }),
-  getMediaCategories: (mediaId) => apiRequest(`/categories/media/${mediaId}`),
+      if (cached) {
+        cached.inflightPromise = inflightPromise;
+      } else {
+        apiCache.set(cacheKey, { data: null, timestamp: 0, inflightPromise });
+      }
 
-  // Watch Progress
-  getProgress: (mediaId) => apiRequest(`/watch-progress/${mediaId}`),
-  saveProgress: (mediaId, last_position_seconds) => apiRequest(`/watch-progress/${mediaId}`, { method: 'POST', body: JSON.stringify({ last_position_seconds }) }),
+      // If caller allows stale or if we have cached data and forceRefresh wasn't requested:
+      if (!options.forceRefresh && cached && cached.data) {
+        return cached.data;
+      }
 
-  // Quota & Admin
-  requestQuota: (requested_gb, reason) => apiRequest('/quota/request', { method: 'POST', body: JSON.stringify({ requested_gb, reason }) }),
-  getMyQuotaRequests: () => apiRequest('/quota/my-requests'),
-  getAdminQuotaRequests: () => apiRequest('/admin/requests'),
-  actionAdminQuotaRequest: (id, action) => apiRequest(`/admin/requests/${id}/action`, { method: 'POST', body: JSON.stringify({ action }) }),
-  getAdminStats: () => apiRequest('/admin/system-stats'),
-  getAdminUsers: () => apiRequest('/admin/users'),
-  updateUserQuota: (userId, quota_gb) => apiRequest(`/admin/users/${userId}/quota`, { method: 'PATCH', body: JSON.stringify({ quota_gb }) }),
+      return inflightPromise;
+    },
+      getCachedMedia,
+      getCachedCategories,
+      invalidateCache: invalidateApiCache,
+        getMediaStats: () => apiRequest('/media/stats/summary'),
+          getMedia: (id) => apiRequest(`/media/${id}`),
+            getTextContent: (id) => apiRequest(`/media/${id}/text`),
+              saveTextContent: (id, content) => apiRequest(`/media/${id}/text`, { method: 'PUT', body: JSON.stringify({ content }) }),
+                          uploadMedia: (formData, onProgress, signal) =>
+                            uploadWithProgress('/media/upload', formData, { onProgress, signal }).then((res) => {
+                              invalidateApiCache('media:');
+                              return res;
+                            }),
+                            updateMedia: (id, updates) =>
+                              apiRequest(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }).then((res) => {
+                                invalidateApiCache('media:');
+                                return res;
+                              }),
+                              lockMedia: (id) =>
+                                apiRequest(`/media/${id}/lock`, { method: 'POST' }).then((res) => {
+                                  invalidateApiCache('media:');
+                                  return res;
+                                }),
+                                unlockMedia: (id, vaultToken) =>
+                                  apiRequest(`/media/${id}/unlock`, { method: 'POST', vaultToken }).then((res) => {
+                                    invalidateApiCache('media:');
+                                    return res;
+                                  }),
+                                  deleteMedia: (id, vaultToken) =>
+                                    apiRequest(`/media/${id}`, { method: 'DELETE', vaultToken }).then((res) => {
+                                      invalidateApiCache('media:');
+                                      return res;
+                                    }),
+                                    listVaultMedia: (vaultToken) => apiRequest('/media/vault/list', { vaultToken }),
+
+                                      // Trash System (Folder Sampah)
+                                      listTrash: () => apiRequest('/media/trash/list'),
+                                              restoreFromTrash: (id) =>
+                                                apiRequest(`/media/trash/${id}/restore`, { method: 'POST' }).then((res) => {
+                                                  invalidateApiCache('media:');
+                                                  return res;
+                                                }),
+                                                deletePermanently: (id) =>
+                                                  apiRequest(`/media/trash/${id}/permanent`, { method: 'DELETE' }).then((res) => {
+                                                    invalidateApiCache('media:');
+                                                    return res;
+                                                  }),
+                                                  emptyTrash: () =>
+                                                    apiRequest('/media/trash/empty', { method: 'POST' }).then((res) => {
+                                                      invalidateApiCache('media:');
+                                                      return res;
+                                                    }),
+
+                                                    // Streaming URLs (with auth query param fallback for WebView & <img>/<video> tags)
+                                                    getStreamUrl: (id) => {
+                                                      const token = typeof localStorage !== 'undefined' ? localStorage.getItem('mycloud_auth_token') : null;
+                                                      return token ? `${API_BASE}/stream/${id}?token=${encodeURIComponent(token)}` : `${API_BASE}/stream/${id}`;
+                                                    },
+                                                      getThumbnailUrl: (id) => {
+                                                        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('mycloud_auth_token') : null;
+                                                        return token ? `${API_BASE}/stream/thumbnail/${id}?token=${encodeURIComponent(token)}` : `${API_BASE}/stream/thumbnail/${id}`;
+                                                      },
+                                                        getDownloadUrl: (id) => {
+                                                          const token = typeof localStorage !== 'undefined' ? localStorage.getItem('mycloud_auth_token') : null;
+                                                          return token ? `${API_BASE}/stream/download/${id}?token=${encodeURIComponent(token)}` : `${API_BASE}/stream/download/${id}`;
+                                                        },
+                                                          getVaultStreamUrl: (id, vaultToken) => {
+                                                            const token = typeof localStorage !== 'undefined' ? localStorage.getItem('mycloud_auth_token') : null;
+                                                            const authPart = token ? `&token=${encodeURIComponent(token)}` : '';
+                                                            return `${API_BASE}/stream/vault/media/${id}?vault_token=${encodeURIComponent(vaultToken)}${authPart}`;
+                                                          },
+                                                            getVaultThumbnailUrl: (id, vaultToken) => {
+                                                              const token = typeof localStorage !== 'undefined' ? localStorage.getItem('mycloud_auth_token') : null;
+                                                              const authPart = token ? `&token=${encodeURIComponent(token)}` : '';
+                                                              return `${API_BASE}/stream/vault/thumbnail/${id}?vault_token=${encodeURIComponent(vaultToken)}${authPart}`;
+                                                            },
+
+                                                              // Memories Engine
+                                                              getMemories: () => apiRequest('/memories'),
+
+                                                                // Categories & Folders
+                                                                          listCategories: async (type = '', options = {}) => {
+                                                                            const cacheKey = `categories:${type || 'all'}`;
+                                                                            const cached = apiCache.get(cacheKey);
+                                                                            const now = Date.now();
+
+                                                                            if (!options.forceRefresh && cached && cached.data && (now - cached.timestamp < CACHE_TTL_MS)) {
+                                                                              return cached.data;
+                                                                            }
+
+                                                                            if (cached && cached.inflightPromise) {
+                                                                              return cached.inflightPromise;
+                                                                            }
+
+                                                                            const inflightPromise = apiRequest(`/categories${type ? `?type=${type}` : ''}`)
+                                                                              .then((data) => {
+                                                                                apiCache.set(cacheKey, { data, timestamp: Date.now(), inflightPromise: null });
+                                                                                return data;
+                                                                              })
+                                                                              .catch((err) => {
+                                                                                if (cached) cached.inflightPromise = null;
+                                                                                throw err;
+                                                                              });
+
+                                                                            if (cached) {
+                                                                              cached.inflightPromise = inflightPromise;
+                                                                            } else {
+                                                                              apiCache.set(cacheKey, { data: null, timestamp: 0, inflightPromise });
+                                                                            }
+
+                                                                            if (!options.forceRefresh && cached && cached.data) {
+                                                                              return cached.data;
+                                                                            }
+
+                                                                            return inflightPromise;
+                                                                          },
+                                                                            createCategory: (name, type = 'folder') =>
+                                                                              apiRequest('/categories', { method: 'POST', body: JSON.stringify({ name, type }) }).then((res) => {
+                                                                                invalidateApiCache('categories:');
+                                                                                return res;
+                                                                              }),
+                                                                              renameCategory: (id, name) =>
+                                                                                apiRequest(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }).then((res) => {
+                                                                                  invalidateApiCache('categories:');
+                                                                                  return res;
+                                                                                }),
+                                                                                deleteCategory: (id) =>
+                                                                                  apiRequest(`/categories/${id}`, { method: 'DELETE' }).then((res) => {
+                                                                                    invalidateApiCache('categories:');
+                                                                                    invalidateApiCache('media:');
+                                                                                    return res;
+                                                                                  }),
+                                                                                  assignCategories: (media_id, category_ids) =>
+                                                                                    apiRequest('/categories/assign', { method: 'POST', body: JSON.stringify({ media_id, category_ids }) }).then((res) => {
+                                                                                      invalidateApiCache('categories:');
+                                                                                      invalidateApiCache('media:');
+                                                                                      return res;
+                                                                                    }),
+                                                                                    getMediaCategories: (mediaId) => apiRequest(`/categories/media/${mediaId}`),
+
+                                                                                      // Watch Progress
+                                                                                      getProgress: (mediaId) => apiRequest(`/watch-progress/${mediaId}`),
+                                                                                        saveProgress: (mediaId, last_position_seconds) => apiRequest(`/watch-progress/${mediaId}`, { method: 'POST', body: JSON.stringify({ last_position_seconds }) }),
+
+                                                                                          // Quota & Admin
+                                                                                          requestQuota: (requested_gb, reason) => apiRequest('/quota/request', { method: 'POST', body: JSON.stringify({ requested_gb, reason }) }),
+                                                                                            getMyQuotaRequests: () => apiRequest('/quota/my-requests'),
+                                                                                              getAdminQuotaRequests: () => apiRequest('/admin/requests'),
+                                                                                                actionAdminQuotaRequest: (id, action) => apiRequest(`/admin/requests/${id}/action`, { method: 'POST', body: JSON.stringify({ action }) }),
+                                                                                                  getAdminStats: () => apiRequest('/admin/system-stats'),
+                                                                                                    getAdminUsers: () => apiRequest('/admin/users'),
+                                                                                                      updateUserQuota: (userId, quota_gb) => apiRequest(`/admin/users/${userId}/quota`, { method: 'PATCH', body: JSON.stringify({ quota_gb }) }),
 };
 

@@ -33,6 +33,10 @@ export default function VideoPlayer({
   const [duration, setDuration] = useState(media?.duration_seconds || 0);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
+
+  const posterUrl = media?.id
+    ? (isVault ? api.getVaultThumbnailUrl(media.id, vaultToken) : api.getThumbnailUrl(media.id))
+    : undefined;
   const [resumePrompt, setResumePrompt] = useState(null);
   const [lastSavedTime, setLastSavedTime] = useState(0);
   const [seekFeedback, setSeekFeedback] = useState(null); // { side: 'left' | 'right', text: string }
@@ -312,6 +316,7 @@ export default function VideoPlayer({
         <video
           ref={videoRef}
           src={src}
+          poster={posterUrl}
           autoPlay={autoPlay}
           playsInline
           onTimeUpdate={handleTimeUpdate}
