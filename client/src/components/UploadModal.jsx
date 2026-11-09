@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, UploadCloud, File, AlertCircle, CheckCircle, Loader2, Folder } from 'lucide-react';
 import { api } from '../api';
 import { useLanguage } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 import { formatBytes } from './QuotaBar';
 
 export default function UploadModal({
@@ -13,6 +14,7 @@ export default function UploadModal({
   onRequestQuota
 }) {
   const { t, tp } = useLanguage();
+  const { startUpload } = useTransfer();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -80,121 +82,19 @@ export default function UploadModal({
   };
 
   const handleClose = () => {
-    if (uploading) {
-      if (window.confirm(t('cancelUploadConfirm', 'Proses upload sedang berjalan. Apakah Anda yakin ingin membatalkannya?'))) {
-        handleCancelUpload();
-        onClose();
-      }
-    } else {
-      setSelectedFiles([]);
-      setErrorMsg('');
-      setProgressInfo(null);
-      onClose();
-    }
+    setSelectedFiles([]);
+    setErrorMsg('');
+    setProgressInfo(null);
+    onClose();
   };
 
-  const handleUploadAll = async () => {
+  const handleUploadAll = () => {
     if (selectedFiles.length === 0) return;
-    setUploading(true);
+    const targetFolderObj = folderList.find((f) => f.id === selectedFolderId) || targetFolder || null;
+    startUpload(selectedFiles, targetFolderObj);
+    setSelectedFiles([]);
     setErrorMsg('');
     setIsOverQuota(false);
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    let totalCompletedBytes = 0;
-    const totalAllBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
-
-    for (let i = 0; i < selectedFiles.length; i++) {
-      setCurrentIndex(i);
-      const file = selectedFiles[i];
-      const formData = new FormData();
-      if (selectedFolderId) {
-        formData.append('category_id', selectedFolderId);
-      }
-      formData.append('file', file);
-
-      let lastLoaded = 0;
-      let lastTime = Date.now();
-      let uploadSpeed = 0;
-
-      // Set initial 0 progress for this file
-      setProgressInfo({
-        fileIndex: i,
-        fileName: file.name,
-        fileSize: file.size,
-        loaded: 0,
-        total: file.size,
-        percent: 0,
-        isProcessing: false,
-        speed: 0,
-        remainingSec: null,
-        totalCompletedBytes,
-        totalAllBytes
-      });
-
-      try {
-        await api.uploadMedia(
-          formData,
-          (progress) => {
-            const now = Date.now();
-            const timeDiff = (now - lastTime) / 1000;
-            if (timeDiff >= 0.4) {
-              const bytesDiff = progress.loaded - lastLoaded;
-              uploadSpeed = bytesDiff / timeDiff;
-              lastLoaded = progress.loaded;
-              lastTime = now;
-            }
-
-            const isProcessing = progress.loaded >= progress.total;
-            const remainingBytes = Math.max(0, progress.total - progress.loaded);
-            const remainingSec = uploadSpeed > 0 ? Math.round(remainingBytes / uploadSpeed) : null;
-
-            setProgressInfo({
-              fileIndex: i,
-              fileName: file.name,
-              fileSize: file.size,
-              loaded: progress.loaded,
-              total: progress.total,
-              percent: isProcessing ? 100 : progress.percent,
-              isProcessing,
-              speed: uploadSpeed,
-              remainingSec,
-              totalCompletedBytes: totalCompletedBytes + progress.loaded,
-              totalAllBytes
-            });
-          },
-          abortController.signal
-        );
-
-        totalCompletedBytes += file.size;
-      } catch (err) {
-        if (err.name === 'AbortError' || err.message?.includes('batal')) {
-          setErrorMsg('Upload dibatalkan oleh pengguna.');
-          setUploading(false);
-          setProgressInfo(null);
-          return;
-        }
-        if (err.status === 413) {
-          setErrorMsg(err.message || t('payloadTooLarge', 'Penyimpanan penuh (413 Payload Too Large).'));
-          setIsOverQuota(true);
-        } else {
-          setErrorMsg(tp('uploadFailedFile', `Gagal mengunggah "${file.name}": ${err.message}`, {
-            file: file.name,
-            message: err.message
-          }));
-        }
-        setUploading(false);
-        setProgressInfo(null);
-        return;
-      }
-    }
-
-    setUploading(false);
-    setProgressInfo(null);
-    setSelectedFiles([]);
-    abortControllerRef.current = null;
-    if (onUploadSuccess) onUploadSuccess(selectedFolderId);
     onClose();
   };
 

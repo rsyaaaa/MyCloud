@@ -8,6 +8,7 @@ import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 import { recordRecentItem } from '../utils/recentHistory';
 import { useLanguage, localeFor } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 
 export default function MediaViewerModal({
   isOpen,
@@ -28,6 +29,7 @@ export default function MediaViewerModal({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const { t, lang } = useLanguage();
+  const { startDownload } = useTransfer();
 
   const currentMedia = mediaList[currentIndex];
 
@@ -157,14 +159,13 @@ export default function MediaViewerModal({
           )}
 
           {!isVault && (
-            <a
-              href={api.getDownloadUrl(currentMedia.id)}
-              download
+            <button
+              onClick={() => startDownload(currentMedia)}
               className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
               title={t('downloadOriginal', 'Unduh Asli')}
             >
               <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-            </a>
+            </button>
           )}
 
           <button

@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon, ArrowUp
+  Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon, ArrowUp, ArrowUpDown, ChevronLeft
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
+import TransferListView from '../components/TransferListView';
+import MobileFloatingTransferButton from '../components/MobileFloatingTransferButton';
 import MobileHomeView from './MobileHomeView';
 import MobileGalleryView from './MobileGalleryView';
 import MobileVideoHubView from './MobileVideoHubView';
@@ -45,10 +48,12 @@ export default function MobileApp({
   const { isUnlocked, remainingSeconds, notifyTabChange } = useVault();
   const { isDark, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLanguage();
+  const { activeTransfersCount, isUploading, isDownloading, hasFailure } = useTransfer();
 
   const [currentTab, setCurrentTabState] = useState(() => {
     return localStorage.getItem('mycloud_active_tab') || 'home';
   });
+  const [previousTab, setPreviousTab] = useState('home');
   const [activeFolder, setActiveFolder] = useState(() => {
     try {
       const saved = localStorage.getItem('mycloud_active_folder');
@@ -205,25 +210,64 @@ export default function MobileApp({
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0B0B0E] flex flex-col text-[#0A0A0A] dark:text-[#F4F4F5] selection:bg-[#FFEDD5] selection:text-[#C2410C] transition-colors">
-      {/* Mobile Top App Bar (Hidden for allfiles, as MobileAllFilesView has its own Google Drive header) */}
+      {/* Mobile Top App Bar (Always present on all tabs except allfiles root, which has its own Drive header) */}
       {currentTab !== 'allfiles' && (
         <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-colors">
-          {/* Brand */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
-              <Cloud className="w-4 h-4 stroke-[2.2]" />
+          {/* Brand & Page Title */}
+          {currentTab === 'transfer' ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTab(previousTab || 'home')}
+                className="w-8 h-8 -ml-1.5 rounded-full flex items-center justify-center hover:bg-[#F4F4F6] dark:hover:bg-[#1A1A24] active:scale-90 text-[#0A0A0A] dark:text-[#FAFAFA] transition-all"
+                title="Kembali"
+              >
+                <ChevronLeft className="w-6 h-6 stroke-[2.4]" />
+              </button>
+              <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
+                <Cloud className="w-4 h-4 stroke-[2.2]" />
+              </div>
+              <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
+                Transfer List
+              </h1>
             </div>
-            <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
-              MyCloud
-            </h1>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
+                <Cloud className="w-4 h-4 stroke-[2.2]" />
+              </div>
+              <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
+                MyCloud
+              </h1>
+            </div>
+          )}
 
-          {/* Right actions: Profile Avatar */}
+          {/* Right actions: Transfer List + Profile Avatar */}
           <div className="flex items-center gap-2">
+            {/* Small round Transfer List trigger button to the left of the avatar */}
+            {currentTab !== 'transfer' && (
+              <button
+                onClick={() => {
+                  setPreviousTab(currentTab);
+                  setTab('transfer');
+                }}
+                className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] bg-white dark:bg-[#14141B] flex items-center justify-center text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#C2410C] dark:hover:text-[#EA580C] active:scale-95 transition-all relative"
+                title="Transfer List"
+              >
+                <ArrowUpDown className="w-4 h-4 stroke-[2.2]" />
+                {(activeTransfersCount > 0 || hasFailure) && (
+                  <span
+                    className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0E0E12] ${
+                      hasFailure ? 'bg-[#EF4444]' : 'bg-[#C2410C]'
+                    } animate-pulse`}
+                  />
+                )}
+              </button>
+            )}
+
             {/* User Avatar Circle */}
             <button
               onClick={() => setProfileDrawerOpen(true)}
-              className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] overflow-hidden ml-1 active:scale-95 transition-transform"
+              className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] overflow-hidden ml-0.5 active:scale-95 transition-transform"
             >
               <img
                 src={avatarUrl}
@@ -285,6 +329,10 @@ export default function MobileApp({
             onOpenUpload={onOpenUpload}
             onFolderChange={setActiveFolder}
             onOpenProfile={() => setProfileDrawerOpen(true)}
+            onOpenTransferList={() => {
+              setPreviousTab('allfiles');
+              setTab('transfer');
+            }}
           />
         )}
 
@@ -353,24 +401,29 @@ export default function MobileApp({
             <TerminalPage />
           </div>
         )}
+
+        {currentTab === 'transfer' && (
+          <TransferListView
+            hideHeader={true}
+            onBack={() => setTab(previousTab || 'home')}
+            onOpenUpload={onOpenUpload}
+          />
+        )}
       </main>
 
-      {/* Floating Action Button (FAB) - Upload (Terabox Simple Arrow Style with Scroll Animation, disabled on allfiles as it has its own Drive + FAB) */}
-      {currentTab !== 'terminal' && currentTab !== 'trash' && currentTab !== 'allfiles' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
-        <button
-          onClick={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
-          className={`fixed bottom-[84px] right-4 z-40 w-13 h-13 rounded-full bg-gradient-to-tr from-[#C2410C] to-[#EA580C] text-white shadow-[0_8px_25px_rgba(194,65,12,0.45)] flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${
-            showUploadBtn
-              ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
-              : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
-          }`}
-          title={activeFolder && currentTab === 'allfiles' ? `Upload ke ${activeFolder.name}` : t('upload', 'Upload Media')}
-        >
-          <ArrowUp className="w-6 h-6 stroke-[2.4]" />
-        </button>
+      {/* Floating Action Button (FAB) - Upload & Background Transfer Progress */}
+      {currentTab !== 'terminal' && currentTab !== 'trash' && currentTab !== 'transfer' && currentTab !== 'allfiles' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
+        <MobileFloatingTransferButton
+          show={showUploadBtn}
+          onClickUpload={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
+          onClickTransferList={() => {
+            setPreviousTab(currentTab);
+            setTab('transfer');
+          }}
+        />
       )}
 
-      {/* Floating Bottom Navigation Bar */}
+      {/* Floating Bottom Navigation Bar (Always visible on mobile) */}
       <nav className="fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.60)] z-40 flex items-center justify-around px-2 transition-all">
         {navItems.map((item) => {
           const Icon = item.icon;

@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Folder, FolderPlus, FileText, Image, Video, Search, LayoutGrid, List,
   Trash2, Edit2, ArrowLeft, X, Upload, MoreVertical, Plus,
-  ArrowUp, ArrowDown, Play
+  ArrowUp, ArrowDown, Play, ArrowUpDown, AlertCircle
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 import { formatBytes } from '../components/QuotaBar';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
@@ -36,10 +37,18 @@ export default function MobileAllFilesView({
   onOpenText,
   onOpenUpload,
   onFolderChange,
-  onOpenProfile
+  onOpenProfile,
+  onOpenTransferList
 }) {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const {
+    activeTransfersCount,
+    isUploading,
+    isDownloading,
+    hasFailure,
+    overallProgress
+  } = useTransfer();
 
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
@@ -433,6 +442,22 @@ export default function MobileAllFilesView({
               </button>
             )}
           </div>
+
+          {/* Transfer List Trigger Button */}
+          <button
+            onClick={() => onOpenTransferList && onOpenTransferList()}
+            className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#22222E] bg-white dark:bg-[#14141B] flex items-center justify-center text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#C2410C] active:scale-95 transition-all relative shrink-0"
+            title="Transfer List"
+          >
+            <ArrowUpDown className="w-4 h-4 stroke-[2.2]" />
+            {(activeTransfersCount > 0 || hasFailure) && (
+              <span
+                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0B0B0E] ${
+                  hasFailure ? 'bg-[#EF4444]' : isUploading ? 'bg-[#C2410C]' : 'bg-[#10B981]'
+                } animate-pulse`}
+              />
+            )}
+          </button>
 
           {/* User Avatar */}
           <button
@@ -863,18 +888,91 @@ export default function MobileAllFilesView({
         )}
       </div>
 
-      {/* 4. GOOGLE DRIVE "+" FLOATING ACTION BUTTON (FAB) */}
-      <button
-        onClick={() => setActionSheetOpen(true)}
-        className={`fixed bottom-[84px] right-4 z-40 w-14 h-14 rounded-[20px] bg-gradient-to-tr from-[#C2410C] to-[#EA580C] text-white shadow-[0_8px_25px_rgba(194,65,12,0.45)] flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${
-          showFab
-            ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
-            : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
-        }`}
-        title="Tambah berkas atau folder baru"
-      >
-        <Plus className="w-7 h-7 stroke-[2.6]" />
-      </button>
+      {/* 4. GOOGLE DRIVE "+" FLOATING ACTION BUTTON (FAB) & TRANSFER PROGRESS */}
+      {(() => {
+        const isTransferring = isUploading || isDownloading;
+        const isSpecialState = isTransferring || hasFailure;
+
+        const radius = 26;
+        const circumference = 2 * Math.PI * radius;
+        const displayProgress = Math.max(5, Math.min(100, overallProgress || 0));
+        const strokeOffset = circumference - (circumference * displayProgress) / 100;
+
+        let ringColor = '#EA580C';
+        let bgGradient = 'bg-gradient-to-tr from-[#C2410C] to-[#EA580C]';
+        let shadowGlow = 'shadow-[0_8px_25px_rgba(194,65,12,0.45)]';
+
+        if (hasFailure) {
+          ringColor = '#EF4444';
+          bgGradient = 'bg-gradient-to-tr from-[#DC2626] to-[#EF4444]';
+          shadowGlow = 'shadow-[0_8px_25px_rgba(239,68,68,0.5)]';
+        } else if (isDownloading) {
+          ringColor = '#10B981';
+          bgGradient = 'bg-gradient-to-tr from-[#059669] to-[#34D399]';
+          shadowGlow = 'shadow-[0_8px_25px_rgba(16,185,129,0.5)]';
+        }
+
+        return (
+          <button
+            onClick={() => setActionSheetOpen(true)}
+            className={`fixed bottom-[84px] right-4 z-40 w-14 h-14 ${
+              isSpecialState ? 'rounded-full' : 'rounded-[20px]'
+            } ${bgGradient} text-white ${shadowGlow} flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${
+              showFab || isSpecialState
+                ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
+                : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
+            }`}
+            title={
+              hasFailure
+                ? 'Tambah baru (Transfer sebelumnya gagal)'
+                : isUploading
+                ? `Mengunggah (${displayProgress}%) - Ketuk untuk tambah baru`
+                : isDownloading
+                ? `Mengunduh (${displayProgress}%) - Ketuk untuk tambah baru`
+                : 'Tambah berkas atau folder baru'
+            }
+          >
+            {/* SVG Circular Progress Ring (Visible when transferring or failed) */}
+            {isSpecialState && (
+              <svg
+                viewBox="0 0 58 58"
+                className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
+              >
+                <circle
+                  cx="29"
+                  cy="29"
+                  r={radius}
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.25)"
+                  strokeWidth="3.5"
+                />
+                <circle
+                  cx="29"
+                  cy="29"
+                  r={radius}
+                  fill="none"
+                  stroke={ringColor}
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeOffset}
+                  className="transition-all duration-300 ease-out"
+                />
+              </svg>
+            )}
+
+            {hasFailure ? (
+              <AlertCircle className="w-6 h-6 stroke-[2.4] text-white animate-bounce" />
+            ) : isDownloading ? (
+              <ArrowDown className="w-6 h-6 stroke-[2.5] text-white animate-pulse" />
+            ) : isUploading ? (
+              <ArrowUp className="w-6 h-6 stroke-[2.5] text-white" />
+            ) : (
+              <Plus className="w-7 h-7 stroke-[2.6]" />
+            )}
+          </button>
+        );
+      })()}
 
       {/* 5. ACTION SHEET MODAL: UPLOAD OR BUAT FOLDER */}
       {actionSheetOpen && (

@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { useLanguage } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 
 export default function MediaContextMenu({
   isOpen,
@@ -23,6 +24,7 @@ export default function MediaContextMenu({
 }) {
   const menuRef = useRef(null);
   const { t } = useLanguage();
+  const { startDownload } = useTransfer();
 
   // Close on outside click
   useEffect(() => {
@@ -128,8 +130,10 @@ export default function MediaContextMenu({
             label: t('downloadOriginal', 'Unduh File Asli'),
             icon: Download,
             iconColor: 'text-[#6B6B6B] dark:text-[#9C9C9C]',
-            href: api.getDownloadUrl(media.id),
-            isLink: true
+            onClick: () => {
+              startDownload(media);
+              onClose();
+            }
           }
         ]
       : []),

@@ -31,6 +31,28 @@ export default function SwitchUserSection({ onAfterSwitch }) {
     loading: false
   });
 
+  const performSwitchSuccess = () => {
+    try {
+      localStorage.setItem('mycloud_active_tab', 'home');
+      localStorage.removeItem('mycloud_active_folder');
+      localStorage.removeItem('mycloud_active_album');
+      localStorage.removeItem('mycloud_gallery_subview');
+    } catch (e) {}
+
+    if (typeof onAfterSwitch === 'function') {
+      try {
+        onAfterSwitch();
+      } catch (e) {}
+    }
+
+    // Refresh halaman dan pastikan kembali ke menu home
+    if (window.location.pathname !== '/' || window.location.search || window.location.hash) {
+      window.location.replace('/');
+    } else {
+      window.location.reload();
+    }
+  };
+
   const handleSwitch = async (account) => {
     if (account.id === user?.id) return; // already active
     setSwitchingId(account.id);
@@ -39,7 +61,7 @@ export default function SwitchUserSection({ onAfterSwitch }) {
     try {
       const res = await switchAccount(account);
       if (res.success) {
-        if (onAfterSwitch) onAfterSwitch();
+        performSwitchSuccess();
       } else if (res.requirePassword) {
         setReauthModal({
           isOpen: true,
@@ -66,7 +88,7 @@ export default function SwitchUserSection({ onAfterSwitch }) {
     try {
       await login(reauthModal.account.username, reauthModal.password);
       setReauthModal({ isOpen: false, account: null, password: '', error: '', loading: false });
-      if (onAfterSwitch) onAfterSwitch();
+      performSwitchSuccess();
     } catch (err) {
       setReauthModal((prev) => ({
         ...prev,
@@ -95,7 +117,7 @@ export default function SwitchUserSection({ onAfterSwitch }) {
     try {
       await login(addModal.username.trim(), addModal.password);
       setAddModal({ isOpen: false, username: '', password: '', error: '', loading: false });
-      if (onAfterSwitch) onAfterSwitch();
+      performSwitchSuccess();
     } catch (err) {
       setAddModal((prev) => ({
         ...prev,

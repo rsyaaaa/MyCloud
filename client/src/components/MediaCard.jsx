@@ -3,6 +3,7 @@ import { Play, Heart, Lock, Unlock, MoreVertical, Folder, Trash2, Edit2, Downloa
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 import { useLanguage, localeFor } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 
 function formatSeconds(sec) {
   if (!sec || isNaN(sec)) return '00:00';
@@ -28,6 +29,7 @@ export default function MediaCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { t, lang } = useLanguage();
+  const { startDownload } = useTransfer();
   const isVideo = media.media_type === 'video';
   const isDoc = media.media_type === 'document' || media.type === 'document';
   const fileExt = media.original_name ? media.original_name.split('.').pop().toUpperCase() : (isDoc ? 'DOC' : '');
@@ -253,15 +255,16 @@ export default function MediaCard({
               )}
 
               {!isVault && (
-                <a
-                  href={api.getDownloadUrl(media.id)}
-                  download
-                  onClick={() => setMenuOpen(false)}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    startDownload(media);
+                  }}
                   className="w-full px-3 py-1.5 text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5 text-[#6B6B6B] dark:text-[#9C9C9C]" />
                   <span>{t('downloadFile', 'Unduh File')}</span>
-                </a>
+                </button>
               )}
 
               <div className="border-t border-[#E8E8EC] dark:border-[#1F1F27] my-1" />

@@ -8,6 +8,7 @@ import MediaDetailModal from '../components/MediaDetailModal';
 import { api } from '../api';
 import { formatBytes } from '../components/QuotaBar';
 import { recordRecentItem } from '../utils/recentHistory';
+import { useTransfer } from '../context/TransferContext';
 
 export default function MobileMediaDetailView({
   isOpen,
@@ -27,6 +28,7 @@ export default function MobileMediaDetailView({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
+  const { startDownload } = useTransfer();
 
   const currentMedia = mediaList[currentIndex];
 
@@ -203,14 +205,13 @@ export default function MobileMediaDetailView({
 
         {/* Download */}
         {!isVault && (
-          <a
-            href={api.getDownloadUrl(currentMedia.id)}
-            download
+          <button
+            onClick={() => startDownload(currentMedia)}
             className="flex flex-col items-center justify-center gap-1 text-white/80 active:text-white"
           >
             <Download className="w-5 h-5" />
             <span className="text-[10px]">Unduh</span>
-          </a>
+          </button>
         )}
 
         {/* Delete (Move to Trash) */}

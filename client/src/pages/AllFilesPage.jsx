@@ -12,6 +12,7 @@ import { recordRecentItem } from '../utils/recentHistory';
 import { triggerMediaEvent, subscribeMediaEvent } from '../utils/mediaEvents';
 import { isTxtFile } from '../utils/textFile';
 import { useLanguage, localeFor } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 
 export default function AllFilesPage({
   onOpenViewer,
@@ -27,6 +28,7 @@ export default function AllFilesPage({
   onOpenText
 }) {
   const { t, lang } = useLanguage();
+  const { startDownload } = useTransfer();
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [currentFolder, setCurrentFolder] = useState(() => {
@@ -549,14 +551,13 @@ export default function AllFilesPage({
                     </td>
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
-                        <a
-                          href={api.getDownloadUrl(file.id)}
-                          download={file.original_name}
+                        <button
+                          onClick={() => startDownload(file)}
                           className="p-1.5 text-[#6B6B6B] hover:text-[#C2410C] rounded hover:bg-[#E8E8EC] dark:hover:bg-[#1F1F27]"
                           title={t('downloadShort', 'Unduh')}
                         >
                           <Download className="w-4 h-4" />
-                        </a>
+                        </button>
                         <button
                           onClick={() => onDelete && onDelete(file.id)}
                           className="p-1.5 text-[#6B6B6B] hover:text-[#EF4444] rounded hover:bg-[#E8E8EC] dark:hover:bg-[#1F1F27]"

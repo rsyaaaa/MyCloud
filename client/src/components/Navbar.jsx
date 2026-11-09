@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   Cloud, Upload, Search, User, LogOut, Shield, ShieldCheck, HardDrive, Wifi,
-  Moon, Sun, Trash2, Camera, Languages, X
+  Moon, Sun, Trash2, Camera, Languages, X, ArrowUpDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTransfer } from '../context/TransferContext';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 import SwitchUserSection from './SwitchUserSection';
@@ -18,12 +19,14 @@ export default function Navbar({
   onSelectTab,
   onOpenAvatarModal,
   isSidebarHidden,
-  onToggleSidebar
+  onToggleSidebar,
+  onOpenTransferList
 }) {
   const { user, logout } = useAuth();
   const { isUnlocked, remainingSeconds } = useVault();
   const { isDark, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLanguage();
+  const { activeTransfersCount, isUploading, isDownloading, hasFailure } = useTransfer();
   const [userDropdown, setUserDropdown] = useState(false);
 
   const avatarUrl = api.getAvatarUrl(user);
@@ -79,6 +82,22 @@ export default function Navbar({
 
       {/* Right Action Buttons */}
       <div className="flex items-center gap-3">
+        {/* Transfer List Trigger Button */}
+        <button
+          onClick={onOpenTransferList}
+          className="w-8 h-8 rounded-full border border-[#E8E8EC] dark:border-[#1F1F27] bg-white dark:bg-[#0A0A0E] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center justify-center text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#C2410C] dark:hover:text-[#EA580C] active:scale-95 transition-all relative"
+          title="Transfer List"
+        >
+          <ArrowUpDown className="w-4 h-4 stroke-[2.2]" />
+          {(activeTransfersCount > 0 || hasFailure) && (
+            <span
+              className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0A0A0E] ${
+                hasFailure ? 'bg-[#EF4444]' : isUploading ? 'bg-[#C2410C]' : 'bg-[#10B981]'
+              } animate-pulse`}
+            />
+          )}
+        </button>
+
         {/* User Profile Pill & Dropdown */}
         <div className="relative">
           <button

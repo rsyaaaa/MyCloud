@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { VaultProvider } from './context/VaultContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { LanguageProvider } from './context/LanguageContext.jsx';
+import { TransferProvider } from './context/TransferContext.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <LanguageProvider>
         <AuthProvider>
           <VaultProvider>
-            <App />
+            <TransferProvider>
+              <App />
+            </TransferProvider>
           </VaultProvider>
         </AuthProvider>
       </LanguageProvider>

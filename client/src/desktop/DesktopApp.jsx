@@ -19,6 +19,7 @@ import TrashPage from '../pages/TrashPage';
 import MediaContextMenu from '../components/MediaContextMenu';
 import MediaDetailModal from '../components/MediaDetailModal';
 import AvatarModal from '../components/AvatarModal';
+import TransferListView from '../components/TransferListView';
 
 export default function DesktopApp({
   onOpenUpload,
@@ -37,6 +38,7 @@ export default function DesktopApp({
   const [currentTab, setCurrentTabState] = useState(() => {
     return localStorage.getItem('mycloud_active_tab') || 'home';
   });
+  const [previousTab, setPreviousTab] = useState('home');
   const [activeFolder, setActiveFolder] = useState(() => {
     try {
       const saved = localStorage.getItem('mycloud_active_folder');
@@ -122,6 +124,10 @@ export default function DesktopApp({
         onOpenAvatarModal={() => setAvatarModalOpen(true)}
         isSidebarHidden={isSidebarHidden}
         onToggleSidebar={toggleSidebar}
+        onOpenTransferList={() => {
+          setPreviousTab(currentTab);
+          setTab('transfer');
+        }}
       />
 
       <div className="flex flex-1 relative">
@@ -237,6 +243,15 @@ export default function DesktopApp({
 
           {currentTab === 'terminal' && user?.role === 'admin' && (
             <TerminalPage />
+          )}
+
+          {currentTab === 'transfer' && (
+            <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+              <TransferListView
+                onBack={() => setTab(previousTab || 'home')}
+                onOpenUpload={onOpenUpload}
+              />
+            </div>
           )}
         </main>
       </div>

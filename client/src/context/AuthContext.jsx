@@ -107,6 +107,12 @@ export function AuthProvider({ children }) {
     if (targetAccount.role === 'public' || targetAccount.username === 'public') {
       try {
         const publicUser = await loginPublic();
+        try {
+          localStorage.setItem('mycloud_active_tab', 'home');
+          localStorage.removeItem('mycloud_active_folder');
+          localStorage.removeItem('mycloud_active_album');
+          localStorage.removeItem('mycloud_gallery_subview');
+        } catch (e) {}
         return { success: true, user: publicUser };
       } catch (e) {
         return { success: false, error: e.message };
@@ -122,6 +128,12 @@ export function AuthProvider({ children }) {
           saveAccount(data.user, data.token);
           setSavedAccounts(getSavedAccounts());
         }
+        try {
+          localStorage.setItem('mycloud_active_tab', 'home');
+          localStorage.removeItem('mycloud_active_folder');
+          localStorage.removeItem('mycloud_active_album');
+          localStorage.removeItem('mycloud_gallery_subview');
+        } catch (e) {}
         setUser(data.user);
         return { success: true, user: data.user };
       } catch (err) {
