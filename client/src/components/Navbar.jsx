@@ -123,164 +123,97 @@ export default function Navbar({
               />
 
               <div
-                className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px] shadow-modal py-2 z-50 text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] animate-enter select-none"
+                className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[16px] shadow-2xl p-3 z-50 text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA] animate-enter select-none space-y-2.5"
               >
-              {/* Profile Header */}
-              <div className="px-4 py-3 border-b border-[#E8E8EC] dark:border-[#1F1F27] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative group cursor-pointer" onClick={() => { setUserDropdown(false); onOpenAvatarModal(); }}>
+                {/* 1. Combined User Profile & Storage Capacity Card */}
+                <div className="p-3.5 rounded-[12px] bg-[#F8F9FA] dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E]">
+                  {/* Top: Avatar, Name, Role Badge */}
+                  <div className="flex items-center gap-3 mb-3">
                     <img
                       src={avatarUrl}
                       alt={user?.username}
-                      className="w-11 h-11 rounded-full object-cover border border-[#E8E8EC] dark:border-[#1F1F27]"
+                      className="w-11 h-11 rounded-full object-cover border-2 border-[#C2410C] shrink-0"
                     />
-                    <div className="absolute inset-0 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera className="w-4 h-4" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm leading-snug truncate">
+                        {user?.username === 'public' ? 'Public User' : user?.username}
+                      </p>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] dark:text-[#FB923C] px-2 py-0.5 rounded border border-[#C2410C]/20 inline-block mt-0.5">
+                        {user?.role === 'admin'
+                          ? t('administrator', 'Administrator')
+                          : user?.role === 'public'
+                          ? t('publicShared', 'Public Shared (50 GB)')
+                          : t('userRole', 'User')}
+                      </span>
                     </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-base leading-snug">
-                      {user?.username === 'public' ? 'Public User' : user?.username}
-                    </p>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] dark:text-[#FB923C] px-2 py-0.5 rounded border border-[#C2410C]/20 inline-block mt-0.5">
-                      {user?.role === 'admin' ? t('administrator', 'Administrator') : user?.role === 'public' ? t('publicShared', 'Public Shared (50 GB)') : t('userRole', 'User')}
-                    </span>
-                  </div>
+
+                  {/* Storage Capacity Sub-section inside the same card */}
+                  {(() => {
+                    const used = user?.used_storage_bytes || 0;
+                    const quota = user?.storage_quota_bytes || 1;
+                    const pct = Math.min(100, Math.max(0, Math.round((used / quota) * 100)));
+
+                    return (
+                      <div className="pt-2.5 border-t border-[#E8E8EC] dark:border-[#1F1F27]">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
+                            <HardDrive className="w-3.5 h-3.5 text-[#C2410C]" />
+                            <span>{t('storageCapacity', 'Storage Capacity')}</span>
+                          </div>
+                          <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] border border-[#C2410C]/20">
+                            {pct}%
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full bg-[#E5E7EB] dark:bg-[#272732] h-2 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-[#C2410C] to-[#EA580C] transition-all duration-300"
+                            style={{ width: `${Math.max(3, pct)}%` }}
+                          />
+                        </div>
+
+                        {/* Used vs Limit */}
+                        <div className="flex justify-between items-center text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-1.5 font-mono">
+                          <span>
+                            {t('used', 'Used')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(used)}</strong>
+                          </span>
+                          <span>
+                            {t('limit', 'Limit')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(quota)}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUserDropdown(false);
-                    onOpenAvatarModal();
-                  }}
-                  className="p-1.5 text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#C2410C] rounded hover:bg-[#F4F4F5] dark:hover:bg-[#141418]"
-                  title={t('changeAvatar', 'Ganti Foto Profil')}
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Quota Info */}
-              <div className="px-4 py-2.5 text-[12px] text-[#6B6B6B] dark:text-[#A1A1AA] border-b border-[#E8E8EC] dark:border-[#1F1F27]">
-                <p>
-                  {t('storage', 'Penyimpanan')}:{' '}
-                  <strong className="text-[#0A0A0A] dark:text-white font-mono">
-                    {formatBytes(user?.used_storage_bytes)}
-                  </strong>{' '}
-                  / {formatBytes(user?.storage_quota_bytes)}
-                </p>
-              </div>
-
-              {/* Avatar Menu Items */}
-              <div className="py-1">
-                {/* Dark Mode Toggle */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleTheme();
-                  }}
-                  className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2.5">
-                    {isDark ? <Sun className="w-4 h-4 text-[#F59E0B]" /> : <Moon className="w-4 h-4 text-[#6B6B6B]" />}
-                    <span>{isDark ? t('lightMode', 'Mode Terang') : t('darkMode', 'Mode Gelap')}</span>
+                {/* 2. Host Server Info */}
+                <div className="px-3 py-2 bg-[#F8F9FA] dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] rounded-[10px] text-[11.5px] text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wifi className="w-3.5 h-3.5 text-[#10B981]" />
+                    <span>{t('hostServer', 'Host Server')}:</span>
                   </div>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#F4F4F5] dark:bg-[#1F1F27] text-[#C2410C]">
-                    {isDark ? 'ON' : 'OFF'}
-                  </span>
-                </button>
-
-                {/* Language Switcher (di bawah mode terang & gelap) */}
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center justify-between text-[13px] border-b border-[#E8E8EC] dark:border-[#1F1F27]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Languages className="w-4 h-4 text-[#6B6B6B] dark:text-[#9C9C9C]" />
-                    <span>{t('language', 'Bahasa')}</span>
-                  </div>
-                  <div className="flex items-center gap-1 bg-[#F4F4F5] dark:bg-[#1F1F27] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#272733]">
-                    <button
-                      onClick={() => setLang('id')}
-                      className={`px-2 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
-                        lang === 'id'
-                          ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
-                          : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
-                      }`}
-                      title="Bahasa Indonesia"
-                    >
-                      ID
-                    </button>
-                    <button
-                      onClick={() => setLang('en')}
-                      className={`px-2 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
-                        lang === 'en'
-                          ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
-                          : 'text-[#6B6B6B] dark:text-[#A1A1AA] hover:text-[#0A0A0A] dark:hover:text-white'
-                      }`}
-                      title="English"
-                    >
-                      EN
-                    </button>
-                  </div>
+                  <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
                 </div>
 
-                {/* Brankas Menu Link */}
+                {/* 3. Fitur Switch User di Perangkat */}
+                <div className="border border-[#E8E8EC] dark:border-[#22222E] rounded-[12px] bg-[#F8F9FA] dark:bg-[#14141B] overflow-hidden">
+                  <SwitchUserSection onAfterSwitch={() => setUserDropdown(false)} />
+                </div>
+
+                {/* 4. Logout Button */}
                 <button
                   onClick={() => {
                     setUserDropdown(false);
-                    if (onSelectTab) onSelectTab('vault');
+                    logout();
                   }}
-                  className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center justify-between"
+                  className="w-full px-3 py-2 text-left text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#200A0A] rounded-[10px] flex items-center gap-2 font-medium transition-colors"
                 >
-                  <div className="flex items-center gap-2.5">
-                    {isUnlocked ? (
-                      <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-                    ) : (
-                      <Shield className="w-4 h-4 text-[#C2410C]" />
-                    )}
-                    <span>{t('vault', 'Brankas Terkunci')}</span>
-                  </div>
-                  {isUnlocked && (
-                    <span className="text-[10px] font-mono font-medium bg-[#ECFDF5] text-[#059669] dark:bg-[#062817] dark:text-[#34D399] px-1.5 py-0.5 rounded border border-[#10B981]/20">
-                      {t('unlockedBadge', 'Terbuka')} {remainingSeconds}s
-                    </span>
-                  )}
-                </button>
-
-                {/* Tempat Sampah Link */}
-                <button
-                  onClick={() => {
-                    setUserDropdown(false);
-                    if (onSelectTab) onSelectTab('trash');
-                  }}
-                  className="w-full px-4 py-2 text-left hover:bg-[#F4F4F5] dark:hover:bg-[#141418] flex items-center gap-2.5"
-                >
-                  <Trash2 className="w-4 h-4 text-[#EF4444]" />
-                  <span>{t('trashLabel', 'Sampah')}</span>
+                  <LogOut className="w-4 h-4" />
+                  <span>{t('logout', 'Keluar (Logout)')}</span>
                 </button>
               </div>
-
-              <div className="border-t border-[#E8E8EC] dark:border-[#1F1F27] my-1" />
-
-              {/* Fitur Switch User di Perangkat (Akun non-admin) */}
-              <SwitchUserSection onAfterSwitch={() => setUserDropdown(false)} />
-
-              <div className="border-t border-[#E8E8EC] dark:border-[#1F1F27] my-1" />
-
-              {/* Logout Button */}
-              <button
-                onClick={() => {
-                  setUserDropdown(false);
-                  logout();
-                }}
-                className="w-full px-4 py-2 text-left text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#200A0A] flex items-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>{t('logout', 'Keluar (Logout)')}</span>
-              </button>
-            </div>
             </>
           )}
         </div>

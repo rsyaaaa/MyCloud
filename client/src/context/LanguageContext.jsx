@@ -99,6 +99,9 @@ export const translations = {
     used: 'Terpakai',
     limit: 'Batas',
     hostServer: 'Host Server',
+    appSettings: 'Pengaturan Aplikasi',
+    accountSettings: 'Pengaturan Akun',
+    pagelist: 'Menu Halaman',
 
     // Search
     searchPlaceholder: 'Cari foto, video, atau judul berkas...',
@@ -568,6 +571,9 @@ export const translations = {
     used: 'Used',
     limit: 'Limit',
     hostServer: 'Host Server',
+    appSettings: 'App Settings',
+    accountSettings: 'Account Settings',
+    pagelist: 'Pagelist / Menu',
 
     // Search
     searchPlaceholder: 'Search photos, videos, or documents...',

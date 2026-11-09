@@ -38,7 +38,8 @@ export default function MobileAllFilesView({
   onOpenUpload,
   onFolderChange,
   onOpenProfile,
-  onOpenTransferList
+  onOpenTransferList,
+  onOpenPagelist
 }) {
   const { user } = useAuth();
   const { lang } = useLanguage();
@@ -412,15 +413,20 @@ export default function MobileAllFilesView({
       {!currentFolder ? (
         /* Root View Navbar: MyCloud Brand + Integrated Capsule Search Bar + Avatar */
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 transition-colors">
-          {/* Brand */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* Brand - Clickable to open Mobile Pagelist */}
+          <button
+            type="button"
+            onClick={() => onOpenPagelist && onOpenPagelist()}
+            className="flex items-center gap-1.5 shrink-0 active:scale-95 transition-transform text-left"
+            title="Buka Pagelist"
+          >
             <div className="w-8 h-8 rounded-[8px] bg-gradient-to-tr from-[#C2410C] to-[#EA580C] text-white flex items-center justify-center shadow-sm">
               <Folder className="w-4 h-4 fill-white/20 stroke-[2.2]" />
             </div>
             <span className="font-display font-bold text-[17px] text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight hidden xs:inline">
               MyCloud
             </span>
-          </div>
+          </button>
 
           {/* Capsule Search Input */}
           <div className="flex-1 flex items-center h-9 px-3 rounded-full bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] focus-within:border-[#C2410C] focus-within:ring-2 focus-within:ring-[#C2410C]/20 transition-all">

@@ -28,8 +28,9 @@ import MediaContextMenu from '../components/MediaContextMenu';
 import MediaDetailModal from '../components/MediaDetailModal';
 import AvatarModal from '../components/AvatarModal';
 import { subscribeMediaEvent } from '../utils/mediaEvents';
-import QuotaBar from '../components/QuotaBar';
+import QuotaBar, { formatBytes } from '../components/QuotaBar';
 import SwitchUserSection from '../components/SwitchUserSection';
+import Sidebar from '../components/Sidebar';
 import { api } from '../api';
 import { recordRecentItem } from '../utils/recentHistory';
 
@@ -68,6 +69,7 @@ export default function MobileApp({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [pagelistDrawerOpen, setPagelistDrawerOpen] = useState(false);
   const [adminDiskStats, setAdminDiskStats] = useState(null);
 
   useEffect(() => {
@@ -184,7 +186,6 @@ export default function MobileApp({
   navItems.push(
     { id: 'search', label: t('search', 'Search'), icon: Search },
     { id: 'allfiles', label: t('allFiles', 'All Files'), icon: Folder },
-    { id: 'trash', label: t('trashMobile', 'Sampah'), icon: Trash2 },
   );
 
   // Menu Terminal untuk admin di mobile bottom bar
@@ -231,14 +232,19 @@ export default function MobileApp({
               </h1>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPagelistDrawerOpen(true)}
+              className="flex items-center gap-2 -ml-1 px-1.5 py-1 rounded-[10px] hover:bg-[#F4F4F6] dark:hover:bg-[#1A1A24] active:scale-95 transition-all text-left"
+              title="Buka Pagelist / Menu"
+            >
               <div className="w-8 h-8 rounded-[6px] bg-[#C2410C] text-white flex items-center justify-center shadow-sm">
                 <Cloud className="w-4 h-4 stroke-[2.2]" />
               </div>
               <h1 className="font-display font-bold text-lg text-[#0A0A0A] dark:text-[#FAFAFA] tracking-tight leading-none">
                 MyCloud
               </h1>
-            </div>
+            </button>
           )}
 
           {/* Right actions: Transfer List + Profile Avatar */}
@@ -329,6 +335,7 @@ export default function MobileApp({
             onOpenUpload={onOpenUpload}
             onFolderChange={setActiveFolder}
             onOpenProfile={() => setProfileDrawerOpen(true)}
+            onOpenPagelist={() => setPagelistDrawerOpen(true)}
             onOpenTransferList={() => {
               setPreviousTab('allfiles');
               setTab('transfer');
@@ -451,193 +458,124 @@ export default function MobileApp({
         })}
       </nav>
 
+      {/* Mobile Pagelist Drawer (Slides in from the left when clicking MyCloud in navbar) */}
+      {pagelistDrawerOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex animate-enter"
+          onClick={() => setPagelistDrawerOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-[290px] sm:w-[320px] max-w-[85vw] h-full bg-white dark:bg-[#0E0E12] border-r border-[#E8E8EC] dark:border-[#1F1F27] shadow-2xl flex flex-col animate-in slide-in-from-left duration-250"
+          >
+            <Sidebar
+              currentTab={currentTab}
+              setTab={(tab) => {
+                setTab(tab);
+                setPagelistDrawerOpen(false);
+              }}
+              onHide={() => setPagelistDrawerOpen(false)}
+              onOpenAvatarModal={() => {
+                setPagelistDrawerOpen(false);
+                setAvatarModalOpen(true);
+              }}
+              isMobile={true}
+            />
+          </div>
+        </div>
+      )}
+
       {/* User Profile & Avatar Menu Bottom Sheet (Drawer) */}
       {profileDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-[2px] animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={() => setProfileDrawerOpen(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[20px] p-5 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA]"
+            className="bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA] space-y-3"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#20202A]">
-              <div className="flex items-center gap-3">
-                <div
-                  className="relative group cursor-pointer"
-                  onClick={() => {
-                    setProfileDrawerOpen(false);
-                    setAvatarModalOpen(true);
-                  }}
-                >
-                  <img
-                    src={avatarUrl}
-                    alt={user?.username}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-[#C2410C]"
-                  />
-                  <div className="absolute inset-0 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="w-4 h-4" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base leading-none">
-                    {user?.username === 'public' ? 'Public User' : user?.username}
-                  </h3>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-1.5 py-0.5 rounded border border-[#C2410C]/20 mt-1 inline-block">
-                    {user?.role === 'admin' ? 'Administrator' : user?.role === 'public' ? 'Public Shared (50 GB)' : 'User'}
-                  </span>
-                </div>
-              </div>
+            {/* Drawer Drag Pill */}
+            <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#2A2A38] mx-auto mb-1" />
 
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-[#E8E8EC] dark:border-[#20202A]">
+              <h2 className="text-base font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
+                {t('userProfile', 'Profil Pengguna')}
+              </h2>
               <button
                 onClick={() => setProfileDrawerOpen(false)}
-                className="p-1.5 text-[#6B6B6B] dark:text-[#9C9C9C]"
+                className="p-1 rounded-full text-[#6B6B6B] dark:text-[#9C9C9C] hover:bg-[#F4F4F6] dark:hover:bg-[#1A1A24] active:scale-90 transition-transform"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Change Avatar Button */}
-            <button
-              onClick={() => {
-                setProfileDrawerOpen(false);
-                setAvatarModalOpen(true);
-              }}
-              className="w-full btn-secondary h-9 text-[12px] justify-center mb-3"
-            >
-              <Camera className="w-4 h-4" />
-              <span>{t('changeAvatar', 'Ganti Foto Profil')}</span>
-            </button>
-
-            {/* Quota Widget */}
-            <div className="mb-4">
-              <QuotaBar
-                usedBytes={user?.role === 'admin' ? (adminDiskStats?.used ?? user?.used_storage_bytes ?? 0) : (user?.used_storage_bytes || 0)}
-                quotaBytes={user?.role === 'admin' ? (adminDiskStats?.total ?? 500 * 1024 * 1024 * 1024) : (user?.storage_quota_bytes || 1)}
-                title={user?.role === 'admin' ? 'Total Storage Server' : undefined}
-              />
-            </div>
-
-            {/* Menu Options Inside Profile Drawer */}
-            <div className="space-y-1 mb-4 border-t border-b border-[#E8E8EC] dark:border-[#1F1F27] py-2">
-              {/* Dark Mode Switch */}
-              <button
-                onClick={toggleTheme}
-                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
-              >
-                <div className="flex items-center gap-2.5">
-                  {isDark ? <Sun className="w-4 h-4 text-[#F59E0B]" /> : <Moon className="w-4 h-4 text-[#6B6B6B]" />}
-                  <span>{isDark ? t('lightMode', 'Mode Terang') : t('darkMode', 'Mode Gelap')}</span>
-                </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C]">
-                  {isDark ? 'ON' : 'OFF'}
-                </span>
-              </button>
-
-              {/* Language Switcher (di bawah mode terang & gelap) */}
-              <div className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px] border-b border-[#E8E8EC] dark:border-[#1F1F27] pb-3 mb-1">
-                <div className="flex items-center gap-2.5">
-                  <Languages className="w-4 h-4 text-[#6B6B6B] dark:text-[#9C9C9C]" />
-                  <span>{t('language', 'Bahasa')}</span>
-                </div>
-                <div className="flex items-center gap-1 bg-[#E8E8EC] dark:bg-[#1F1F27] p-0.5 rounded-[6px] border border-[#E8E8EC] dark:border-[#272733]">
-                  <button
-                    onClick={() => setLang('id')}
-                    className={`px-2.5 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
-                      lang === 'id'
-                        ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
-                        : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                    }`}
-                  >
-                    ID
-                  </button>
-                  <button
-                    onClick={() => setLang('en')}
-                    className={`px-2.5 py-0.5 rounded-[4px] text-[11px] font-medium transition-all ${
-                      lang === 'en'
-                        ? 'bg-[#C2410C] text-white shadow-sm font-semibold'
-                        : 'text-[#6B6B6B] dark:text-[#A1A1AA]'
-                    }`}
-                  >
-                    EN
-                  </button>
+            {/* 1. Combined User Profile & Storage Capacity Card */}
+            <div className="p-3.5 rounded-[16px] bg-[#F8F9FA] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#262636]">
+              {/* Top: Avatar, Name, Role Badge */}
+              <div className="flex items-center gap-3 mb-3">
+                <img
+                  src={avatarUrl}
+                  alt={user?.username}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-[#C2410C] shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-base leading-snug truncate">
+                    {user?.username === 'public' ? 'Public User' : user?.username}
+                  </h3>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#C2410C] bg-[#FFF7ED] dark:bg-[#2A1208] px-2 py-0.5 rounded border border-[#C2410C]/20 mt-1 inline-block">
+                    {user?.role === 'admin'
+                      ? t('administrator', 'Administrator')
+                      : user?.role === 'public'
+                      ? t('publicShared', 'Public Shared (50 GB)')
+                      : t('userRole', 'User')}
+                  </span>
                 </div>
               </div>
 
-              {/* Brankas Terkunci (Vault Link in Avatar Menu) */}
-              <button
-                onClick={() => {
-                  setProfileDrawerOpen(false);
-                  setTab('vault');
-                }}
-                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
-              >
-                <div className="flex items-center gap-2.5">
-                  {isUnlocked ? (
-                    <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-                  ) : (
-                    <Shield className="w-4 h-4 text-[#C2410C]" />
-                  )}
-                  <span>{t('vault', 'Brankas Terkunci')}</span>
-                </div>
-                {isUnlocked ? (
-                  <span className="text-[10px] font-mono font-bold bg-[#ECFDF5] text-[#059669] dark:bg-[#062817] dark:text-[#10B981] px-1.5 py-0.5 rounded border border-[#10B981]/20">
-                    {t('unlockedBadge', 'Terbuka')} {remainingSeconds}s
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-[#9C9C9C]">Terkunci</span>
-                )}
-              </button>
+              {/* Storage Capacity Sub-section inside the same card */}
+              {(() => {
+                const used = user?.role === 'admin' ? (adminDiskStats?.used ?? user?.used_storage_bytes ?? 0) : (user?.used_storage_bytes || 0);
+                const quota = user?.role === 'admin' ? (adminDiskStats?.total ?? 500 * 1024 * 1024 * 1024) : (user?.storage_quota_bytes || 1);
+                const pct = Math.min(100, Math.max(0, Math.round((used / quota) * 100)));
 
-              {/* Tempat Sampah (Trash Link) */}
-              <button
-                onClick={() => {
-                  setProfileDrawerOpen(false);
-                  setTab('trash');
-                }}
-                className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
-              >
-                <div className="flex items-center gap-2.5 text-[#EF4444]">
-                  <Trash2 className="w-4 h-4" />
-                  <span>{t('trashMobile', 'Sampah')}</span>
-                </div>
-              </button>
-
-              {/* Admin Dashboard (jika admin) */}
-              {user?.role === 'admin' && (
-                <>
-                  <button
-                    onClick={() => {
-                      setProfileDrawerOpen(false);
-                      setTab('home');
-                    }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
-                  >
-                    <div className="flex items-center gap-2.5 text-[#C2410C]">
-                      <Server className="w-4 h-4" />
-                      <span>{t('admin', 'Admin Dashboard')}</span>
+                return (
+                  <div className="pt-3 border-t border-[#E8E8EC] dark:border-[#262636]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
+                        <HardDrive className="w-3.5 h-3.5 text-[#C2410C]" />
+                        <span>{t('storageCapacity', 'Storage Capacity')}</span>
+                      </div>
+                      <span className="text-[10.5px] font-bold font-mono px-2 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] border border-[#C2410C]/20">
+                        {pct}%
+                      </span>
                     </div>
-                  </button>
 
-                  <button
-                    onClick={() => {
-                      setProfileDrawerOpen(false);
-                      setTab('terminal');
-                    }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-[6px] hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] text-[13px]"
-                  >
-                    <div className="flex items-center gap-2.5 text-[#10B981]">
-                      <TerminalIcon className="w-4 h-4" />
-                      <span>Terminal Server</span>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-[#E5E7EB] dark:bg-[#2A2A38] h-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#C2410C] to-[#EA580C] transition-all duration-300"
+                        style={{ width: `${Math.max(3, pct)}%` }}
+                      />
                     </div>
-                  </button>
-                </>
-              )}
+
+                    {/* Used vs Limit */}
+                    <div className="flex justify-between items-center text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C] mt-2 font-mono">
+                      <span>
+                        {t('used', 'Used')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(used)}</strong>
+                      </span>
+                      <span>
+                        {t('limit', 'Limit')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{formatBytes(quota)}</strong>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Server IP Info */}
-            <div className="p-3 bg-[#FAFAFA] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[6px] mb-3 text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center justify-between">
+            {/* 2. Host Server Info */}
+            <div className="px-3.5 py-2.5 bg-[#F8F9FA] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#262636] rounded-[14px] text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wifi className="w-4 h-4 text-[#10B981]" />
                 <span>{t('hostServer', 'Host Server')}:</span>
@@ -645,18 +583,18 @@ export default function MobileApp({
               <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
             </div>
 
-            {/* Fitur Switch User di Perangkat (Akun non-admin) */}
-            <div className="border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[10px] mb-3 bg-[#FAFAFA] dark:bg-[#0A0A0E] overflow-hidden">
+            {/* 3. Fitur Switch User di Perangkat */}
+            <div className="border border-[#E8E8EC] dark:border-[#262636] rounded-[16px] bg-[#F8F9FA] dark:bg-[#1A1A24] overflow-hidden">
               <SwitchUserSection onAfterSwitch={() => setProfileDrawerOpen(false)} />
             </div>
 
-            {/* Logout */}
+            {/* 4. Logout Button */}
             <button
               onClick={() => {
                 setProfileDrawerOpen(false);
                 logout();
               }}
-              className="w-full btn-destructive h-[42px] text-[14px] justify-center"
+              className="w-full btn-destructive h-[42px] text-[14px] justify-center rounded-[14px]"
             >
               <LogOut className="w-4 h-4" />
               <span>{t('logout', 'Keluar (Logout)')}</span>

@@ -137,6 +137,7 @@ export default function DesktopApp({
             currentTab={currentTab}
             setTab={setTab}
             onHide={toggleSidebar}
+            onOpenAvatarModal={() => setAvatarModalOpen(true)}
           />
         )}
 
