@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Image, Video, Heart, Play, Folder, ChevronDown, Check, ArrowUpDown, X, Tag
+  Image, Video, Images, Heart, Play, Folder, ChevronDown, Check, ArrowUpDown, X, Tag
 } from 'lucide-react';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
@@ -118,6 +118,22 @@ export default function MobileGalleryView({
   const [onlyFavorite, setOnlyFavorite] = useState(false);
   const [collectionMode, setCollectionMode] = useState(false);
 
+  // Type Filter: 'all' -> 'photo' -> 'video' -> 'all'
+  const [typeFilter, setTypeFilter] = useState(() => {
+    return localStorage.getItem('mycloud_pref_gallery_type') || 'all';
+  });
+
+  const handleCycleTypeFilter = () => {
+    setTypeFilter((prev) => {
+      let next = 'all';
+      if (prev === 'all') next = 'photo';
+      else if (prev === 'photo') next = 'video';
+      else next = 'all';
+      localStorage.setItem('mycloud_pref_gallery_type', next);
+      return next;
+    });
+  };
+
   // Handlers for Mutual Exclusive Toggle between Favorit and Koleksi
   const handleToggleFavorite = () => {
     setOnlyFavorite((prev) => {
@@ -188,8 +204,12 @@ export default function MobileGalleryView({
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      let mediaTypeParam = 'gallery';
+      if (typeFilter === 'photo') mediaTypeParam = 'image';
+      else if (typeFilter === 'video') mediaTypeParam = 'video';
+
       const params = {
-        media_type: 'gallery', // Strictly images and videos
+        media_type: mediaTypeParam,
         sort: sortOption
       };
 
@@ -225,7 +245,7 @@ export default function MobileGalleryView({
 
   useEffect(() => {
     loadData();
-  }, [selectedCatId, sortOption, onlyFavorite, searchQuery]);
+  }, [selectedCatId, sortOption, onlyFavorite, typeFilter, searchQuery]);
 
   // Load 15 random memories independently from all visual media so it stays stable regardless of filter/sort/favorite state
   const loadMemories = async () => {
@@ -314,8 +334,19 @@ export default function MobileGalleryView({
     if (onOpenViewer) onOpenViewer(items, index);
   };
 
-  // Group all media continuously without pagination (scroll continuously to the end)
-  const groupedMedia = useMemo(() => groupMediaByDate(mediaList, lang), [mediaList, lang]);
+  const isDateSort = sortOption === 'newest' || sortOption === 'oldest';
+
+  // Group all media continuously when sorting by date (newest/oldest)
+  const groupedMedia = useMemo(() => {
+    if (!isDateSort) return {};
+    return groupMediaByDate(mediaList, lang);
+  }, [mediaList, lang, isDateSort]);
+
+  // Displayed media list strictly in visual render order
+  const displayedMediaList = useMemo(() => {
+    if (!isDateSort) return mediaList;
+    return Object.values(groupedMedia).flat();
+  }, [isDateSort, groupedMedia, mediaList]);
 
   return (
     <div className="pb-32 space-y-4 animate-enter bg-[#FAFAFA] dark:bg-[#0B0B0E] text-[#0A0A0A] dark:text-[#F4F4F5] min-h-screen">
@@ -412,12 +443,38 @@ export default function MobileGalleryView({
           )}
         </div>
 
-        {/* Right buttons: Button Favorit & Button Koleksi Mode */}
-        <div className="flex items-center gap-1.5">
+        {/* Right buttons: Button Filter Media (Semua/Foto/Video), Button Favorit, Button Koleksi */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {/* Button Filter Jenis Media: Semua -> Foto -> Video */}
+          <button
+            onClick={handleCycleTypeFilter}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${
+              typeFilter !== 'all'
+                ? 'bg-[#FFF7ED] dark:bg-[#2A140A] text-[#C2410C] border-[#C2410C]/40 font-semibold shadow-xs'
+                : 'bg-white dark:bg-[#14141B] border-[#E8E8EC] dark:border-[#22222E] text-[#0A0A0A] dark:text-[#FAFAFA]'
+            }`}
+            title="Filter Media (Semua / Foto / Video)"
+          >
+            {typeFilter === 'photo' ? (
+              <Image className="w-3.5 h-3.5 text-[#C2410C]" />
+            ) : typeFilter === 'video' ? (
+              <Video className="w-3.5 h-3.5 text-[#C2410C]" />
+            ) : (
+              <Images className="w-3.5 h-3.5 text-[#8E8E9E]" />
+            )}
+            <span>
+              {typeFilter === 'photo'
+                ? (lang === 'en' ? 'Photos' : 'Foto')
+                : typeFilter === 'video'
+                ? (lang === 'en' ? 'Videos' : 'Video')
+                : (lang === 'en' ? 'All' : 'Semua')}
+            </span>
+          </button>
+
           {/* Button Favorit */}
           <button
             onClick={handleToggleFavorite}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${
               onlyFavorite
                 ? 'bg-[#FEF2F2] dark:bg-[#2A0E0E] text-[#EF4444] border-[#EF4444]/40 font-semibold shadow-xs'
                 : 'bg-white dark:bg-[#14141B] border-[#E8E8EC] dark:border-[#22222E] text-[#0A0A0A] dark:text-[#FAFAFA]'
@@ -430,7 +487,7 @@ export default function MobileGalleryView({
           {/* Button Koleksi (Collection Mode) */}
           <button
             onClick={handleToggleCollection}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 border whitespace-nowrap shrink-0 ${
               collectionMode
                 ? 'bg-[#FFF7ED] dark:bg-[#2A140A] text-[#C2410C] border-[#C2410C]/40 font-semibold shadow-xs'
                 : 'bg-white dark:bg-[#14141B] border-[#E8E8EC] dark:border-[#22222E] text-[#0A0A0A] dark:text-[#FAFAFA]'
@@ -526,8 +583,8 @@ export default function MobileGalleryView({
             Gunakan tombol Upload di kanan bawah untuk mulai mengunggah.
           </p>
         </div>
-      ) : (
-        /* 4. GOOGLE PHOTOS AESTHETIC MASONRY GRID (3-Column Dense Grid with Landscape/Portrait Spans & Video Duration Pill) */
+      ) : isDateSort ? (
+        /* 4A. TIMELINE MASONRY GRID (When sorted by Newest or Oldest) */
         <div className="space-y-6 px-2.5">
           {Object.entries(groupedMedia).map(([dateGroup, items]) => (
             <section key={dateGroup} className="space-y-1.5">
@@ -544,13 +601,13 @@ export default function MobileGalleryView({
               {/* Dynamic 3-Column Dense Grid */}
               <div className="grid grid-cols-3 gap-1.5 auto-rows-[115px] grid-flow-dense">
                 {items.map((media) => {
-                  const globalIdx = mediaList.findIndex((m) => m.id === media.id);
+                  const globalIdx = displayedMediaList.findIndex((m) => m.id === media.id);
                   const spanClass = getGridItemSpan(media);
 
                   return (
                     <div
                       key={media.id}
-                      onClick={() => handleMediaClick(mediaList, globalIdx !== -1 ? globalIdx : 0)}
+                      onClick={() => handleMediaClick(displayedMediaList, globalIdx !== -1 ? globalIdx : 0)}
                       onTouchStart={(e) => handleTouchStart(media, e)}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={handleTouchEnd}
@@ -588,6 +645,69 @@ export default function MobileGalleryView({
               </div>
             </section>
           ))}
+        </div>
+      ) : (
+        /* 4B. DENSE MASONRY GRID IN EXACT SORT ORDER (A-Z, Z-A, Ukuran Terbesar) */
+        <div className="space-y-2 px-2.5">
+          <div className="flex items-center justify-between px-1 pt-1">
+            <h4 className="font-sans font-semibold text-[13px] text-[#0A0A0A] dark:text-[#FAFAFA]">
+              {getSortLabel()}
+            </h4>
+            <span className="text-[10px] font-mono text-[#8E8E9E]">
+              {mediaList.length} media
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 auto-rows-[115px] grid-flow-dense">
+            {mediaList.map((media, idx) => {
+              const spanClass = getGridItemSpan(media);
+
+              return (
+                <div
+                  key={media.id}
+                  onClick={() => handleMediaClick(mediaList, idx)}
+                  onTouchStart={(e) => handleTouchStart(media, e)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (onLongPress) onLongPress(media);
+                  }}
+                  className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-transform select-none group`}
+                >
+                  {/* Media Image / Thumbnail */}
+                  <img
+                    src={api.getThumbnailUrl(media.id)}
+                    alt={media.display_name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+
+                  {/* Video Duration Pill Badge */}
+                  {media.media_type === 'video' && (
+                    <div className="absolute top-1.5 right-1.5 bg-black/65 backdrop-blur-xs text-white text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                      <span>{formatSeconds(media.duration_seconds)}</span>
+                      <Play className="w-2.5 h-2.5 fill-white" />
+                    </div>
+                  )}
+
+                  {/* Favorite Heart Badge */}
+                  {Boolean(media.is_favorite) && (
+                    <div className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs">
+                      <Heart className="w-3 h-3 fill-[#EF4444]" />
+                    </div>
+                  )}
+
+                  {/* Display Name Badge on non-date sort so user clearly sees A-Z / Z-A */}
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-1.5 pt-3 pointer-events-none">
+                    <p className="text-[10px] text-white font-medium truncate">
+                      {media.display_name || media.original_name}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

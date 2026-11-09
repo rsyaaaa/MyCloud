@@ -198,7 +198,17 @@ export default function GalleryPage({
     if (onOpenViewer) onOpenViewer(items, index);
   };
 
-  const groupedMedia = useMemo(() => groupMediaByDate(mediaList, lang), [mediaList, lang]);
+  const isDateSort = sortOption === 'newest' || sortOption === 'oldest';
+  const groupedMedia = useMemo(() => {
+    if (!isDateSort) return {};
+    return groupMediaByDate(mediaList, lang);
+  }, [mediaList, lang, isDateSort]);
+  const displayedMediaList = useMemo(() => {
+    if (subView === 'all' && isDateSort) {
+      return Object.values(groupedMedia).flat();
+    }
+    return mediaList;
+  }, [subView, isDateSort, groupedMedia, mediaList]);
   const visualFolders = useMemo(() => {
     return (categories || []).filter(c => (c.visual_media_count > 0 || c.cover_media_id));
   }, [categories]);
@@ -575,8 +585,8 @@ export default function GalleryPage({
             {t('addMediaHint', 'Gunakan tombol Upload di sudut kanan bawah untuk mulai menambahkan media.')}
           </p>
         </div>
-      ) : subView === 'all' ? (
-        /* Timeline Date Grouped Feed for "Semua" */
+      ) : subView === 'all' && isDateSort ? (
+        /* Timeline Date Grouped Feed for "Semua" when sorting by date */
         <div className="space-y-8">
           {Object.entries(groupedMedia).map(([dateGroup, items]) => (
             <section key={dateGroup}>
@@ -592,12 +602,12 @@ export default function GalleryPage({
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {items.map((media) => {
-                  const globalIdx = mediaList.findIndex((m) => m.id === media.id);
+                  const globalIdx = displayedMediaList.findIndex((m) => m.id === media.id);
                   return (
                     <MediaCard
                       key={media.id}
                       media={media}
-                      onClick={() => handleMediaClick(mediaList, globalIdx)}
+                      onClick={() => handleMediaClick(displayedMediaList, globalIdx !== -1 ? globalIdx : 0)}
                       onToggleFavorite={onToggleFavorite}
                       onLock={onLock}
                       onOrganize={onOrganize}

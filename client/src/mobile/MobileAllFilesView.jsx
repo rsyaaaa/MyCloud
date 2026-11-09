@@ -351,7 +351,9 @@ export default function MobileAllFilesView({
         window.open(api.getStreamUrl(item.id), '_blank');
       }
     } else {
-      if (onOpenViewer) onOpenViewer(sortedFiles, idx);
+      const visualFiles = (sortedFiles || []).filter(f => f.media_type === 'image' || f.media_type === 'video');
+      const visualIdx = visualFiles.findIndex(f => f.id === item.id);
+      if (onOpenViewer) onOpenViewer(visualFiles, visualIdx !== -1 ? visualIdx : 0);
     }
   };
 
