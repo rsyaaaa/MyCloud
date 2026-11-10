@@ -60,6 +60,8 @@ export function TransferProvider({ children }) {
     }
   }, [uploads]);
 
+  const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk
+
   const processNextUpload = async (uploadItem) => {
     activeWorkerRef.current = true;
     const { id, file, categoryId } = uploadItem;
@@ -69,50 +71,130 @@ export function TransferProvider({ children }) {
 
     // Mark as uploading
     setUploads((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'uploading', speed: 0, progress: 0 } : item))
+      prev.map((item) => (item.id === id ? { ...item, status: 'uploading', speed: 0 } : item))
     );
-
-    const formData = new FormData();
-    if (categoryId) {
-      formData.append('category_id', categoryId);
-    }
-    formData.append('file', file);
 
     let lastLoaded = 0;
     let lastTime = Date.now();
     let currentSpeed = 0;
 
+    const updateSpeedAndProgress = (totalLoadedBytes, totalFileBytes) => {
+      const now = Date.now();
+      const timeDiff = (now - lastTime) / 1000;
+      if (timeDiff >= 0.4) {
+        const bytesDiff = totalLoadedBytes - lastLoaded;
+        currentSpeed = Math.max(0, bytesDiff / timeDiff);
+        lastLoaded = totalLoadedBytes;
+        lastTime = now;
+      }
+      const percent = Math.min(99, Math.round((totalLoadedBytes / totalFileBytes) * 100)) || 0;
+      setUploads((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                progress: percent,
+                loadedBytes: totalLoadedBytes,
+                totalBytes: totalFileBytes,
+                speed: currentSpeed
+              }
+            : item
+        )
+      );
+    };
+
     try {
-      await api.uploadMedia(
-        formData,
-        (progress) => {
-          const now = Date.now();
-          const timeDiff = (now - lastTime) / 1000;
-          if (timeDiff >= 0.4) {
-            const bytesDiff = progress.loaded - lastLoaded;
-            currentSpeed = bytesDiff / timeDiff;
-            lastLoaded = progress.loaded;
-            lastTime = now;
+      // 1. SMALL FILE STRATEGY (<= 10MB):
+      // Single HTTP POST request for fast low-overhead upload
+      if (file.size <= CHUNK_SIZE) {
+        const formData = new FormData();
+        if (categoryId) {
+          formData.append('category_id', categoryId);
+        }
+        formData.append('file', file);
+
+        await api.uploadMedia(
+          formData,
+          (progress) => {
+            updateSpeedAndProgress(progress.loaded, progress.total || file.size);
+          },
+          controller.signal
+        );
+      } else {
+        // 2. LARGE & MONSTER FILE STRATEGY (> 10MB up to > 100GB):
+        // Chunked streaming direct-to-disk with auto-retry and resume support
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+        // Check if server already has partial chunks for resume
+        let startChunk = 0;
+        let accumulatedBytes = 0;
+        try {
+          const status = await api.getUploadStatus(id);
+          if (status && status.exists && typeof status.nextChunkIndex === 'number') {
+            startChunk = status.nextChunkIndex;
+            accumulatedBytes = status.uploadedBytes || (startChunk * CHUNK_SIZE);
+            lastLoaded = accumulatedBytes;
+            console.log(`[Upload Resume] Melanjutkan ${file.name} dari chunk ${startChunk}/${totalChunks} (${accumulatedBytes} bytes tersimpan di server)`);
+          }
+        } catch (e) {
+          startChunk = 0;
+          accumulatedBytes = 0;
+        }
+
+        for (let chunkIndex = startChunk; chunkIndex < totalChunks; chunkIndex++) {
+          if (controller.signal.aborted) {
+            throw new DOMException('Upload dibatalkan', 'AbortError');
           }
 
-          const percent = progress.percent || Math.round((progress.loaded / progress.total) * 100) || 0;
+          const startByte = chunkIndex * CHUNK_SIZE;
+          const endByte = Math.min(file.size, startByte + CHUNK_SIZE);
+          const chunkBlob = file.slice(startByte, endByte);
+          const chunkSize = endByte - startByte;
 
-          setUploads((prev) =>
-            prev.map((item) =>
-              item.id === id
-                ? {
-                    ...item,
-                    progress: percent,
-                    loadedBytes: progress.loaded,
-                    totalBytes: progress.total,
-                    speed: currentSpeed
-                  }
-                : item
-            )
-          );
-        },
-        controller.signal
-      );
+          // Chunk auto-retry loop (up to 3 attempts with 1.5s backoff on Wi-Fi packet drops)
+          let chunkSuccess = false;
+          let attempt = 0;
+          const MAX_RETRIES = 3;
+
+          while (!chunkSuccess && attempt < MAX_RETRIES) {
+            if (controller.signal.aborted) {
+              throw new DOMException('Upload dibatalkan', 'AbortError');
+            }
+
+            try {
+              const chunkForm = new FormData();
+              chunkForm.append('uploadId', id);
+              chunkForm.append('chunkIndex', String(chunkIndex));
+              chunkForm.append('totalChunks', String(totalChunks));
+              chunkForm.append('totalSize', String(file.size));
+              chunkForm.append('originalName', file.name);
+              if (categoryId) chunkForm.append('category_id', categoryId);
+              chunkForm.append('chunk', chunkBlob, file.name);
+
+              let currentChunkLoaded = 0;
+              await api.uploadChunk(
+                chunkForm,
+                (progress) => {
+                  currentChunkLoaded = progress.loaded;
+                  updateSpeedAndProgress(accumulatedBytes + currentChunkLoaded, file.size);
+                },
+                controller.signal
+              );
+
+              accumulatedBytes += chunkSize;
+              chunkSuccess = true;
+            } catch (chunkErr) {
+              if (controller.signal.aborted) throw chunkErr;
+              attempt++;
+              if (attempt >= MAX_RETRIES) {
+                throw new Error(`Gagal mengirim bagian ${chunkIndex + 1}/${totalChunks} setelah 3 percobaan: ${chunkErr.message}`);
+              }
+              console.warn(`[Upload Retry] Chunk ${chunkIndex} gagal (${attempt}/${MAX_RETRIES}). Mengulang dalam 1.5 detik...`, chunkErr);
+              await new Promise((r) => setTimeout(r, 1500));
+            }
+          }
+        }
+      }
 
       // Successfully uploaded!
       setUploads((prev) =>
@@ -122,7 +204,7 @@ export function TransferProvider({ children }) {
                 ...item,
                 status: 'completed',
                 progress: 100,
-                loadedBytes: item.totalBytes,
+                loadedBytes: file.size,
                 speed: 0,
                 completedAt: Date.now()
               }
@@ -199,15 +281,19 @@ export function TransferProvider({ children }) {
 
   const cancelUpload = (id) => {
     if (abortControllersRef.current[id]) {
-      abortControllersRef.current[id].abort();
+      try {
+        abortControllersRef.current[id].abort();
+      } catch (e) {}
     }
+    // Clean up partial chunks on server
+    api.abortUpload(id).catch(() => {});
     setUploads((prev) => prev.filter((item) => item.id !== id));
   };
 
   const retryUpload = (id) => {
     setUploads((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, status: 'queued', progress: 0, error: null, speed: 0 } : item
+        item.id === id ? { ...item, status: 'queued', error: null, speed: 0 } : item
       )
     );
   };

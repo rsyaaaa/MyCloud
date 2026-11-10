@@ -264,6 +264,15 @@ export const api = {
                               invalidateApiCache('media:');
                               return res;
                             }),
+                          uploadChunk: (formData, onProgress, signal) =>
+                            uploadWithProgress('/media/upload/chunk', formData, { onProgress, signal }).then((res) => {
+                              if (res && res.status === 'completed') {
+                                invalidateApiCache('media:');
+                              }
+                              return res;
+                            }),
+                          getUploadStatus: (uploadId) => apiRequest(`/media/upload/status?uploadId=${encodeURIComponent(uploadId)}`),
+                          abortUpload: (uploadId) => apiRequest('/media/upload/abort', { method: 'POST', body: JSON.stringify({ uploadId }) }),
                             updateMedia: (id, updates) =>
                               apiRequest(`/media/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }).then((res) => {
                                 invalidateApiCache('media:');

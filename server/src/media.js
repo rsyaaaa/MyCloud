@@ -7,6 +7,7 @@ const config = require('./config');
 const db = require('./db');
 const { authMiddleware, vaultAuthMiddleware } = require('./auth');
 const { probeMedia, generateThumbnail } = require('./ffmpegHelper');
+const thumbnailQueue = require('./thumbnailQueue');
 
 const router = express.Router();
 
@@ -39,12 +40,367 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    // 5GB per individual file upload limit
+    // 5GB per individual file upload limit for standard single upload
     fileSize: 5 * 1024 * 1024 * 1024
   }
 });
 
-// POST /api/media/upload
+// Multer storage for chunked upload (direct to .temp_chunks on user storage disk)
+const chunkStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const userTempChunksDir = path.join(config.USERS_DIR, req.user.id, 'uploads', '.temp_chunks');
+    if (!fs.existsSync(userTempChunksDir)) {
+      fs.mkdirSync(userTempChunksDir, { recursive: true });
+    }
+    cb(null, userTempChunksDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `part_chunk_${uuidv4()}.tmp`);
+  }
+});
+
+const uploadChunk = multer({
+  storage: chunkStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB max per chunk
+  }
+});
+
+/**
+ * Direct-to-Disk Stream Append:
+ * Pipes chunk temporary file directly to target .part file without buffering in RAM.
+ */
+function appendChunkFile(chunkTmpPath, partPath) {
+  return new Promise((resolve, reject) => {
+    const readStream = fs.createReadStream(chunkTmpPath);
+    const writeStream = fs.createWriteStream(partPath, { flags: 'a' });
+
+    readStream.on('error', (err) => {
+      writeStream.destroy();
+      reject(err);
+    });
+
+    writeStream.on('error', (err) => {
+      readStream.destroy();
+      reject(err);
+    });
+
+    writeStream.on('finish', () => {
+      resolve();
+    });
+
+    readStream.pipe(writeStream);
+  });
+}
+
+/**
+ * Clean up stale chunk uploads older than 48 hours to reclaim disk space.
+ */
+function cleanOldTempChunks(userId) {
+  try {
+    const userTempChunksDir = path.join(config.USERS_DIR, userId, 'uploads', '.temp_chunks');
+    if (!fs.existsSync(userTempChunksDir)) return;
+    const files = fs.readdirSync(userTempChunksDir);
+    const now = Date.now();
+    const MAX_AGE = 48 * 60 * 60 * 1000;
+    for (const f of files) {
+      const fp = path.join(userTempChunksDir, f);
+      const stat = fs.statSync(fp);
+      if (now - stat.mtimeMs > MAX_AGE) {
+        fs.unlinkSync(fp);
+      }
+    }
+  } catch (e) {}
+}
+
+// GET /api/media/upload/status (Check existing chunk progress for resume)
+router.get('/upload/status', authMiddleware, async (req, res) => {
+  const { uploadId } = req.query;
+  if (!uploadId) {
+    return res.status(400).json({ error: 'uploadId parameter is required' });
+  }
+
+  const userTempChunksDir = path.join(config.USERS_DIR, req.user.id, 'uploads', '.temp_chunks');
+  const metaPath = path.join(userTempChunksDir, `${uploadId}.json`);
+  const partPath = path.join(userTempChunksDir, `${uploadId}.part`);
+
+  if (fs.existsSync(metaPath) && fs.existsSync(partPath)) {
+    try {
+      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      const stat = fs.statSync(partPath);
+      return res.json({
+        exists: true,
+        uploadId,
+        nextChunkIndex: meta.nextChunkIndex,
+        uploadedBytes: stat.size,
+        totalBytes: meta.totalSize,
+        totalChunks: meta.totalChunks
+      });
+    } catch (e) {
+      return res.json({ exists: false, nextChunkIndex: 0, uploadedBytes: 0 });
+    }
+  }
+
+  return res.json({ exists: false, nextChunkIndex: 0, uploadedBytes: 0 });
+});
+
+// POST /api/media/upload/abort (Clean up partial files on cancel)
+router.post('/upload/abort', authMiddleware, async (req, res) => {
+  const { uploadId } = req.body;
+  if (!uploadId) {
+    return res.status(400).json({ error: 'uploadId is required' });
+  }
+
+  const userTempChunksDir = path.join(config.USERS_DIR, req.user.id, 'uploads', '.temp_chunks');
+  const metaPath = path.join(userTempChunksDir, `${uploadId}.json`);
+  const partPath = path.join(userTempChunksDir, `${uploadId}.part`);
+
+  if (fs.existsSync(metaPath)) {
+    try { fs.unlinkSync(metaPath); } catch (e) {}
+  }
+  if (fs.existsSync(partPath)) {
+    try { fs.unlinkSync(partPath); } catch (e) {}
+  }
+
+  return res.json({ success: true, message: 'Upload dibatalkan dan file sementara dibersihkan.' });
+});
+
+// POST /api/media/upload/chunk (Sequential direct-to-disk chunk receiver)
+router.post('/upload/chunk', authMiddleware, uploadChunk.single('chunk'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Tidak ada data chunk yang diunggah.' });
+  }
+
+  const chunkFile = req.file;
+  const chunkTmpPath = chunkFile.path;
+  const uploadId = req.body.uploadId;
+  const chunkIndex = parseInt(req.body.chunkIndex, 10);
+  const totalChunks = parseInt(req.body.totalChunks, 10);
+  const totalSize = parseInt(req.body.totalSize, 10);
+  const originalName = req.body.originalName || chunkFile.originalname;
+
+  if (!uploadId || isNaN(chunkIndex) || isNaN(totalChunks) || isNaN(totalSize)) {
+    if (fs.existsSync(chunkTmpPath)) fs.unlinkSync(chunkTmpPath);
+    return res.status(400).json({ error: 'Parameter chunk upload tidak lengkap.' });
+  }
+
+  const userUploadsDir = path.join(config.USERS_DIR, req.user.id, 'uploads');
+  const userTempChunksDir = path.join(userUploadsDir, '.temp_chunks');
+  if (!fs.existsSync(userTempChunksDir)) {
+    fs.mkdirSync(userTempChunksDir, { recursive: true });
+  }
+
+  const metaPath = path.join(userTempChunksDir, `${uploadId}.json`);
+  const partPath = path.join(userTempChunksDir, `${uploadId}.part`);
+
+  try {
+    let meta = null;
+
+    // Check quota on initial chunk
+    if (chunkIndex === 0) {
+      cleanOldTempChunks(req.user.id);
+
+      const quotaResult = await db.get(
+        'SELECT COALESCE(SUM(file_size), 0) as used_bytes FROM media_files WHERE user_id = ?',
+        [req.user.id]
+      );
+      const currentUsedBytes = quotaResult.used_bytes;
+      const userQuotaBytes = req.user.storage_quota_bytes;
+
+      if (currentUsedBytes + totalSize > userQuotaBytes) {
+        if (fs.existsSync(chunkTmpPath)) fs.unlinkSync(chunkTmpPath);
+        return res.status(413).json({
+          error: `Kuota penyimpanan tidak mencukupi. Sisa kuota: ${((userQuotaBytes - currentUsedBytes) / (1024 * 1024)).toFixed(1)} MB, ukuran file: ${(totalSize / (1024 * 1024)).toFixed(1)} MB.`
+        });
+      }
+
+      // If starting fresh chunk 0, reset old part or json if any
+      if (fs.existsSync(partPath)) {
+        try { fs.unlinkSync(partPath); } catch (e) {}
+      }
+      if (fs.existsSync(metaPath)) {
+        try { fs.unlinkSync(metaPath); } catch (e) {}
+      }
+
+      meta = {
+        uploadId,
+        originalName,
+        totalChunks,
+        totalSize,
+        nextChunkIndex: 0,
+        uploadedBytes: 0,
+        categoryId: req.body.category_id || req.body.folder_id || null,
+        createdAt: Date.now()
+      };
+    } else {
+      if (!fs.existsSync(metaPath) || !fs.existsSync(partPath)) {
+        if (fs.existsSync(chunkTmpPath)) fs.unlinkSync(chunkTmpPath);
+        return res.status(409).json({
+          error: 'Sesi upload tidak ditemukan. Silakan mulai ulang dari awal.',
+          nextChunkIndex: 0
+        });
+      }
+
+      try {
+        meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      } catch (e) {
+        if (fs.existsSync(chunkTmpPath)) fs.unlinkSync(chunkTmpPath);
+        return res.status(500).json({ error: 'Gagal membaca metadata upload chunk.' });
+      }
+
+      // Check if client re-sent an already processed chunk (e.g. network retry)
+      if (chunkIndex < meta.nextChunkIndex) {
+        if (fs.existsSync(chunkTmpPath)) fs.unlinkSync(chunkTmpPath);
+        return res.status(200).json({
+          status: 'already_received',
+          uploadId,
+          nextChunkIndex: meta.nextChunkIndex,
+          uploadedBytes: meta.uploadedBytes,
+          totalBytes: meta.totalSize
+        });
+      }
+
+      // Check if client skipped a chunk
+      if (chunkIndex > meta.nextChunkIndex) {
+        if (fs.existsSync(chunkTmpPath)) fs.unlinkSync(chunkTmpPath);
+        return res.status(409).json({
+          error: `Urutan chunk tidak sesuai. Harusnya chunk ${meta.nextChunkIndex}, diterima ${chunkIndex}.`,
+          nextChunkIndex: meta.nextChunkIndex
+        });
+      }
+    }
+
+    // Direct-to-Disk Stream Append
+    await appendChunkFile(chunkTmpPath, partPath);
+    if (fs.existsSync(chunkTmpPath)) {
+      try { fs.unlinkSync(chunkTmpPath); } catch (e) {}
+    }
+
+    // Update metadata
+    meta.nextChunkIndex = chunkIndex + 1;
+    const partStat = fs.statSync(partPath);
+    meta.uploadedBytes = partStat.size;
+    meta.updatedAt = Date.now();
+
+    // Check if this was the last chunk
+    if (meta.nextChunkIndex >= meta.totalChunks) {
+      // Validate file extension / media type
+      const ext = path.extname(originalName).toLowerCase();
+      const isVideo = /\.(mp4|mkv|mov|avi|webm|flv|m4v|3gp|wmv|ts)$/i.test(originalName);
+      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|heic|svg)$/i.test(originalName);
+      const isDoc = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar|tar|gz|7z|iso)$/i.test(originalName);
+
+      if (!isVideo && !isImage && !isDoc) {
+        if (fs.existsSync(partPath)) fs.unlinkSync(partPath);
+        if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+        return res.status(400).json({ error: 'Format berkas tidak didukung.' });
+      }
+
+      const mediaType = isVideo ? 'video' : isImage ? 'image' : 'document';
+      const mediaId = uuidv4();
+      const finalFilename = `${mediaId}${ext}`;
+      const finalFilePath = path.join(userUploadsDir, finalFilename);
+
+      // Atomic rename of assembled file to final storage path
+      fs.renameSync(partPath, finalFilePath);
+      if (fs.existsSync(metaPath)) {
+        try { fs.unlinkSync(metaPath); } catch (e) {}
+      }
+
+      const finalSize = fs.statSync(finalFilePath).size;
+      const displayName = path.parse(originalName).name;
+      const capturedAt = new Date().toISOString();
+      let mimeType = 'application/octet-stream';
+      if (isVideo) mimeType = 'video/' + ext.replace('.', '');
+      else if (isImage) mimeType = 'image/' + ext.replace('.', '');
+      else if (ext === '.pdf') mimeType = 'application/pdf';
+      else if (ext === '.txt') mimeType = 'text/plain';
+
+      // Insert record into DB immediately
+      await db.run(
+        `INSERT INTO media_files (
+          id, user_id, original_name, display_name, file_path, thumbnail_path,
+          file_size, mime_type, media_type, width, height, duration_seconds,
+          is_portrait, is_locked, is_favorite, captured_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+        [
+          mediaId,
+          req.user.id,
+          originalName,
+          displayName,
+          finalFilePath,
+          null, // Thumbnail generated asynchronously by background worker
+          finalSize,
+          mimeType,
+          mediaType,
+          null,
+          null,
+          0,
+          0,
+          capturedAt
+        ]
+      );
+
+      // Update user used storage
+      await db.run(
+        'UPDATE users SET used_storage_bytes = used_storage_bytes + ? WHERE id = ?',
+        [finalSize, req.user.id]
+      );
+
+      // Folder / category association
+      const targetCategoryId = meta.categoryId;
+      if (targetCategoryId) {
+        const cat = await db.get(
+          'SELECT id FROM categories_folders WHERE id = ? AND user_id = ?',
+          [targetCategoryId, req.user.id]
+        );
+        if (cat) {
+          await db.run(
+            'INSERT OR IGNORE INTO media_category_rel (media_id, category_id) VALUES (?, ?)',
+            [mediaId, cat.id]
+          );
+        }
+      }
+
+      // Enqueue FFmpeg & thumbnail processing to background queue (concurrency = 1, non-blocking)
+      thumbnailQueue.enqueue({
+        mediaId,
+        filePath: finalFilePath,
+        mediaType,
+        userId: req.user.id
+      });
+
+      const savedMedia = await db.get('SELECT * FROM media_files WHERE id = ?', [mediaId]);
+
+      return res.status(201).json({
+        status: 'completed',
+        message: 'File berhasil diunggah!',
+        media: savedMedia,
+        category_id: targetCategoryId || null
+      });
+    }
+
+    // Still uploading remaining chunks
+    fs.writeFileSync(metaPath, JSON.stringify(meta), 'utf8');
+
+    return res.status(200).json({
+      status: 'uploading',
+      uploadId,
+      nextChunkIndex: meta.nextChunkIndex,
+      uploadedBytes: meta.uploadedBytes,
+      totalBytes: meta.totalSize,
+      progress: Math.min(99, Math.round((meta.uploadedBytes / meta.totalSize) * 100))
+    });
+  } catch (err) {
+    console.error('[Upload Chunk] Error:', err);
+    if (fs.existsSync(chunkTmpPath)) {
+      try { fs.unlinkSync(chunkTmpPath); } catch (e) {}
+    }
+    return res.status(500).json({ error: 'Gagal memproses chunk upload: ' + err.message });
+  }
+});
+
+// POST /api/media/upload (Standard single-request upload, optimized with background worker)
 router.post('/upload', authMiddleware, (req, res, next) => {
   // If client disconnects or aborts before file is completely received, cleanup partial file
   req.on('close', () => {
@@ -104,34 +460,10 @@ router.post('/upload', authMiddleware, (req, res, next) => {
     const mediaType = isVideo ? 'video' : isImage ? 'image' : 'document';
     const mediaId = path.basename(filePath, path.extname(filePath));
 
-    // 3. Extract metadata / probe
-    let probe = { width: 0, height: 0, duration_seconds: 0, is_portrait: 0, captured_at: new Date().toISOString() };
-    let thumbPath = null;
-
-    if (mediaType !== 'document') {
-      probe = await probeMedia(filePath);
-    }
-
-    // 4. Generate WebP thumbnail for all types (images, videos, and documents)
-    try {
-      const thumbDir = path.join(config.USERS_DIR, req.user.id, 'thumbnails');
-      if (!fs.existsSync(thumbDir)) {
-        fs.mkdirSync(thumbDir, { recursive: true });
-      }
-      thumbPath = path.join(thumbDir, `${mediaId}.webp`);
-      const thumbOk = await generateThumbnail(filePath, thumbPath, mediaType);
-      if (!thumbOk || !fs.existsSync(thumbPath)) {
-        thumbPath = null;
-      }
-    } catch (thumbErr) {
-      console.warn(`[Upload] Failed to generate thumbnail for ${mediaId}:`, thumbErr.message);
-      thumbPath = null;
-    }
-
-    // 5. Save to database
+    // 3. Save to database immediately (thumbnails & metadata extracted in background)
     const originalName = uploadedFile.originalname;
-    const displayName = path.parse(originalName).name; // default display name without extension
-    const capturedAt = probe.captured_at || new Date().toISOString();
+    const displayName = path.parse(originalName).name;
+    const capturedAt = new Date().toISOString();
 
     await db.run(
       `INSERT INTO media_files (
@@ -145,25 +477,25 @@ router.post('/upload', authMiddleware, (req, res, next) => {
         originalName,
         displayName,
         filePath,
-        thumbPath,
+        null,
         fileSize,
         mimeType,
         mediaType,
-        probe.width,
-        probe.height,
-        probe.duration_seconds,
-        probe.is_portrait,
+        null,
+        null,
+        0,
+        0,
         capturedAt
       ]
     );
 
-    // 6. Update user's used_storage_bytes
+    // 4. Update user's used_storage_bytes
     await db.run(
       'UPDATE users SET used_storage_bytes = used_storage_bytes + ? WHERE id = ?',
       [fileSize, req.user.id]
     );
 
-    // 7. Associate with folder / category if requested
+    // 5. Associate with folder / category if requested
     const targetCategoryId = req.body.category_id || req.body.folder_id;
     if (targetCategoryId) {
       const cat = await db.get(
@@ -177,6 +509,14 @@ router.post('/upload', authMiddleware, (req, res, next) => {
         );
       }
     }
+
+    // 6. Asynchronous background queue for thumbnail & metadata
+    thumbnailQueue.enqueue({
+      mediaId,
+      filePath,
+      mediaType,
+      userId: req.user.id
+    });
 
     const savedMedia = await db.get('SELECT * FROM media_files WHERE id = ?', [mediaId]);
 
