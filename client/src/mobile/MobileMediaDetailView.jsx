@@ -11,6 +11,7 @@ import { formatBytes } from '../components/QuotaBar';
 import { recordRecentItem } from '../utils/recentHistory';
 import { useTransfer } from '../context/TransferContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNetwork } from '../context/NetworkContext';
 import { triggerMediaEvent } from '../utils/mediaEvents';
 
 function formatGooglePhotosDate(isoString, lang = 'id') {
@@ -62,6 +63,7 @@ export default function MobileMediaDetailView({
 }) {
   const { lang, t } = useLanguage();
   const { startDownload } = useTransfer();
+  const { videoPreload } = useNetwork();
 
   const currentMedia = mediaList ? mediaList[currentIndex] : null;
   const hasPrev = currentIndex > 0;
@@ -977,7 +979,7 @@ export default function MobileMediaDetailView({
                   poster={posterUrl}
                   autoPlay
                   playsInline
-                  preload="auto"
+                  preload={videoPreload || 'metadata'}
                   onTimeUpdate={() => {
                     if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
                   }}

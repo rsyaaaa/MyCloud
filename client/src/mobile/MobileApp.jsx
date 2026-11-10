@@ -32,6 +32,7 @@ import { subscribeMediaEvent } from '../utils/mediaEvents';
 import QuotaBar, { formatBytes } from '../components/QuotaBar';
 import SwitchUserSection from '../components/SwitchUserSection';
 import Sidebar from '../components/Sidebar';
+import NetworkBadge from '../components/NetworkBadge';
 import { api } from '../api';
 import { recordRecentItem } from '../utils/recentHistory';
 
@@ -575,8 +576,11 @@ export default function MobileApp({
             </button>
           )}
 
-          {/* Right actions: Transfer List + Profile Avatar */}
-          <div className="flex items-center gap-2">
+          {/* Right actions: Network Badge + Transfer List + Profile Avatar */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Adaptive Network Connection Badge */}
+            <NetworkBadge isMobile={true} />
+
             {/* Small round Transfer List trigger button to the left of the avatar */}
             {currentTab !== 'transfer' && (
               <button
@@ -936,13 +940,13 @@ export default function MobileApp({
               })()}
             </div>
 
-            {/* 2. Host Server Info */}
+            {/* 2. Host Server & Network Info */}
             <div className="px-3.5 py-2.5 bg-[#F8F9FA] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#262636] rounded-[14px] text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wifi className="w-4 h-4 text-[#10B981]" />
-                <span>{t('hostServer', 'Host Server')}:</span>
+                <span>{t('networkModeLabel', 'Mode Jaringan')}:</span>
               </div>
-              <strong className="font-mono text-[#0A0A0A] dark:text-[#FAFAFA]">192.168.18.78:8080</strong>
+              <NetworkBadge isMobile={true} />
             </div>
 
             {/* Download Android Native APK Button */}

@@ -3,6 +3,7 @@ import {
   Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Clock, Heart, SkipBack, SkipForward
 } from 'lucide-react';
 import { api } from '../api';
+import { useNetwork } from '../context/NetworkContext';
 
 function formatSeconds(sec) {
   if (isNaN(sec) || sec <= 0) return '00:00';
@@ -24,6 +25,7 @@ export default function VideoPlayer({
   onToggleFavorite,
   autoPlay = false
 }) {
+  const { videoPreload } = useNetwork();
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const lastTapRef = useRef({ time: 0, x: 0 });
@@ -319,6 +321,7 @@ export default function VideoPlayer({
           poster={posterUrl}
           autoPlay={autoPlay}
           playsInline
+          preload={videoPreload}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onPlay={() => setIsPlaying(true)}

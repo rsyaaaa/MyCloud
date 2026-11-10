@@ -36,16 +36,24 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/watch-progress', watchProgressRouter);
 app.use('/api', quotaRouter); // Handles /api/quota/* and /api/admin/*
 
+// PRD Section 3B: Network State & Diagnostic Endpoint (Zero I/O, ultra-fast RTT diagnostic)
+app.get('/api/network/ping', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.status(204).end();
+});
+
 // App Version check endpoint for Android APK auto-updater
 app.get('/api/app-version', (req, res) => {
   const distVersionFile = path.join(__dirname, '..', '..', 'client', 'dist', 'download', 'apk-version.json');
   const pubVersionFile = path.join(__dirname, '..', '..', 'client', 'public', 'download', 'apk-version.json');
   
   let versionData = {
-    versionCode: 8,
-    versionName: '1.0.7',
+    versionCode: 9,
+    versionName: '1.0.8',
     downloadUrl: '/download/MyCloud.apk',
-    releaseNotes: 'Fitur baru: multi-file batch upload, auto-update in-app langsung, perbaikan modal navigasi, dan peningkatan responsivitas.',
+    releaseNotes: 'Fitur baru: Smart Dual-Routing. Otomatis menghubungkan ke Wi-Fi lokal rumah berkecepatan tinggi, dan otomatis beralih ke jaringan aman Tailscale saat berada di luar rumah.',
     fileSize: '66K',
     publishedAt: new Date().toISOString()
   };

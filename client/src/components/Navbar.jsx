@@ -11,6 +11,7 @@ import { useTransfer } from '../context/TransferContext';
 import { api } from '../api';
 import { formatBytes } from './QuotaBar';
 import SwitchUserSection from './SwitchUserSection';
+import NetworkBadge from './NetworkBadge';
 
 export default function Navbar({
   onOpenUpload,
@@ -50,10 +51,9 @@ export default function Navbar({
           </h1>
         </button>
 
-        {/* Local Network Info Pill */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#F4F4F5] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[4px] text-[11px] font-mono text-[#6B6B6B] dark:text-[#A1A1AA]">
-          <Wifi className="w-3.5 h-3.5 text-[#10B981]" />
-          <span>192.168.18.78:8080</span>
+        {/* Adaptive Network Connection Badge */}
+        <div className="hidden sm:block">
+          <NetworkBadge />
         </div>
       </div>
 

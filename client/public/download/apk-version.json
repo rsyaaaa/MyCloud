@@ -1,8 +1,8 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.7",
+  "versionCode": 9,
+  "versionName": "1.0.8",
   "downloadUrl": "/download/MyCloud.apk",
-  "releaseNotes": "Fitur baru: multi-file batch upload, auto-update in-app langsung, perbaikan modal navigasi, dan peningkatan responsivitas.",
-  "fileSize": "66K",
-  "publishedAt": "2026-11-10T10:32:11Z"
+  "releaseNotes": "Fitur baru: Smart Dual-Routing. Otomatis menghubungkan ke Wi-Fi lokal rumah berkecepatan tinggi, dan otomatis beralih ke jaringan aman Tailscale saat berada di luar rumah.",
+  "fileSize": "70K",
+  "publishedAt": "2026-11-10T13:40:10Z"
 }
