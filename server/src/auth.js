@@ -25,9 +25,11 @@ function signToken(user) {
   );
 }
 
-// Middleware: Authenticate user via cookie or Bearer token
+// Middleware: Authenticate user via Bearer token (explicit client session) or cookie (fallback)
 async function authMiddleware(req, res, next) {
-  const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const token = bearerToken || (req.cookies && req.cookies.token);
 
   if (!token) {
     return res.status(401).json({ error: 'Sesi tidak ditemukan. Silakan login kembali.' });
@@ -35,10 +37,24 @@ async function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
-    const user = await db.get('SELECT id, username, role, storage_quota_bytes, used_storage_bytes, avatar_url, (pin_hash IS NOT NULL) as has_pin FROM users WHERE id = ?', [decoded.id]);
+    const user = await db.get(
+      'SELECT id, username, role, storage_quota_bytes, used_storage_bytes, avatar_url, (pin_hash IS NOT NULL) as has_pin FROM users WHERE id = ?',
+      [decoded.id]
+    );
     
     if (!user) {
       return res.status(401).json({ error: 'Pengguna tidak ditemukan.' });
+    }
+
+    // Keep cookie strictly synchronized with the active client bearerToken if they differ
+    if (bearerToken && req.cookies && req.cookies.token !== bearerToken) {
+      res.cookie('token', bearerToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+        path: '/'
+      });
     }
 
     req.user = user;

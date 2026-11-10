@@ -18,12 +18,26 @@ export function AuthProvider({ children }) {
 
   const refreshUser = async () => {
     try {
+      let activeToken = localStorage.getItem('mycloud_auth_token');
+      const activeUserId = localStorage.getItem('mycloud_active_user_id');
+
+      // If activeUserId exists, ensure we use the token of that specific active account
+      if (activeUserId) {
+        const saved = getSavedAccounts();
+        const targetAcc = saved.find((a) => a.id === activeUserId);
+        if (targetAcc && targetAcc.token) {
+          activeToken = targetAcc.token;
+          localStorage.setItem('mycloud_auth_token', activeToken);
+        }
+      }
+
       const data = await api.getMe();
       if (data && data.user) {
         setUser(data.user);
-        const token = data.token || localStorage.getItem('mycloud_auth_token');
+        const token = data.token || activeToken;
         if (token) {
           localStorage.setItem('mycloud_auth_token', token);
+          localStorage.setItem('mycloud_active_user_id', data.user.id);
           if (data.user.role !== 'admin' && data.user.username !== 'admin') {
             saveAccount(data.user, token);
             setSavedAccounts(getSavedAccounts());
@@ -36,6 +50,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       // Sesi benar-benar invalid / logged out
       localStorage.removeItem('mycloud_auth_token');
+      localStorage.removeItem('mycloud_active_user_id');
       setUser(null);
       return null;
     } finally {
@@ -51,10 +66,15 @@ export function AuthProvider({ children }) {
     const data = await api.login(username, password);
     if (data.token) {
       localStorage.setItem('mycloud_auth_token', data.token);
+      localStorage.setItem('mycloud_active_user_id', data.user.id);
       // Strictly only save non-admin accounts to device
       if (data.user?.role !== 'admin' && data.user?.username !== 'admin') {
         saveAccount(data.user, data.token);
         setSavedAccounts(getSavedAccounts());
+      }
+      if (api.invalidateCache) api.invalidateCache();
+      if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.flushCookies === 'function') {
+        window.AndroidBridge.flushCookies();
       }
     }
     setUser(data.user);
@@ -65,8 +85,13 @@ export function AuthProvider({ children }) {
     const data = await api.loginPublic();
     if (data.token) {
       localStorage.setItem('mycloud_auth_token', data.token);
+      localStorage.setItem('mycloud_active_user_id', data.user.id);
       saveAccount(data.user, data.token);
       setSavedAccounts(getSavedAccounts());
+      if (api.invalidateCache) api.invalidateCache();
+      if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.flushCookies === 'function') {
+        window.AndroidBridge.flushCookies();
+      }
     }
     setUser(data.user);
     return data.user;
@@ -76,8 +101,13 @@ export function AuthProvider({ children }) {
     const data = await api.register(username, password);
     if (data.token) {
       localStorage.setItem('mycloud_auth_token', data.token);
+      localStorage.setItem('mycloud_active_user_id', data.user.id);
       saveAccount(data.user, data.token);
       setSavedAccounts(getSavedAccounts());
+      if (api.invalidateCache) api.invalidateCache();
+      if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.flushCookies === 'function') {
+        window.AndroidBridge.flushCookies();
+      }
     }
     setUser(data.user);
     return data.user;
@@ -88,10 +118,15 @@ export function AuthProvider({ children }) {
       await api.logout();
     } catch (e) {}
     localStorage.removeItem('mycloud_auth_token');
+    localStorage.removeItem('mycloud_active_user_id');
     localStorage.removeItem('mycloud_active_tab');
     localStorage.removeItem('mycloud_active_folder');
     localStorage.removeItem('mycloud_active_album');
     localStorage.removeItem('mycloud_gallery_subview');
+    if (api.invalidateCache) api.invalidateCache();
+    if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.flushCookies === 'function') {
+      window.AndroidBridge.flushCookies();
+    }
     setUser(null);
   };
 
@@ -125,8 +160,13 @@ export function AuthProvider({ children }) {
         const data = await api.switchUser(targetAccount.token);
         if (data.token) {
           localStorage.setItem('mycloud_auth_token', data.token);
+          localStorage.setItem('mycloud_active_user_id', data.user.id);
           saveAccount(data.user, data.token);
           setSavedAccounts(getSavedAccounts());
+          if (api.invalidateCache) api.invalidateCache();
+          if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.flushCookies === 'function') {
+            window.AndroidBridge.flushCookies();
+          }
         }
         try {
           localStorage.setItem('mycloud_active_tab', 'home');
@@ -148,6 +188,10 @@ export function AuthProvider({ children }) {
   const removeSavedAccount = (userId) => {
     const remaining = removeAccount(userId);
     setSavedAccounts(remaining);
+    const activeUserId = localStorage.getItem('mycloud_active_user_id');
+    if (activeUserId === userId) {
+      localStorage.removeItem('mycloud_active_user_id');
+    }
   };
 
   return (

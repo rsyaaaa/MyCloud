@@ -22,9 +22,11 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
   const loadData = async () => {
     setLoading(true);
     try {
+      const isBulk = Array.isArray(media);
+      const primaryMedia = isBulk ? media[0] : media;
       const [allCatsRes, mediaCatsRes] = await Promise.all([
         api.listCategories(),
-        api.getMediaCategories(media.id)
+        primaryMedia ? api.getMediaCategories(primaryMedia.id) : Promise.resolve({ categories: [] })
       ]);
       setCategories(allCatsRes.categories || []);
       setSelectedCatIds((mediaCatsRes.categories || []).map(c => c.id));
@@ -66,7 +68,11 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await api.assignCategories(media.id, selectedCatIds);
+      if (Array.isArray(media)) {
+        await Promise.all(media.map(m => api.assignCategories(m.id, selectedCatIds)));
+      } else {
+        await api.assignCategories(media.id, selectedCatIds);
+      }
       if (onUpdated) onUpdated();
       onClose();
     } catch (err) {
@@ -75,6 +81,9 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
       setLoading(false);
     }
   };
+
+  const isBulk = Array.isArray(media);
+  const mediaLabel = isBulk ? `${media.length} ${t('filesSelected', 'berkas dipilih')}` : media.display_name;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
@@ -95,7 +104,7 @@ export default function OrganizeModal({ isOpen, onClose, media, onUpdated }) {
         </div>
 
         <p className="text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] mb-3 truncate">
-          {t('mediaLabel', 'Media')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{media.display_name}</strong>
+          {t('mediaLabel', 'Media')}: <strong className="text-[#0A0A0A] dark:text-[#FAFAFA]">{mediaLabel}</strong>
         </p>
 
         {error && (

@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Calendar, HardDrive, FileText, Film, Image as ImageIcon, Clock, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, HardDrive, FileText, Film, Image as ImageIcon, Clock, Maximize2, Folder } from 'lucide-react';
 import { formatBytes } from './QuotaBar';
 import { useLanguage, localeFor } from '../context/LanguageContext';
+import { api } from '../api';
 
 function formatSeconds(sec) {
   if (!sec || isNaN(sec)) return '-';
@@ -12,6 +13,26 @@ function formatSeconds(sec) {
 
 export default function MediaDetailModal({ isOpen, onClose, media }) {
   const { t, lang } = useLanguage();
+  const [folderName, setFolderName] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !media) return;
+    if (media.category_names) {
+      setFolderName(media.category_names.split(',').join(', '));
+    } else {
+      // Fetch if not present on media object
+      api.getMediaCategories(media.id)
+        .then(res => {
+          if (res?.categories && res.categories.length > 0) {
+            setFolderName(res.categories.map(c => c.name).join(', '));
+          } else {
+            setFolderName('');
+          }
+        })
+        .catch(() => setFolderName(''));
+    }
+  }, [isOpen, media]);
+
   if (!isOpen || !media) return null;
 
   return (
@@ -50,6 +71,16 @@ export default function MediaDetailModal({ isOpen, onClose, media }) {
               {t('originalFileName', 'Nama File Asli')}
             </span>
             <p className="font-mono text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C] break-all">{media.original_name}</p>
+          </div>
+
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#C2410C] block mb-0.5">
+              {t('locationFolder', 'Lokasi Folder')}
+            </span>
+            <div className="flex items-center gap-1.5 font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
+              <Folder className="w-4 h-4 text-[#C2410C] shrink-0" />
+              <span>{folderName || t('rootFolder', 'Folder Utama / Root')}</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#E8E8EC] dark:border-[#1F1F27]">

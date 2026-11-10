@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Image, Video, Images, Heart, Play, Folder, ChevronDown, Check, ArrowUpDown, X, Tag
+  Image, Video, Images, Heart, Play, Folder, ChevronDown, Check, ArrowUpDown, X, Tag, Trash2, CheckSquare
 } from 'lucide-react';
 import { api } from '../api';
 import { MediaGridSkeleton } from '../components/SkeletonLoader';
 import { recordRecentItem } from '../utils/recentHistory';
-import { subscribeMediaEvent } from '../utils/mediaEvents';
+import { subscribeMediaEvent, triggerMediaEvent } from '../utils/mediaEvents';
 import { useLanguage } from '../context/LanguageContext';
 
 function formatSeconds(sec) {
@@ -98,7 +98,8 @@ export default function MobileGalleryView({
   onOrganize,
   onDelete,
   onRename,
-  onLongPress
+  onLongPress,
+  onSelectionChange
 }) {
   const { lang, t } = useLanguage();
 
@@ -127,6 +128,8 @@ export default function MobileGalleryView({
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [loading, setLoading] = useState(() => mediaList.length === 0);
   const [page, setPage] = useState(1);
+  const pageRef = useRef(page);
+  pageRef.current = page;
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef(null);
@@ -181,30 +184,105 @@ export default function MobileGalleryView({
     setSelectedCatId(null);
   };
 
-  // Touch handlers for long-press context menu
+  // Multi-Select Mode State
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
+  const isSelectionMode = selectedIds.size > 0;
+
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(isSelectionMode);
+    }
+  }, [isSelectionMode, onSelectionChange]);
+
+  // Popstate listener for selection mode so Android back closes selection
+  useEffect(() => {
+    const handlePopSelection = () => {
+      if (selectedIdsRef.current.size > 0) {
+        setSelectedIds(new Set());
+      }
+    };
+    window.addEventListener('popstate', handlePopSelection);
+    return () => window.removeEventListener('popstate', handlePopSelection);
+  }, []);
+
+  const enterSelectionMode = (mediaId) => {
+    if (selectedIdsRef.current.size === 0) {
+      window.history.pushState({ type: 'selection', mode: 'gallery' }, '', '#select');
+    }
+    setSelectedIds(new Set([mediaId]));
+  };
+
+  const clearSelection = () => {
+    const savedY = window.scrollY;
+    setSelectedIds(new Set());
+    if (window.history.state?.type === 'selection') {
+      window.history.back();
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' });
+      });
+    }
+  };
+
+  const toggleSelectItem = (mediaId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(mediaId)) {
+        next.delete(mediaId);
+        if (next.size === 0 && window.history.state?.type === 'selection') {
+          window.history.back();
+        }
+      } else {
+        next.add(mediaId);
+      }
+      return next;
+    });
+  };
+
+  const handleLongPressItem = (media) => {
+    if (selectedIdsRef.current.size === 0) {
+      enterSelectionMode(media.id);
+    } else {
+      toggleSelectItem(media.id);
+    }
+  };
+
+  // Touch handlers for long-press selection
   const touchTimerRef = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
+  const longPressTriggeredTimeRef = useRef(0);
 
   const handleTouchStart = (media, e) => {
+    if (e.touches && e.touches.length > 1) return;
     touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
     touchTimerRef.current = setTimeout(() => {
-      if (onLongPress) {
-        if (navigator.vibrate) navigator.vibrate(40);
-        onLongPress(media);
+      touchTimerRef.current = null;
+      longPressTriggeredTimeRef.current = Date.now();
+      if (navigator.vibrate) {
+        try { navigator.vibrate(50); } catch (err) {}
       }
-    }, 500);
+      handleLongPressItem(media);
+    }, 450);
   };
 
   const handleTouchMove = (e) => {
+    if (!touchTimerRef.current) return;
     const diffX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
     const diffY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
-    if (diffX > 10 || diffY > 10) {
-      if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    if (diffX > 16 || diffY > 16) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
     }
   };
 
   const handleTouchEnd = () => {
-    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
   };
 
   const changeSortOption = (sort) => {
@@ -231,11 +309,12 @@ export default function MobileGalleryView({
       if (typeFilter === 'photo') mediaTypeParam = 'image';
       else if (typeFilter === 'video') mediaTypeParam = 'video';
 
+      const currentLimit = silent ? Math.max(50, (pageRef.current || 1) * 50) : 50;
       const params = {
         media_type: mediaTypeParam,
         sort: sortOption,
         page: 1,
-        limit: 50
+        limit: currentLimit
       };
 
       if (selectedCatId) {
@@ -257,8 +336,8 @@ export default function MobileGalleryView({
           (m) => m.media_type === 'image' || m.media_type === 'video'
         );
         setMediaList(list);
-        setHasMore(cached.hasMore ?? (list.length >= 50));
-        setPage(1);
+        setHasMore(cached.hasMore ?? (list.length >= currentLimit));
+        if (!silent) setPage(1);
         if (!silent) setLoading(false);
       } else if (!silent) {
         setLoading(true);
@@ -274,8 +353,8 @@ export default function MobileGalleryView({
       );
 
       setMediaList(list);
-      setPage(1);
-      setHasMore(mediaRes.hasMore ?? (list.length >= 50));
+      if (!silent) setPage(1);
+      setHasMore(mediaRes.hasMore ?? (list.length >= currentLimit));
       setCategories(catRes.categories || []);
     } catch (err) {
       console.error('Failed to load mobile gallery:', err);
@@ -406,8 +485,8 @@ export default function MobileGalleryView({
           setMediaList((prev) => prev.filter((m) => m.id !== event.id));
         }
       } else if (event.type === 'delete' || event.type === 'lock') {
-        setMediaList((prev) => prev.filter((m) => m.id !== event.id));
-        setMemoriesList((prev) => prev.filter((m) => m.id !== event.id));
+        setMediaList((prev) => prev.some((m) => m.id === event.id) ? prev.filter((m) => m.id !== event.id) : prev);
+        setMemoriesList((prev) => prev.some((m) => m.id === event.id) ? prev.filter((m) => m.id !== event.id) : prev);
       } else if (event.type === 'rename') {
         setMediaList((prev) =>
           prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
@@ -415,7 +494,18 @@ export default function MobileGalleryView({
         setMemoriesList((prev) =>
           prev.map((m) => (m.id === event.id ? { ...m, display_name: event.name } : m))
         );
-      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
+      } else if (event.type === 'organize') {
+        // When organizing, gallery media items remain intact unless a specific folder is filtered
+        api.listCategories().then((catRes) => setCategories(catRes.categories || [])).catch(() => {});
+        if (selectedCatId) {
+          const savedY = window.scrollY;
+          loadData(true).then(() => {
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: savedY, behavior: 'instant' });
+            });
+          });
+        }
+      } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder'].includes(event.type)) {
         loadData(true);
         loadMemories();
       }
@@ -431,7 +521,15 @@ export default function MobileGalleryView({
   }, [categories]);
 
   const handleMediaClick = (items, index) => {
+    // If long-press was triggered recently, swallow this synthetic click completely
+    if (Date.now() - longPressTriggeredTimeRef.current < 800) {
+      return;
+    }
     const item = items[index];
+    if (selectedIdsRef.current.size > 0) {
+      if (item) toggleSelectItem(item.id);
+      return;
+    }
     if (item) recordRecentItem(item);
     if (onOpenViewer) onOpenViewer(items, index);
   };
@@ -450,8 +548,119 @@ export default function MobileGalleryView({
     return Object.values(groupedMedia).flat();
   }, [isDateSort, groupedMedia, mediaList]);
 
+  const toggleSelectAll = () => {
+    const listToSelect = isDateSort ? displayedMediaList : mediaList;
+    if (selectedIds.size === listToSelect.length && listToSelect.length > 0) {
+      clearSelection();
+    } else {
+      if (selectedIds.size === 0) {
+        window.history.pushState({ type: 'selection', mode: 'gallery' }, '', '#select');
+      }
+      setSelectedIds(new Set(listToSelect.map((m) => m.id)));
+    }
+  };
+
+  const handleBulkFavorite = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const allItems = isDateSort ? displayedMediaList : mediaList;
+    const selectedItems = allItems.filter(m => selectedIds.has(m.id));
+    const anyNotFav = selectedItems.some(m => !m.is_favorite);
+    const targetFav = anyNotFav ? 1 : 0;
+
+    // Optimistically update
+    setMediaList(prev => prev.map(m => selectedIds.has(m.id) ? { ...m, is_favorite: targetFav } : m));
+    clearSelection();
+
+    for (const id of ids) {
+      try {
+        await api.toggleFavorite(id);
+        triggerMediaEvent({ type: 'favorite', id, is_favorite: targetFav });
+      } catch (e) {}
+    }
+  };
+
+  const handleBulkOrganize = () => {
+    const allItems = isDateSort ? displayedMediaList : mediaList;
+    const selectedItems = allItems.filter(m => selectedIds.has(m.id));
+    if (selectedItems.length === 0) return;
+    if (onOrganize) onOrganize(selectedItems);
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const count = ids.length;
+    if (!window.confirm(`Pindahkan ${count} media ke Tempat Sampah?`)) return;
+
+    setMediaList(prev => prev.filter(m => !selectedIds.has(m.id)));
+    clearSelection();
+
+    for (const id of ids) {
+      try {
+        await api.deleteMedia(id);
+        triggerMediaEvent({ type: 'delete', id });
+      } catch (e) {}
+    }
+  };
+
   return (
-    <div className="pb-32 space-y-4 animate-enter bg-[#FAFAFA] dark:bg-[#0B0B0E] text-[#0A0A0A] dark:text-[#F4F4F5] min-h-screen">
+    <div className="pb-32 space-y-4 bg-[#FAFAFA] dark:bg-[#0B0B0E] text-[#0A0A0A] dark:text-[#F4F4F5] min-h-screen relative">
+      {/* SELECTION BAR (When items are selected via long-press) */}
+      {isSelectionMode && (
+        <header className="fixed top-0 inset-x-0 z-50 bg-[#C2410C] text-white px-4 h-14 flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-200">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={clearSelection}
+              className="p-1.5 -ml-1.5 rounded-full hover:bg-white/20 active:scale-90 transition-all text-white"
+              title="Batal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-base font-sans tracking-tight text-white">
+              {selectedIds.size} dipilih
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {/* Select All Toggle */}
+            <button
+              onClick={toggleSelectAll}
+              className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white/20 hover:bg-white/30 active:scale-95 transition-all text-white"
+            >
+              {selectedIds.size === (isDateSort ? displayedMediaList.length : mediaList.length) ? 'Batal Semua' : 'Semua'}
+            </button>
+
+            {/* Favorite Action */}
+            <button
+              onClick={handleBulkFavorite}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all text-white"
+              title="Favorit"
+            >
+              <Heart className="w-5 h-5 fill-white" />
+            </button>
+
+            {/* Organize / Move to Folder Action */}
+            <button
+              onClick={handleBulkOrganize}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all text-white"
+              title="Pindahkan ke folder"
+            >
+              <Folder className="w-5 h-5" />
+            </button>
+
+            {/* Delete / Move to Trash Action */}
+            <button
+              onClick={handleBulkDelete}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all text-white"
+              title="Hapus"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+      )}
       {/* 1. GOOGLE PHOTOS MEMORIES / HIGHLIGHTS CAROUSEL (Top Section: 15 Random Items, Horizontal Scroll, NO SCROLLBAR) */}
       {!selectedCatId && !searchQuery && memoriesList.length > 0 && (
         <div className="pt-2">
@@ -701,6 +910,7 @@ export default function MobileGalleryView({
                 {items.map((media) => {
                   const globalIdx = displayedMediaList.findIndex((m) => m.id === media.id);
                   const spanClass = getGridItemSpan(media);
+                  const isSelected = selectedIds.has(media.id);
 
                   return (
                     <div
@@ -709,17 +919,39 @@ export default function MobileGalleryView({
                       onTouchStart={(e) => handleTouchStart(media, e)}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={handleTouchEnd}
+                      onTouchCancel={handleTouchEnd}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        if (onLongPress) onLongPress(media);
+                        e.stopPropagation();
+                        if (Date.now() - longPressTriggeredTimeRef.current > 1000) {
+                          longPressTriggeredTimeRef.current = Date.now();
+                          handleLongPressItem(media);
+                        }
                       }}
-                      className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-transform select-none group`}
+                      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                      className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-all select-none group ${
+                        isSelected ? 'ring-3 ring-[#C2410C] ring-offset-2 dark:ring-offset-[#0B0B0E] scale-[0.96]' : ''
+                      }`}
                     >
+                      {/* Selection Checkbox Pill */}
+                      {isSelectionMode && (
+                        <div className="absolute top-1.5 left-1.5 z-20 pointer-events-none">
+                          {isSelected ? (
+                            <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#121217]">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-full border-2 border-white/90 bg-black/40 backdrop-blur-xs" />
+                          )}
+                        </div>
+                      )}
+
                       {/* Media Image / Thumbnail */}
                       <img
                         src={api.getThumbnailUrl(media.id)}
                         alt={media.display_name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        draggable="false"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
                         loading="lazy"
                         decoding="async"
                       />
@@ -733,7 +965,7 @@ export default function MobileGalleryView({
                       )}
 
                       {/* Favorite Heart Badge */}
-                      {Boolean(media.is_favorite) && (
+                      {Boolean(media.is_favorite) && !isSelectionMode && (
                         <div className="absolute bottom-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs">
                           <Heart className="w-3 h-3 fill-[#EF4444]" />
                         </div>
@@ -760,6 +992,7 @@ export default function MobileGalleryView({
           <div className="grid grid-cols-3 gap-1.5 auto-rows-[115px] grid-flow-dense">
             {mediaList.map((media, idx) => {
               const spanClass = getGridItemSpan(media);
+              const isSelected = selectedIds.has(media.id);
 
               return (
                 <div
@@ -768,17 +1001,39 @@ export default function MobileGalleryView({
                   onTouchStart={(e) => handleTouchStart(media, e)}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    if (onLongPress) onLongPress(media);
+                    e.stopPropagation();
+                    if (Date.now() - longPressTriggeredTimeRef.current > 1000) {
+                      longPressTriggeredTimeRef.current = Date.now();
+                      handleLongPressItem(media);
+                    }
                   }}
-                  className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-transform select-none group`}
+                  style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                  className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-all select-none group ${
+                    isSelected ? 'ring-3 ring-[#C2410C] ring-offset-2 dark:ring-offset-[#0B0B0E] scale-[0.96]' : ''
+                  }`}
                 >
+                  {/* Selection Checkbox Pill */}
+                  {isSelectionMode && (
+                    <div className="absolute top-1.5 left-1.5 z-20 pointer-events-none">
+                      {isSelected ? (
+                        <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#121217]">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border-2 border-white/90 bg-black/40 backdrop-blur-xs" />
+                      )}
+                    </div>
+                  )}
+
                   {/* Media Image / Thumbnail */}
                   <img
                     src={api.getThumbnailUrl(media.id)}
                     alt={media.display_name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    draggable="false"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
                     loading="lazy"
                     decoding="async"
                   />
@@ -792,7 +1047,7 @@ export default function MobileGalleryView({
                   )}
 
                   {/* Favorite Heart Badge */}
-                  {Boolean(media.is_favorite) && (
+                  {Boolean(media.is_favorite) && !isSelectionMode && (
                     <div className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs">
                       <Heart className="w-3 h-3 fill-[#EF4444]" />
                     </div>

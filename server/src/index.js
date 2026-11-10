@@ -36,6 +36,33 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/watch-progress', watchProgressRouter);
 app.use('/api', quotaRouter); // Handles /api/quota/* and /api/admin/*
 
+// App Version check endpoint for Android APK auto-updater
+app.get('/api/app-version', (req, res) => {
+  const distVersionFile = path.join(__dirname, '..', '..', 'client', 'dist', 'download', 'apk-version.json');
+  const pubVersionFile = path.join(__dirname, '..', '..', 'client', 'public', 'download', 'apk-version.json');
+  
+  let versionData = {
+    versionCode: 8,
+    versionName: '1.0.7',
+    downloadUrl: '/download/MyCloud.apk',
+    releaseNotes: 'Fitur baru: multi-file batch upload, auto-update in-app langsung, perbaikan modal navigasi, dan peningkatan responsivitas.',
+    fileSize: '66K',
+    publishedAt: new Date().toISOString()
+  };
+
+  const target = fs.existsSync(distVersionFile) ? distVersionFile : (fs.existsSync(pubVersionFile) ? pubVersionFile : null);
+  if (target) {
+    try {
+      versionData = JSON.parse(fs.readFileSync(target, 'utf8'));
+    } catch (e) {}
+  }
+
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.json(versionData);
+});
+
 // Serve Frontend SPA static files if built
 const clientDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
 if (fs.existsSync(clientDistPath)) {

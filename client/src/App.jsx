@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useLanguage } from './context/LanguageContext';
 import { useVault } from './context/VaultContext';
@@ -18,6 +18,13 @@ export default function App() {
   const { user, loading, refreshUser } = useAuth();
   const { t } = useLanguage();
   const isMobile = useIsMobile(768);
+
+  // Prevent browser history navigation from forcibly restoring/resetting scroll positions
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
 
   const [toasts, setToasts] = useState([]);
 

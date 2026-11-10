@@ -4,6 +4,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const config = require('./config');
 const db = require('./db');
+const { generateThumbnail } = require('./ffmpegHelper');
 
 const router = express.Router();
 
@@ -70,14 +71,24 @@ function streamFile(filePath, mimeType, req, res) {
   }
 }
 
-// Helper to authenticate session from cookie or query token (for <img> and <video> tags)
+// Helper to authenticate session from query token, Bearer header, or cookie
 async function authenticateMediaRequest(req) {
-  let token = req.cookies && req.cookies.token;
-  if (!token && req.query.token) {
+  let token = null;
+
+  // 1. Explicit query token for <img> and <video> tags (?token=...)
+  if (req.query && req.query.token) {
     token = req.query.token;
   }
-  if (!token && req.headers.authorization) {
-    token = req.headers.authorization.split(' ')[1];
+  // 2. Explicit Authorization header
+  if (!token && req.headers && req.headers.authorization) {
+    const parts = req.headers.authorization.split(' ');
+    if (parts.length === 2 && parts[0] === 'Bearer') {
+      token = parts[1];
+    }
+  }
+  // 3. Fallback to cookie
+  if (!token && req.cookies && req.cookies.token) {
+    token = req.cookies.token;
   }
   if (!token) return null;
 
@@ -151,7 +162,7 @@ router.get('/thumbnail/:id', async (req, res) => {
 
     if (!media) {
       media = await db.get(
-        'SELECT id, file_path, thumbnail_path, mime_type, is_locked FROM media_files WHERE id = ? AND user_id = ?',
+        'SELECT id, file_path, thumbnail_path, mime_type, media_type, is_locked FROM media_files WHERE id = ? AND user_id = ?',
         [req.params.id, user.id]
       );
       if (!media) {
@@ -176,6 +187,33 @@ router.get('/thumbnail/:id', async (req, res) => {
           'Cache-Control': 'public, max-age=2592000, immutable'
         }
       });
+    }
+
+    // On-demand thumbnail generation if missing
+    if ((!thumbPath || !fs.existsSync(thumbPath)) && media.file_path && fs.existsSync(media.file_path)) {
+      try {
+        const thumbDir = path.join(config.USERS_DIR, user.id, 'thumbnails');
+        if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+        const newThumbPath = path.join(thumbDir, `${media.id}.webp`);
+        const ok = await generateThumbnail(media.file_path, newThumbPath, media.media_type || 'document');
+        if (ok && fs.existsSync(newThumbPath)) {
+          media.thumbnail_path = newThumbPath;
+          setThumbCache(cacheKey, media);
+          await db.run('UPDATE media_files SET thumbnail_path = ? WHERE id = ?', [newThumbPath, media.id]);
+          return res.sendFile(path.resolve(newThumbPath), {
+            maxAge: '30d',
+            immutable: true,
+            lastModified: true,
+            etag: true,
+            headers: {
+              'Content-Type': 'image/webp',
+              'Cache-Control': 'public, max-age=2592000, immutable'
+            }
+          });
+        }
+      } catch (genErr) {
+        console.warn(`[Thumbnail on-demand] Failed for ${media.id}:`, genErr.message);
+      }
     }
 
     // Fallback to streaming original file if thumbnail not available

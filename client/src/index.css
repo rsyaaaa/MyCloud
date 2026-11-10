@@ -23,6 +23,12 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  img {
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    user-select: none;
+  }
 }
 
 /* Genesis Precision Scrollbar */
@@ -125,7 +131,7 @@ button:active:not(:disabled), a:active {
   }
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: none;
   }
 }
 

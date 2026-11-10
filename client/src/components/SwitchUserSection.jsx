@@ -45,6 +45,12 @@ export default function SwitchUserSection({ onAfterSwitch }) {
       } catch (e) {}
     }
 
+    if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.flushCookies === 'function') {
+      try {
+        window.AndroidBridge.flushCookies();
+      } catch (e) {}
+    }
+
     // Refresh halaman dan pastikan kembali ke menu home
     if (window.location.pathname !== '/' || window.location.search || window.location.hash) {
       window.location.replace('/');

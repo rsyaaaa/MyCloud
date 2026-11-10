@@ -26,9 +26,9 @@ export default function MediaContextMenu({
   const { t } = useLanguage();
   const { startDownload } = useTransfer();
 
-  // Close on outside click
+  // Close on outside click (desktop only; mobile uses explicit full-screen backdrop click)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
 
     const handleOutsideClick = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -44,7 +44,7 @@ export default function MediaContextMenu({
       window.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('scroll', handleScroll, true);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, isMobile, onClose]);
 
   if (!isOpen || !media) return null;
 
@@ -144,7 +144,6 @@ export default function MediaContextMenu({
       iconColor: 'text-[#C2410C]',
       onClick: () => {
         onShowDetail(media);
-        onClose();
       }
     },
     {
@@ -164,7 +163,10 @@ export default function MediaContextMenu({
     return (
       <div
         className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-[2px] animate-in fade-in duration-150"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
       >
         <div
           ref={menuRef}

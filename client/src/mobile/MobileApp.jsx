@@ -3,7 +3,7 @@ import {
   Cloud, Home, Images, Image, Film, Folder, Shield, ShieldCheck, Server,
   Upload, Search, User, X, LogOut, ArrowUpCircle, HardDrive, Wifi,
   Moon, Sun, Trash2, Camera, Languages, Terminal as TerminalIcon, ArrowUp, ArrowUpDown, ChevronLeft,
-  Smartphone, Download
+  Smartphone, Download, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useVault } from '../context/VaultContext';
@@ -50,7 +50,10 @@ export default function MobileApp({
   const { isUnlocked, remainingSeconds, notifyTabChange } = useVault();
   const { isDark, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLanguage();
-  const { activeTransfersCount, isUploading, isDownloading, hasFailure } = useTransfer();
+  const { activeTransfersCount, isUploading, isDownloading, hasFailure, startUpload } = useTransfer();
+  const directFileInputRef = useRef(null);
+
+  const isNativeApk = typeof window !== 'undefined' && (Boolean(window.AndroidBridge) || (navigator.userAgent && navigator.userAgent.includes('MyCloudApp')));
 
   const [currentTab, setCurrentTabState] = useState(() => {
     return localStorage.getItem('mycloud_active_tab') || 'home';
@@ -83,8 +86,106 @@ export default function MobileApp({
     }
   }, [user?.role]);
 
+  // APK In-App Auto Update State & Handlers
+  const [apkUpdate, setApkUpdate] = useState(null);
+  const [updateDownloading, setUpdateDownloading] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
+
+  // 0. Auto-check APK update when running inside native mobile APK
+  useEffect(() => {
+    if (!isNativeApk) return;
+
+    const checkApkUpdate = async () => {
+      try {
+        const res = await fetch('/api/app-version', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        let currentCode = 6;
+        if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.getAppVersionCode === 'function') {
+          currentCode = window.AndroidBridge.getAppVersionCode();
+        }
+
+        let currentName = '1.0.5';
+        if (typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.getAppVersionName === 'function') {
+          currentName = window.AndroidBridge.getAppVersionName();
+        }
+
+        // Compare versionCode
+        if (data && typeof data.versionCode === 'number' && data.versionCode > currentCode) {
+          // Check if dismissed in this browser session
+          const dismissedVersion = sessionStorage.getItem('mycloud_dismissed_apk_version');
+          if (dismissedVersion !== String(data.versionCode)) {
+            setApkUpdate({
+              ...data,
+              currentCode,
+              currentName
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memeriksa pembaruan APK:', err);
+      }
+    };
+
+    // Small delay to ensure bridge and page are fully ready
+    const timer = setTimeout(checkApkUpdate, 1200);
+    return () => clearTimeout(timer);
+  }, [isNativeApk]);
+
+  // Global listener for Android Bridge download progress
+  useEffect(() => {
+    window.onApkUpdateProgress = (progress) => {
+      setUpdateDownloading(true);
+      setUpdateProgress(progress);
+      if (progress >= 100) {
+        setTimeout(() => {
+          setUpdateDownloading(false);
+        }, 1500);
+      }
+    };
+
+    window.onApkUpdateError = (msg) => {
+      setUpdateDownloading(false);
+      setUpdateProgress(0);
+      alert('Gagal mengunduh pembaruan APK: ' + msg);
+    };
+
+    return () => {
+      delete window.onApkUpdateProgress;
+      delete window.onApkUpdateError;
+    };
+  }, []);
+
+  const hasNativeInstaller = typeof window !== 'undefined' && window.AndroidBridge && typeof window.AndroidBridge.downloadAndInstall === 'function';
+
+  const handleStartUpdate = () => {
+    if (!apkUpdate) return;
+
+    if (hasNativeInstaller) {
+      setUpdateDownloading(true);
+      setUpdateProgress(5);
+      window.AndroidBridge.downloadAndInstall(apkUpdate.downloadUrl || '/download/MyCloud.apk');
+    } else {
+      // For older v1.0.5 APK without in-app installer bridge, copy link and open
+      const fullUrl = window.location.origin + (apkUpdate.downloadUrl || '/download/MyCloud.apk');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullUrl).catch(() => {});
+      }
+      alert('Link unduhan disalin:\n' + fullUrl + '\n\nBuka Google Chrome di HP Anda dan buka link tersebut untuk memasang APK v1.0.7 sekali ini saja.');
+    }
+  };
+
+  const handleDismissUpdate = () => {
+    if (apkUpdate) {
+      sessionStorage.setItem('mycloud_dismissed_apk_version', String(apkUpdate.versionCode));
+    }
+    setApkUpdate(null);
+  };
+
   // Mobile Navbar Auto-Hide on Scroll (Strictly disabled on 'home' tab)
   const [showNavbar, setShowNavbar] = useState(true);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const lastScrollYRef = useRef(0);
   const tickingRef = useRef(false);
 
@@ -181,8 +282,11 @@ export default function MobileApp({
   const avatarModalOpenRef = useRef(avatarModalOpen);
   avatarModalOpenRef.current = avatarModalOpen;
 
-  // Initialize root history state
+  // Initialize root history state & manual scroll restoration
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
     if (!window.history.state || !window.history.state.tab) {
       window.history.replaceState({ type: 'tab', tab: 'home', depth: 0 }, '', window.location.pathname);
       historyDepthRef.current = 0;
@@ -197,6 +301,7 @@ export default function MobileApp({
   const setTab = (newTab) => {
     if (newTab === currentTabRef.current) return;
 
+    setIsSelectionMode(false);
     setPreviousTab(currentTabRef.current);
     setCurrentTabState(newTab);
     localStorage.setItem('mycloud_active_tab', newTab);
@@ -216,70 +321,76 @@ export default function MobileApp({
   const openPagelistDrawer = () => {
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
-    window.history.pushState({ type: 'drawer', name: 'pagelist', depth: nextDepth }, '', '#menu');
+    window.history.pushState({ type: 'drawer', name: 'pagelist', tab: currentTabRef.current, depth: nextDepth }, '', '#menu');
     setPagelistDrawerOpen(true);
   };
   const closePagelistDrawer = () => {
+    if (!pagelistDrawerOpenRef.current) return;
+    setPagelistDrawerOpen(false);
     if (window.history.state?.type === 'drawer' && window.history.state?.name === 'pagelist') {
       window.history.back();
-    } else {
-      setPagelistDrawerOpen(false);
     }
   };
 
   const openProfileDrawer = () => {
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
-    window.history.pushState({ type: 'drawer', name: 'profile', depth: nextDepth }, '', '#profile');
+    window.history.pushState({ type: 'drawer', name: 'profile', tab: currentTabRef.current, depth: nextDepth }, '', '#profile');
     setProfileDrawerOpen(true);
   };
   const closeProfileDrawer = () => {
+    if (!profileDrawerOpenRef.current) return;
+    setProfileDrawerOpen(false);
     if (window.history.state?.type === 'drawer' && window.history.state?.name === 'profile') {
       window.history.back();
-    } else {
-      setProfileDrawerOpen(false);
     }
   };
 
   const openContextMenu = (media) => {
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
-    window.history.pushState({ type: 'modal', name: 'context', depth: nextDepth }, '', '#action');
+    window.history.pushState({ type: 'modal', name: 'context', tab: currentTabRef.current, depth: nextDepth }, '', '#action');
     setContextMenuMedia(media);
   };
   const closeContextMenu = () => {
+    if (!contextMenuMediaRef.current) return;
+    setContextMenuMedia(null);
     if (window.history.state?.type === 'modal' && window.history.state?.name === 'context') {
       window.history.back();
-    } else {
-      setContextMenuMedia(null);
     }
   };
 
   const openDetailModal = (media) => {
+    if (contextMenuMediaRef.current) {
+      setContextMenuMedia(null);
+      window.history.replaceState({ type: 'modal', name: 'detail', tab: currentTabRef.current, depth: historyDepthRef.current }, '', '#info');
+      setDetailModalMedia(media);
+      return;
+    }
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
-    window.history.pushState({ type: 'modal', name: 'detail', depth: nextDepth }, '', '#info');
+    window.history.pushState({ type: 'modal', name: 'detail', tab: currentTabRef.current, depth: nextDepth }, '', '#info');
     setDetailModalMedia(media);
   };
   const closeDetailModal = () => {
+    if (!detailModalMediaRef.current) return;
+    setDetailModalMedia(null);
     if (window.history.state?.type === 'modal' && window.history.state?.name === 'detail') {
       window.history.back();
-    } else {
-      setDetailModalMedia(null);
     }
   };
 
   const openAvatarModal = () => {
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
-    window.history.pushState({ type: 'modal', name: 'avatar', depth: nextDepth }, '', '#avatar');
+    window.history.pushState({ type: 'modal', name: 'avatar', tab: currentTabRef.current, depth: nextDepth }, '', '#avatar');
     setAvatarModalOpen(true);
   };
   const closeAvatarModal = () => {
+    if (!avatarModalOpenRef.current) return;
+    setAvatarModalOpen(false);
     if (window.history.state?.type === 'modal' && window.history.state?.name === 'avatar') {
       window.history.back();
-    } else {
-      setAvatarModalOpen(false);
     }
   };
 
@@ -290,7 +401,7 @@ export default function MobileApp({
     }
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
-    window.history.pushState({ type: 'viewer', depth: nextDepth }, '', '#viewer');
+    window.history.pushState({ type: 'viewer', tab: currentTabRef.current, depth: nextDepth }, '', '#viewer');
     setDetailViewer({
       isOpen: true,
       mediaList: list,
@@ -340,16 +451,33 @@ export default function MobileApp({
         return;
       }
 
-      // 2. Tab Navigation
+      // 2. Tab Navigation - ignore internal modal/folder/selection back states
       const targetState = e.state || {};
-      const targetTab = targetState.tab || 'home';
+      if (
+        targetState.type === 'modal' ||
+        targetState.type === 'drawer' ||
+        targetState.type === 'folder' ||
+        targetState.type === 'selection' ||
+        targetState.type === 'viewer_subsheet'
+      ) {
+        return;
+      }
+
+      const targetTab = targetState.tab;
+      if (!targetTab) {
+        // If state has no tab property, do not bounce to 'home'
+        return;
+      }
+
       const targetDepth = typeof targetState.depth === 'number' ? targetState.depth : 0;
       historyDepthRef.current = targetDepth;
 
-      setPreviousTab(currentTabRef.current);
-      setCurrentTabState(targetTab);
-      localStorage.setItem('mycloud_active_tab', targetTab);
-      notifyTabChange(targetTab);
+      if (targetTab !== currentTabRef.current) {
+        setPreviousTab(currentTabRef.current);
+        setCurrentTabState(targetTab);
+        localStorage.setItem('mycloud_active_tab', targetTab);
+        notifyTabChange(targetTab);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -409,7 +537,7 @@ export default function MobileApp({
       {currentTab !== 'allfiles' && (
         <header
           className={`sticky top-0 z-40 bg-white/90 dark:bg-[#0E0E12]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E26] px-4 h-14 flex items-center justify-between shadow-none transition-transform duration-300 ease-in-out ${
-            currentTab === 'home' || showNavbar
+            !isSelectionMode && (currentTab === 'home' || showNavbar)
               ? 'translate-y-0'
               : '-translate-y-full pointer-events-none'
           }`}
@@ -486,7 +614,7 @@ export default function MobileApp({
       )}
 
       {/* Main Mobile Screen View Area */}
-      <main className="flex-1 w-full animate-enter">
+      <main className="flex-1 w-full">
         {currentTab === 'home' && (
           <MobileHomeView
             onNavigate={handleNavigate}
@@ -499,6 +627,8 @@ export default function MobileApp({
           <MobileGalleryView
             initialSubView={gallerySubView}
             searchQuery={searchQuery}
+            showNavbar={showNavbar}
+            onSelectionChange={setIsSelectionMode}
             onOpenViewer={handleMobileOpenViewer}
             onToggleFavorite={onToggleFavorite}
             onLock={onLockMedia}
@@ -524,6 +654,8 @@ export default function MobileApp({
 
         {currentTab === 'allfiles' && (
           <MobileAllFilesView
+            showNavbar={showNavbar}
+            onSelectionChange={setIsSelectionMode}
             onOpenViewer={handleMobileOpenViewer}
             onOpenText={onOpenText}
             onToggleFavorite={onToggleFavorite}
@@ -620,20 +752,35 @@ export default function MobileApp({
 
       {/* Floating Action Button (FAB) - Upload & Background Transfer Progress */}
       {currentTab !== 'terminal' && currentTab !== 'trash' && currentTab !== 'transfer' && currentTab !== 'allfiles' && !(user?.role === 'admin' && (currentTab === 'home' || currentTab === 'admin')) && (
-        <MobileFloatingTransferButton
-          show={currentTab === 'home' || showNavbar}
-          onClickUpload={() => onOpenUpload(currentTab === 'allfiles' ? activeFolder : null)}
-          onClickTransferList={() => {
-            setPreviousTab(currentTab);
-            setTab('transfer');
-          }}
-        />
+        <>
+          <input
+            ref={directFileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const picked = Array.from(e.target.files || []);
+              if (picked.length > 0) {
+                startUpload(picked, activeFolder);
+              }
+              e.target.value = '';
+            }}
+          />
+          <MobileFloatingTransferButton
+            show={!isSelectionMode && (currentTab === 'home' || showNavbar)}
+            onClickUpload={() => directFileInputRef.current?.click()}
+            onClickTransferList={() => {
+              setPreviousTab(currentTab);
+              setTab('transfer');
+            }}
+          />
+        </>
       )}
 
       {/* Floating Bottom Navigation Bar (Auto-hides on scroll down on non-home pages) */}
       <nav
         className={`fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.60)] z-40 flex items-center justify-around px-2 transition-all duration-300 ease-in-out ${
-          currentTab === 'home' || showNavbar
+          !isSelectionMode && (currentTab === 'home' || showNavbar)
             ? 'translate-y-0 opacity-100 pointer-events-auto'
             : 'translate-y-24 opacity-0 pointer-events-none'
         }`}
@@ -806,7 +953,7 @@ export default function MobileApp({
             >
               <div className="flex items-center gap-2.5">
                 <Smartphone className="w-4 h-4 text-[#C2410C]" />
-                <span>Unduh Aplikasi MyCloud.apk</span>
+                <span>Unduh APK Terbaru (v1.0.7)</span>
               </div>
               <Download className="w-4 h-4 text-[#C2410C]" />
             </a>
@@ -877,6 +1024,111 @@ export default function MobileApp({
         onClose={closeAvatarModal}
         onUpdated={refreshUser}
       />
+
+      {/* In-App APK Auto-Update Pop-Up Dialog */}
+      {apkUpdate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-[#121218] border border-[#E8E8EC] dark:border-[#22222E] rounded-[24px] p-5 shadow-2xl animate-enter text-[#0A0A0A] dark:text-[#FAFAFA] relative overflow-hidden"
+          >
+            {/* Top decorative gradient bar */}
+            <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#FB923C]" />
+
+            {/* Header with Icon */}
+            <div className="flex items-center gap-3.5 mb-3.5 pt-1">
+              <div className="w-12 h-12 rounded-[16px] bg-[#FFF7ED] dark:bg-[#2A140A] border border-[#C2410C]/20 text-[#C2410C] flex items-center justify-center shadow-xs shrink-0">
+                <Sparkles className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-[16px] leading-tight text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  Pembaruan Tersedia!
+                </h3>
+                <p className="text-[11.5px] text-[#8E8E9E] mt-0.5">
+                  Versi baru MyCloud siap dipasang
+                </p>
+              </div>
+            </div>
+
+            {/* Version Transition Box */}
+            <div className="flex items-center justify-between px-3 py-2.5 rounded-[12px] bg-[#F4F4F6] dark:bg-[#181822] border border-[#E8E8EC] dark:border-[#252534] mb-3 text-[12px]">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#8E8E9E] block">Terpasang</span>
+                <span className="font-mono font-semibold text-[#6B6B6B] dark:text-[#A1A1AA]">
+                  v{apkUpdate.currentName || '1.0.5'}
+                </span>
+              </div>
+              <div className="text-[#C2410C] font-bold text-base">➔</div>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold text-[#C2410C] block">Terbaru</span>
+                <span className="font-mono font-bold text-[#C2410C]">
+                  v{apkUpdate.versionName}
+                </span>
+              </div>
+            </div>
+
+            {/* Release Notes */}
+            {apkUpdate.releaseNotes && (
+              <div className="p-3 rounded-[12px] bg-[#FFF7ED]/50 dark:bg-[#20130D] border border-[#C2410C]/15 mb-3 text-[12px] leading-relaxed text-[#0A0A0A] dark:text-[#E4E4E7]">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#C2410C] block mb-1">
+                  Apa yang baru:
+                </span>
+                <p className="text-[12px] text-[#4A4A5A] dark:text-[#D4D4D8]">
+                  {apkUpdate.releaseNotes}
+                </p>
+              </div>
+            )}
+
+            {/* Notice for v1.0.5 legacy APK */}
+            {!hasNativeInstaller && (
+              <div className="p-3 rounded-[12px] bg-[#FEF3C7] dark:bg-[#2A200A] border border-[#F59E0B]/30 mb-4 text-[11.5px] leading-relaxed text-[#92400E] dark:text-[#FCD34D]">
+                <strong className="block mb-0.5 text-[#B45309] dark:text-[#FBBF24]">⚠️ Update Pertama Kali:</strong>
+                Versi v1.0.5 di HP Anda belum memiliki modul auto-installer di dalam sistemnya. Silakan klik tombol di bawah untuk menyalin link unduhan dan buka di Chrome sekali ini saja. Mulai v1.0.7, seluruh update akan 100% otomatis di dalam aplikasi!
+              </div>
+            )}
+
+            {/* Download Progress Bar */}
+            {updateDownloading ? (
+              <div className="space-y-2 mb-2">
+                <div className="flex items-center justify-between text-[12px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
+                  <span>Mengunduh pembaruan...</span>
+                  <span className="font-mono text-[#C2410C]">{updateProgress}%</span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-[#E8E8EC] dark:bg-[#252534] overflow-hidden">
+                  <div
+                    className="h-full bg-[#C2410C] transition-all duration-200 rounded-full"
+                    style={{ width: `${Math.max(5, updateProgress)}%` }}
+                  />
+                </div>
+                <p className="text-[10.5px] text-[#8E8E9E] text-center pt-1">
+                  {updateProgress >= 100
+                    ? 'Membuka installer paket...'
+                    : 'Aplikasi akan otomatis membuka installer setelah selesai.'}
+                </p>
+              </div>
+            ) : (
+              /* Buttons */
+              <div className="flex items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleDismissUpdate}
+                  className="flex-1 h-11 rounded-[12px] bg-[#F4F4F6] dark:bg-[#181822] border border-[#E8E8EC] dark:border-[#252534] font-semibold text-[13px] text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-white active:scale-95 transition-all"
+                >
+                  Nanti Saja
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartUpdate}
+                  className="flex-1 h-11 rounded-[12px] bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold text-[13px] flex items-center justify-center gap-1.5 shadow-md shadow-[#C2410C]/25 active:scale-95 transition-all text-center px-2"
+                >
+                  <Download className="w-4 h-4 stroke-[2.2] shrink-0" />
+                  <span className="truncate">{hasNativeInstaller ? 'Update Sekarang' : 'Salin Link Unduh'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

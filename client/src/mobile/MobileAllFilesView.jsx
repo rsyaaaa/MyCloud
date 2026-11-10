@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Folder, FolderPlus, FileText, Image, Video, Search, LayoutGrid, List,
   Trash2, Edit2, ArrowLeft, X, Upload, MoreVertical, Plus,
-  ArrowUp, ArrowDown, Play, ArrowUpDown, AlertCircle
+  ArrowUp, ArrowDown, Play, ArrowUpDown, AlertCircle, Heart, Download, Check, CheckSquare
 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +27,8 @@ function formatDriveDate(isoString, lang = 'id') {
 }
 
 export default function MobileAllFilesView({
+  showNavbar = true,
+  onSelectionChange,
   onOpenViewer,
   onToggleFavorite,
   onLock,
@@ -48,8 +50,11 @@ export default function MobileAllFilesView({
     isUploading,
     isDownloading,
     hasFailure,
-    overallProgress
+    overallProgress,
+    startUpload,
+    startDownload
   } = useTransfer();
+  const directFileInputRef = useRef(null);
 
   const [currentFolder, setCurrentFolder] = useState(() => {
     try {
@@ -89,6 +94,8 @@ export default function MobileAllFilesView({
 
   const [loading, setLoading] = useState(() => files.length === 0);
   const [page, setPage] = useState(1);
+  const pageRef = useRef(page);
+  pageRef.current = page;
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef(null);
@@ -129,6 +136,19 @@ export default function MobileAllFilesView({
   const [folderMenu, setFolderMenu] = useState(null);
   const [folderHeaderMenuOpen, setFolderHeaderMenuOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [genericFileSheet, setGenericFileSheet] = useState(null);
+
+  // Multi-Select Mode State for All Files
+  const [selectedFileIds, setSelectedFileIds] = useState(new Set());
+  const selectedFileIdsRef = useRef(selectedFileIds);
+  selectedFileIdsRef.current = selectedFileIds;
+  const isSelectionMode = selectedFileIds.size > 0;
+
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(isSelectionMode);
+    }
+  }, [isSelectionMode, onSelectionChange]);
 
   const currentFolderRef = useRef(currentFolder);
   currentFolderRef.current = currentFolder;
@@ -144,10 +164,26 @@ export default function MobileAllFilesView({
   folderHeaderMenuOpenRef.current = folderHeaderMenuOpen;
   const folderSearchOpenRef = useRef(folderSearchOpen);
   folderSearchOpenRef.current = folderSearchOpen;
+  const genericFileSheetRef = useRef(genericFileSheet);
+  genericFileSheetRef.current = genericFileSheet;
 
   useEffect(() => {
     const handleAllFilesPopState = (e) => {
-      // 1. Close internal action sheets / modals first
+      // 1. Close selection mode first
+      if (selectedFileIdsRef.current.size > 0) {
+        setSelectedFileIds(new Set());
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      // 2. Close generic file sheet
+      if (genericFileSheetRef.current) {
+        setGenericFileSheet(null);
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      // 3. Close internal action sheets / modals
       if (actionSheetOpenRef.current) {
         setActionSheetOpen(false);
         e.stopImmediatePropagation();
@@ -179,9 +215,27 @@ export default function MobileAllFilesView({
         return;
       }
 
-      // 2. If inside a folder, step back to AllFiles root
+      // If state is modal or viewer_subsheet, DO NOT exit current folder
+      if (
+        e.state?.type === 'modal' ||
+        e.state?.name === 'context' ||
+        e.state?.name === 'detail' ||
+        e.state?.name === 'generic_file' ||
+        e.state?.name === 'folder_menu' ||
+        e.state?.type === 'selection' ||
+        e.state?.type === 'viewer_subsheet'
+      ) {
+        return;
+      }
+
+      // If inside a folder and state is still this folder, retain it
+      if (currentFolderRef.current && e.state?.type === 'folder' && String(e.state?.folder?.id) === String(currentFolderRef.current.id)) {
+        return;
+      }
+
+      // 4. If inside a folder, only step back to root when user stepped back to root allfiles
       if (currentFolderRef.current) {
-        if (!e.state || e.state.type !== 'folder' || e.state.folder?.id !== currentFolderRef.current.id) {
+        if (!e.state || (e.state.type === 'tab' && e.state.tab === 'allfiles') || e.state.type !== 'folder') {
           const cached = api.getCachedMedia ? api.getCachedMedia({ sort: rootSortOption, root_only: 'true' }) : null;
           if (cached && cached.media) {
             setFiles(cached.media);
@@ -200,25 +254,126 @@ export default function MobileAllFilesView({
     return () => window.removeEventListener('popstate', handleAllFilesPopState);
   }, []);
 
-  // Hide-on-scroll state for Floating + FAB
-  const [showFab, setShowFab] = useState(true);
-  const lastScrollYRef = useRef(0);
+  // Selection mode helpers
+  const enterSelectionMode = (fileId) => {
+    if (selectedFileIdsRef.current.size === 0) {
+      window.history.pushState({ type: 'selection', mode: 'allfiles' }, '', '#select');
+    }
+    setSelectedFileIds(new Set([fileId]));
+  };
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const diff = currentScrollY - lastScrollYRef.current;
-      if (diff > 8 && currentScrollY > 50) {
-        setShowFab(false);
-      } else if (diff < -8 || currentScrollY <= 50) {
-        setShowFab(true);
+  const clearSelection = () => {
+    const savedY = window.scrollY;
+    setSelectedFileIds(new Set());
+    if (window.history.state?.type === 'selection') {
+      window.history.back();
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' });
+      });
+    }
+  };
+
+  const toggleSelectFile = (fileId) => {
+    setSelectedFileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+        if (next.size === 0 && window.history.state?.type === 'selection') {
+          window.history.back();
+        }
+      } else {
+        next.add(fileId);
       }
-      lastScrollYRef.current = currentScrollY;
-    };
+      return next;
+    });
+  };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const handleLongPressFile = (file) => {
+    if (selectedFileIdsRef.current.size === 0) {
+      enterSelectionMode(file.id);
+    } else {
+      toggleSelectFile(file.id);
+    }
+  };
+
+  // Touch handlers for long-press selection
+  const touchTimerRef = useRef(null);
+  const touchStartPos = useRef({ x: 0, y: 0 });
+  const longPressTriggeredTimeRef = useRef(0);
+
+  const handleTouchStart = (file, e) => {
+    if (e.touches && e.touches.length > 1) return;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    touchTimerRef.current = setTimeout(() => {
+      touchTimerRef.current = null;
+      longPressTriggeredTimeRef.current = Date.now();
+      if (navigator.vibrate) {
+        try { navigator.vibrate(50); } catch (err) {}
+      }
+      handleLongPressFile(file);
+    }, 450);
+  };
+
+  const handleTouchStartFolder = (folder, e) => {
+    if (e.touches && e.touches.length > 1) return;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    touchTimerRef.current = setTimeout(() => {
+      touchTimerRef.current = null;
+      longPressTriggeredTimeRef.current = Date.now();
+      if (navigator.vibrate) {
+        try { navigator.vibrate(50); } catch (err) {}
+      }
+      openFolderMenu(folder);
+    }, 450);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchTimerRef.current) return;
+    const diffX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const diffY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (diffX > 16 || diffY > 16) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  };
+
+  const openGenericFileSheet = (file) => {
+    window.history.pushState({ type: 'modal', name: 'generic_file', tab: 'allfiles' }, '', '#file-action');
+    setGenericFileSheet(file);
+  };
+
+  const closeGenericFileSheet = () => {
+    if (!genericFileSheetRef.current) return;
+    setGenericFileSheet(null);
+    if (window.history.state?.type === 'modal' && window.history.state?.name === 'generic_file') {
+      window.history.back();
+    }
+  };
+
+  const openFolderMenu = (folder) => {
+    window.history.pushState({ type: 'modal', name: 'folder_menu', tab: 'allfiles' }, '', '#folder-menu');
+    setFolderMenu(folder);
+  };
+
+  const closeFolderMenu = () => {
+    if (!folderMenuRef.current) return;
+    setFolderMenu(null);
+    if (window.history.state?.type === 'modal' && window.history.state?.name === 'folder_menu') {
+      window.history.back();
+    }
+  };
+
+  // FAB visibility syncs with showNavbar and selection mode
+  const showFab = !isSelectionMode && showNavbar;
 
   useEffect(() => {
     if (onFolderChange) onFolderChange(currentFolder);
@@ -423,29 +578,39 @@ export default function MobileAllFilesView({
           prev.map((f) => (f.id === event.id ? { ...f, is_favorite: event.is_favorite } : f))
         );
       } else if (event.type === 'delete' || event.type === 'lock') {
-        setFiles((prev) => prev.filter((f) => f.id !== event.id));
+        setFiles((prev) => prev.some((f) => f.id === event.id) ? prev.filter((f) => f.id !== event.id) : prev);
       } else if (event.type === 'rename') {
         setFiles((prev) =>
           prev.map((f) => (f.id === event.id ? { ...f, display_name: event.name } : f))
         );
       } else if (['upload', 'restore', 'unlock', 'rename_rollback', 'folder', 'organize'].includes(event.type)) {
         loadFolders();
-        // re-fetch files silently
+        // re-fetch files silently while maintaining loaded limit and scroll position
         const activeSort = currentFolder ? folderSortOption : rootSortOption;
-        const params = { sort: activeSort };
+        const currentLimit = Math.max(50, (pageRef.current || 1) * 50);
+        const params = { sort: activeSort, limit: currentLimit };
         if (searchQuery.trim()) params.search = searchQuery.trim();
         if (currentFolder) {
           params.category_id = currentFolder.id;
         } else if (!searchQuery.trim()) {
           params.root_only = 'true';
         }
-        api.listMedia(params).then((res) => setFiles(res.media || [])).catch(() => { });
+        const savedY = window.scrollY;
+        api.listMedia(params).then((res) => {
+          setFiles(res.media || []);
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: savedY, behavior: 'instant' });
+          });
+        }).catch(() => { });
       }
     });
     return unsub;
   }, [currentFolder, rootSortOption, folderSortOption, searchQuery]);
 
   const handleFolderClick = (folder) => {
+    if (Date.now() - longPressTriggeredTimeRef.current < 800) {
+      return;
+    }
     const activeSort = folderSortOption;
     const cached = api.getCachedMedia ? api.getCachedMedia({ sort: activeSort, category_id: folder.id }) : null;
     if (cached && cached.media) {
@@ -457,7 +622,7 @@ export default function MobileAllFilesView({
     }
     setCurrentFolder(folder);
     window.history.pushState(
-      { type: 'folder', folder: { id: folder.id, name: folder.name } },
+      { type: 'folder', tab: 'allfiles', folder: { id: folder.id, name: folder.name } },
       '',
       '#folder-' + folder.id
     );
@@ -540,18 +705,96 @@ export default function MobileAllFilesView({
   };
 
   const handleFileClick = (item, idx) => {
+    // If long-press was triggered recently, swallow this synthetic click completely
+    if (Date.now() - longPressTriggeredTimeRef.current < 800) {
+      return;
+    }
+    if (selectedFileIdsRef.current.size > 0) {
+      toggleSelectFile(item.id);
+      return;
+    }
+
     recordRecentItem(item);
-    if (item.media_type === 'document' || item.type === 'document') {
+
+    const ext = (item.original_name ? item.original_name.split('.').pop() : '').toLowerCase();
+    const isImg = item.media_type === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'svg'].includes(ext);
+    const isVid = item.media_type === 'video' || ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v', '3gp'].includes(ext);
+    const isDoc = item.media_type === 'document' || ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'md', 'json', 'log'].includes(ext);
+
+    if (isImg || isVid) {
+      const visualFiles = (sortedFiles || []).filter(f => {
+        const e = (f.original_name ? f.original_name.split('.').pop() : '').toLowerCase();
+        return f.media_type === 'image' || f.media_type === 'video' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'mp4', 'mkv', 'mov'].includes(e);
+      });
+      const visualIdx = visualFiles.findIndex(f => f.id === item.id);
+      if (onOpenViewer) onOpenViewer(visualFiles, visualIdx !== -1 ? visualIdx : 0);
+    } else if (isDoc) {
       if (isTxtFile(item) && onOpenText) {
         onOpenText(item);
       } else {
         window.open(api.getStreamUrl(item.id), '_blank');
       }
     } else {
-      const visualFiles = (sortedFiles || []).filter(f => f.media_type === 'image' || f.media_type === 'video');
-      const visualIdx = visualFiles.findIndex(f => f.id === item.id);
-      if (onOpenViewer) onOpenViewer(visualFiles, visualIdx !== -1 ? visualIdx : 0);
+      // Non-previewable generic files (ZIP, APK, TAR, EXE, etc.) -> open action sheet popup
+      openGenericFileSheet(item);
     }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedFileIds.size === sortedFiles.length && sortedFiles.length > 0) {
+      clearSelection();
+    } else {
+      if (selectedFileIds.size === 0) {
+        window.history.pushState({ type: 'selection', mode: 'allfiles' }, '', '#select');
+      }
+      setSelectedFileIds(new Set(sortedFiles.map(f => f.id)));
+    }
+  };
+
+  const handleBulkFavorite = async () => {
+    const ids = Array.from(selectedFileIds);
+    if (ids.length === 0) return;
+    const selected = sortedFiles.filter(f => selectedFileIds.has(f.id));
+    const anyNotFav = selected.some(f => !f.is_favorite);
+    const targetFav = anyNotFav ? 1 : 0;
+    setFiles(prev => prev.map(f => selectedFileIds.has(f.id) ? { ...f, is_favorite: targetFav } : f));
+    clearSelection();
+    for (const id of ids) {
+      try {
+        await api.toggleFavorite(id);
+        triggerMediaEvent({ type: 'favorite', id, is_favorite: targetFav });
+      } catch (e) {}
+    }
+  };
+
+  const handleBulkOrganize = () => {
+    const selected = sortedFiles.filter(f => selectedFileIds.has(f.id));
+    if (selected.length === 0) return;
+    if (onOrganize) onOrganize(selected);
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedFileIds);
+    if (ids.length === 0) return;
+    const count = ids.length;
+    if (!window.confirm(`Pindahkan ${count} file ke Tempat Sampah?`)) return;
+    setFiles(prev => prev.filter(f => !selectedFileIds.has(f.id)));
+    clearSelection();
+    for (const id of ids) {
+      try {
+        await api.deleteMedia(id);
+        triggerMediaEvent({ type: 'delete', id });
+      } catch (e) {}
+    }
+  };
+
+  const handleDirectUploadChange = (e) => {
+    const pickedFiles = Array.from(e.target.files || []);
+    if (pickedFiles.length > 0) {
+      startUpload(pickedFiles, currentFolder);
+    }
+    e.target.value = '';
   };
 
   // Folders sorted & filtered (always sorted by rootSortOption)
@@ -607,14 +850,62 @@ export default function MobileAllFilesView({
   const avatarUrl = api.getAvatarUrl(user);
 
   return (
-    <div className="min-h-screen pb-32 animate-enter bg-[#FAFAFA] dark:bg-[#0B0B0E] text-[#0A0A0A] dark:text-[#F4F4F5]">
-      {/* 1. TOP NAVBAR (Google Drive Mobile Style) */}
-      {!currentFolder ? (
+    <div className="min-h-screen pb-32 bg-[#FAFAFA] dark:bg-[#0B0B0E] text-[#0A0A0A] dark:text-[#F4F4F5]">
+      {/* 1. TOP NAVBAR / SELECTION BAR */}
+      {isSelectionMode ? (
+        <>
+          <header className="fixed top-0 inset-x-0 z-50 bg-[#C2410C] text-white px-4 h-14 flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-200">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={clearSelection}
+                className="p-1.5 -ml-1.5 rounded-full hover:bg-white/20 active:scale-90 transition-all text-white"
+                title="Batal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <span className="font-semibold text-base font-sans tracking-tight text-white">
+                {selectedFileIds.size} dipilih
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleSelectAll}
+                className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white/20 hover:bg-white/30 active:scale-95 transition-all text-white"
+              >
+                {selectedFileIds.size === sortedFiles.length ? 'Batal Semua' : 'Semua'}
+              </button>
+
+              <button
+                onClick={handleBulkFavorite}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all text-white"
+                title="Favorit"
+              >
+                <Heart className="w-5 h-5 fill-white" />
+              </button>
+
+              <button
+                onClick={handleBulkOrganize}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all text-white"
+                title="Pindahkan ke folder"
+              >
+                <Folder className="w-5 h-5" />
+              </button>
+
+              <button
+                onClick={handleBulkDelete}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all text-white"
+                title="Hapus"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </header>
+          <div className="h-14" />
+        </>
+      ) : !currentFolder ? (
         /* Root View Navbar: MyCloud Brand + Integrated Capsule Search Bar + Avatar */
-        <header
-          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 transition-transform duration-300 ease-in-out ${showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
-            }`}
-        >
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3.5 h-14 flex items-center justify-between gap-2.5 shadow-none">
           {/* Brand - Clickable to open Mobile Pagelist */}
           <button
             type="button"
@@ -681,10 +972,7 @@ export default function MobileAllFilesView({
         </header>
       ) : (
         /* Folder View Navbar (Screenshot 2): ← Folder Name ... 🔍 ... ⋮ */
-        <header
-          className={`sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3 h-14 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out relative ${showFab ? 'translate-y-0' : '-translate-y-full pointer-events-none'
-            }`}
-        >
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0B0E]/95 backdrop-blur-md border-b border-[#E8E8EC] dark:border-[#1E1E28] px-3 h-14 flex items-center justify-between gap-2 shadow-none relative">
           {/* Back button & Folder Name */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
@@ -841,6 +1129,19 @@ export default function MobileAllFilesView({
                       <div
                         key={folder.id}
                         onClick={() => handleFolderClick(folder)}
+                        onTouchStart={(e) => handleTouchStartFolder(folder, e)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (Date.now() - longPressTriggeredTimeRef.current > 1000) {
+                            longPressTriggeredTimeRef.current = Date.now();
+                            openFolderMenu(folder);
+                          }
+                        }}
+                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                         className="flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none"
                       >
                         <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -864,7 +1165,7 @@ export default function MobileAllFilesView({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFolderMenu(folder);
+                            openFolderMenu(folder);
                           }}
                           className="p-2 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#F4F4F5] active:scale-90 transition-transform"
                           title="Opsi folder"
@@ -877,76 +1178,114 @@ export default function MobileAllFilesView({
                 )}
 
                 {/* B. Files List */}
-                {sortedFiles.map((file, idx) => (
-                  <div
-                    key={file.id}
-                    onClick={() => handleFileClick(file, idx)}
-                    className="flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      {/* Media Icon Badge / Thumbnail (Google Drive Style: Red for image, Purple for video, Blue for doc) */}
-                      <div
-                        className={`w-11 h-11 rounded-[14px] overflow-hidden flex items-center justify-center shrink-0 border border-[#E8E8EC] dark:border-[#22222E] ${file.media_type === 'image'
-                            ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#EA580C]'
-                            : file.media_type === 'video'
-                              ? 'bg-[#FAF5FF] dark:bg-[#1E1428] text-[#A855F7]'
-                              : 'bg-[#EFF6FF] dark:bg-[#101B2E] text-[#3B82F6]'
-                          }`}
-                      >
-                        {file.media_type === 'image' && file.thumbnail_path ? (
-                          <img
-                            src={api.getThumbnailUrl(file.id)}
-                            alt={file.display_name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : file.media_type === 'image' ? (
-                          <Image className="w-5 h-5" />
-                        ) : file.media_type === 'video' && file.thumbnail_path ? (
-                          <div className="relative w-full h-full">
-                            <img
-                              src={api.getThumbnailUrl(file.id)}
-                              alt={file.display_name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                              <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
-                            </div>
-                          </div>
-                        ) : file.media_type === 'video' ? (
-                          <Video className="w-5 h-5" />
-                        ) : (
-                          <FileText className="w-5 h-5" />
-                        )}
-                      </div>
+                {sortedFiles.map((file, idx) => {
+                  const isSelected = selectedFileIds.has(file.id);
 
-                      {/* Filename & Modified Date */}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-medium text-[#0A0A0A] dark:text-[#F4F4F5] truncate leading-tight">
-                          {file.display_name || file.original_name}
-                        </p>
-                        <p className="text-[11px] text-[#8E8E9E] mt-0.5 font-mono">
-                          {formatDriveDate(file.captured_at || file.created_at, lang)} • {formatBytes(file.file_size)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 3-Dots Menu */}
-                    <button
-                      onClick={(e) => {
+                  return (
+                    <div
+                      key={file.id}
+                      onClick={() => handleFileClick(file, idx)}
+                      onTouchStart={(e) => handleTouchStart(file, e)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      onTouchCancel={handleTouchEnd}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
-                        if (onLongPress) onLongPress(file);
+                        if (Date.now() - longPressTriggeredTimeRef.current > 1000) {
+                          longPressTriggeredTimeRef.current = Date.now();
+                          handleLongPressFile(file);
+                        }
                       }}
-                      className="p-2 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#F4F4F5] active:scale-90 transition-transform"
-                      title="Opsi file"
+                      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                      className={`flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none ${
+                        isSelected ? 'bg-[#FFF7ED] dark:bg-[#25150D] ring-2 ring-[#C2410C]/60' : ''
+                      }`}
                     >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Selection Checkbox (Visible in selection mode) */}
+                        {isSelectionMode && (
+                          <div className="shrink-0 pointer-events-none mr-0.5">
+                            {isSelected ? (
+                              <div className="w-5 h-5 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-xs">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border-2 border-[#CBD5E1] dark:border-[#3F3F46]" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Media Icon Badge / Thumbnail (All files including PDF & DOCX with thumbnails render WebP) */}
+                        <div
+                          className={`w-11 h-11 rounded-[14px] overflow-hidden flex items-center justify-center shrink-0 border border-[#E8E8EC] dark:border-[#22222E] relative ${file.media_type === 'image'
+                              ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#EA580C]'
+                              : file.media_type === 'video'
+                                ? 'bg-[#FAF5FF] dark:bg-[#1E1428] text-[#A855F7]'
+                                : 'bg-[#EFF6FF] dark:bg-[#101B2E] text-[#3B82F6]'
+                            }`}
+                        >
+                          {file.thumbnail_path ? (
+                            <div className="w-full h-full relative">
+                              <img
+                                src={api.getThumbnailUrl(file.id)}
+                                alt={file.display_name}
+                                draggable="false"
+                                className="w-full h-full object-cover object-top pointer-events-none select-none"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                                  }
+                                }}
+                              />
+                              {file.media_type === 'video' && (
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                                </div>
+                              )}
+                              <div className="w-full h-full hidden items-center justify-center">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                            </div>
+                          ) : file.media_type === 'image' ? (
+                            <Image className="w-5 h-5" />
+                          ) : file.media_type === 'video' ? (
+                            <Video className="w-5 h-5" />
+                          ) : (
+                            <FileText className="w-5 h-5" />
+                          )}
+                        </div>
+
+                        {/* Filename & Modified Date */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] font-medium text-[#0A0A0A] dark:text-[#F4F4F5] truncate leading-tight">
+                            {file.display_name || file.original_name}
+                          </p>
+                          <p className="text-[11px] text-[#8E8E9E] mt-0.5 font-mono">
+                            {formatDriveDate(file.captured_at || file.created_at, lang)} • {formatBytes(file.file_size)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 3-Dots Menu */}
+                      {!isSelectionMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onLongPress) onLongPress(file);
+                          }}
+                          className="p-2 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#F4F4F5] active:scale-90 transition-transform"
+                          title="Opsi file"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               /* VIEW MODE: GRID (Screenshot 3 Style) */
@@ -958,6 +1297,19 @@ export default function MobileAllFilesView({
                       <div
                         key={folder.id}
                         onClick={() => handleFolderClick(folder)}
+                        onTouchStart={(e) => handleTouchStartFolder(folder, e)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (Date.now() - longPressTriggeredTimeRef.current > 1000) {
+                            longPressTriggeredTimeRef.current = Date.now();
+                            openFolderMenu(folder);
+                          }
+                        }}
+                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                         className="rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-3 flex flex-col justify-between h-[126px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs"
                       >
                         {/* Top row: folder icon + name + 3 dots */}
@@ -971,7 +1323,7 @@ export default function MobileAllFilesView({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setFolderMenu(folder);
+                              openFolderMenu(folder);
                             }}
                             className="p-1 -mr-1 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#F4F4F5] shrink-0 active:scale-90"
                           >
@@ -990,82 +1342,129 @@ export default function MobileAllFilesView({
 
                 {/* B. Media Grid (Screenshot 3 bottom cards) */}
                 <div className="grid grid-cols-2 gap-3">
-                  {sortedFiles.map((file, idx) => (
-                    <div
-                      key={file.id}
-                      onClick={() => handleFileClick(file, idx)}
-                      className="rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-2.5 flex flex-col h-[180px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs"
-                    >
-                      {/* Top row: badge + filename + 3 dots */}
-                      <div className="flex items-center justify-between gap-1.5 mb-2">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <div
-                            className={`w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 ${file.media_type === 'image'
-                                ? 'bg-[#EF4444] text-white'
-                                : file.media_type === 'video'
-                                  ? 'bg-[#A855F7] text-white'
-                                  : 'bg-[#3B82F6] text-white'
-                              }`}
-                          >
-                            {file.media_type === 'image' ? (
-                              <Image className="w-2.5 h-2.5" />
-                            ) : file.media_type === 'video' ? (
-                              <Video className="w-2.5 h-2.5" />
-                            ) : (
-                              <FileText className="w-2.5 h-2.5" />
-                            )}
-                          </div>
-                          <span className="text-[11.5px] font-medium text-[#0A0A0A] dark:text-[#F4F4F5] truncate">
-                            {file.display_name || file.original_name}
-                          </span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onLongPress) onLongPress(file);
-                          }}
-                          className="p-1 -mr-1 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#F4F4F5] shrink-0 active:scale-90"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                  {sortedFiles.map((file, idx) => {
+                    const isSelected = selectedFileIds.has(file.id);
 
-                      {/* Card Preview Box */}
-                      <div className="flex-1 rounded-[12px] overflow-hidden bg-[#F4F4F6] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1A1A24] flex items-center justify-center relative">
-                        {file.media_type === 'image' ? (
-                          <img
-                            src={api.getThumbnailUrl(file.id)}
-                            alt={file.display_name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : file.media_type === 'video' ? (
-                          <div className="relative w-full h-full">
-                            <img
-                              src={api.getThumbnailUrl(file.id)}
-                              alt={file.display_name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                            <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
-                              <div className="w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center">
-                                <Play className="w-3 h-3 fill-white ml-0.5" />
-                              </div>
+                    return (
+                      <div
+                        key={file.id}
+                        onClick={() => handleFileClick(file, idx)}
+                        onTouchStart={(e) => handleTouchStart(file, e)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (Date.now() - longPressTriggeredTimeRef.current > 1000) {
+                            longPressTriggeredTimeRef.current = Date.now();
+                            handleLongPressFile(file);
+                          }
+                        }}
+                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                        className={`rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-2.5 flex flex-col h-[180px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs relative ${
+                          isSelected ? 'ring-3 ring-[#C2410C] ring-offset-2 dark:ring-offset-[#0B0B0E] scale-[0.97]' : ''
+                        }`}
+                      >
+                        {/* Top row: badge + filename + checkbox/3 dots */}
+                        <div className="flex items-center justify-between gap-1.5 mb-2">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <div
+                              className={`w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 ${file.media_type === 'image'
+                                  ? 'bg-[#EF4444] text-white'
+                                  : file.media_type === 'video'
+                                    ? 'bg-[#A855F7] text-white'
+                                    : 'bg-[#3B82F6] text-white'
+                                }`}
+                            >
+                              {file.media_type === 'image' ? (
+                                <Image className="w-2.5 h-2.5" />
+                              ) : file.media_type === 'video' ? (
+                                <Video className="w-2.5 h-2.5" />
+                              ) : (
+                                <FileText className="w-2.5 h-2.5" />
+                              )}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center p-2 text-center">
-                            <FileText className="w-7 h-7 text-[#3B82F6] mb-1" />
-                            <span className="text-[10px] text-[#8E8E9E] font-mono">
-                              {file.original_name?.split('.').pop()?.toUpperCase() || 'DOC'}
+                            <span className="text-[11.5px] font-medium text-[#0A0A0A] dark:text-[#F4F4F5] truncate">
+                              {file.display_name || file.original_name}
                             </span>
                           </div>
-                        )}
+
+                          {isSelectionMode ? (
+                            <div className="shrink-0 pointer-events-none">
+                              {isSelected ? (
+                                <div className="w-5 h-5 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-xs">
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border-2 border-[#CBD5E1] dark:border-[#3F3F46]" />
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onLongPress) onLongPress(file);
+                              }}
+                              className="p-1 -mr-1 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#F4F4F5] shrink-0 active:scale-90"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Card Preview Box: Renders WebP thumbnail for images, videos, AND documents (PDF, DOCX, etc.) */}
+                        <div className="flex-1 rounded-[12px] overflow-hidden bg-[#F4F4F6] dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1A1A24] flex items-center justify-center relative">
+                          {file.thumbnail_path ? (
+                            <div className="relative w-full h-full">
+                              <img
+                                src={api.getThumbnailUrl(file.id)}
+                                alt={file.display_name}
+                                draggable="false"
+                                className="w-full h-full object-cover object-top pointer-events-none select-none"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                                  }
+                                }}
+                              />
+                              {file.media_type === 'video' && (
+                                <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
+                                  <div className="w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center">
+                                    <Play className="w-3 h-3 fill-white ml-0.5" />
+                                  </div>
+                                </div>
+                              )}
+                              <div className="w-full h-full hidden flex-col items-center justify-center p-2 text-center">
+                                <FileText className="w-7 h-7 text-[#3B82F6] mb-1" />
+                                <span className="text-[10px] text-[#8E8E9E] font-mono">
+                                  {file.original_name?.split('.').pop()?.toUpperCase() || 'DOC'}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center p-2 text-center">
+                              {file.media_type === 'image' ? (
+                                <Image className="w-7 h-7 text-[#EF4444] mb-1" />
+                              ) : file.media_type === 'video' ? (
+                                <Video className="w-7 h-7 text-[#A855F7] mb-1" />
+                              ) : (
+                                <>
+                                  <FileText className="w-7 h-7 text-[#3B82F6] mb-1" />
+                                  <span className="text-[10px] text-[#8E8E9E] font-mono">
+                                    {file.original_name?.split('.').pop()?.toUpperCase() || 'DOC'}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1083,7 +1482,11 @@ export default function MobileAllFilesView({
                 {currentFolder && (
                   <button
                     onClick={() => {
-                      if (onOpenUpload) onOpenUpload(currentFolder);
+                      if (directFileInputRef.current) {
+                        directFileInputRef.current.click();
+                      } else {
+                        setActionSheetOpen(true);
+                      }
                     }}
                     className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-tr from-[#C2410C] to-[#EA580C] text-white text-[12px] font-semibold shadow-md active:scale-95"
                   >
@@ -1138,11 +1541,13 @@ export default function MobileAllFilesView({
           shadowGlow = 'shadow-[0_8px_25px_rgba(16,185,129,0.5)]';
         }
 
+        const isFabVisible = !isSelectionMode && (showNavbar || isSpecialState);
+
         return (
           <button
             onClick={() => setActionSheetOpen(true)}
             className={`fixed bottom-[84px] right-4 z-40 w-14 h-14 ${isSpecialState ? 'rounded-full' : 'rounded-[20px]'
-              } ${bgGradient} text-white ${shadowGlow} flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${showFab || isSpecialState
+              } ${bgGradient} text-white ${shadowGlow} flex items-center justify-center active:scale-90 transition-all duration-300 ease-out select-none ${isFabVisible
                 ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
                 : 'translate-y-16 opacity-0 scale-75 pointer-events-none'
               }`}
@@ -1198,6 +1603,15 @@ export default function MobileAllFilesView({
         );
       })()}
 
+      {/* Hidden Native File Input for Direct Android Upload */}
+      <input
+        ref={directFileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleDirectUploadChange}
+      />
+
       {/* 5. ACTION SHEET MODAL: UPLOAD OR BUAT FOLDER */}
       {actionSheetOpen && (
         <div
@@ -1214,11 +1628,15 @@ export default function MobileAllFilesView({
             </h3>
 
             <div className="grid grid-cols-2 gap-3 mb-2">
-              {/* Upload Berkas */}
+              {/* Upload Berkas -> triggers Android Native File Chooser */}
               <button
                 onClick={() => {
                   setActionSheetOpen(false);
-                  if (onOpenUpload) onOpenUpload(currentFolder);
+                  if (directFileInputRef.current) {
+                    directFileInputRef.current.click();
+                  } else if (onOpenUpload) {
+                    onOpenUpload(currentFolder);
+                  }
                 }}
                 className="p-4 rounded-[16px] bg-[#F4F4F6] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#252534] flex flex-col items-center justify-center text-center gap-2 hover:border-[#C2410C]/40 active:scale-95 transition-all"
               >
@@ -1229,7 +1647,7 @@ export default function MobileAllFilesView({
                   {lang === 'en' ? 'Upload Files' : 'Upload Berkas'}
                 </span>
                 <span className="text-[11px] text-[#8E8E9E]">
-                  {currentFolder ? `ke ${currentFolder.name}` : 'Foto, video, dokumen'}
+                  {currentFolder ? `ke ${currentFolder.name}` : 'Pilih dari perangkat'}
                 </span>
               </button>
 
@@ -1260,6 +1678,118 @@ export default function MobileAllFilesView({
             >
               Batal
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5B. POPUP ACTION SHEET UNTUK BERKAS UMUM (ZIP, APK, TAR, DLL) */}
+      {genericFileSheet && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-enter"
+          onClick={closeGenericFileSheet}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200"
+          >
+            <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#2A2A38] mx-auto mb-4" />
+
+            {/* Header info */}
+            <div className="flex items-center gap-3 pb-3 mb-4 border-b border-[#E8E8EC] dark:border-[#22222E]">
+              <div className="w-12 h-12 rounded-[14px] bg-[#FFF7ED] dark:bg-[#2A140A] text-[#C2410C] flex items-center justify-center shrink-0 border border-[#C2410C]/20">
+                <FileText className="w-6 h-6 stroke-[2]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA] truncate">
+                  {genericFileSheet.display_name || genericFileSheet.original_name}
+                </p>
+                <p className="text-[11px] text-[#8E8E9E] font-mono mt-0.5">
+                  {formatBytes(genericFileSheet.file_size)} • {formatDriveDate(genericFileSheet.created_at, lang)}
+                </p>
+                <p className="text-[11px] text-[#C2410C] font-mono mt-0.5 truncate">
+                  📁 {genericFileSheet.category_names || currentFolder?.name || 'Folder Utama (Root)'}
+                </p>
+              </div>
+              <button
+                onClick={closeGenericFileSheet}
+                className="p-1.5 text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] rounded-full active:scale-90"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 4 Action Buttons: download, favorite, delete, move to folder */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* 1. Unduh */}
+              <button
+                onClick={() => {
+                  startDownload(genericFileSheet);
+                  closeGenericFileSheet();
+                }}
+                className="p-3.5 rounded-[16px] bg-[#F4F4F6] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#252534] flex items-center gap-3 hover:border-[#10B981]/50 active:scale-95 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-[#ECFDF5] dark:bg-[#06291C] text-[#10B981] flex items-center justify-center shrink-0">
+                  <Download className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">Unduh File</p>
+                  <p className="text-[10px] text-[#8E8E9E]">Simpan ke perangkat</p>
+                </div>
+              </button>
+
+              {/* 2. Favorit */}
+              <button
+                onClick={() => {
+                  if (onToggleFavorite) onToggleFavorite(genericFileSheet);
+                  closeGenericFileSheet();
+                }}
+                className="p-3.5 rounded-[16px] bg-[#F4F4F6] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#252534] flex items-center gap-3 hover:border-[#EF4444]/50 active:scale-95 transition-all text-left"
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${genericFileSheet.is_favorite ? 'bg-[#FEF2F2] dark:bg-[#2A0E0E] text-[#EF4444]' : 'bg-[#F4F4F6] dark:bg-[#1A1A24] text-[#8E8E9E]'}`}>
+                  <Heart className={`w-4 h-4 stroke-[2.2] ${genericFileSheet.is_favorite ? 'fill-[#EF4444]' : ''}`} />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
+                    {genericFileSheet.is_favorite ? 'Hapus Favorit' : 'Favorit'}
+                  </p>
+                  <p className="text-[10px] text-[#8E8E9E]">Beri bintang</p>
+                </div>
+              </button>
+
+              {/* 3. Pindahkan ke Folder */}
+              <button
+                onClick={() => {
+                  if (onOrganize) onOrganize(genericFileSheet);
+                  closeGenericFileSheet();
+                }}
+                className="p-3.5 rounded-[16px] bg-[#F4F4F6] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#252534] flex items-center gap-3 hover:border-[#3B82F6]/50 active:scale-95 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-[#EFF6FF] dark:bg-[#101B2E] text-[#3B82F6] flex items-center justify-center shrink-0">
+                  <Folder className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">Pindah Folder</p>
+                  <p className="text-[10px] text-[#8E8E9E]">Atur kategori</p>
+                </div>
+              </button>
+
+              {/* 4. Hapus */}
+              <button
+                onClick={() => {
+                  if (onDelete) onDelete(genericFileSheet.id);
+                  closeGenericFileSheet();
+                }}
+                className="p-3.5 rounded-[16px] bg-[#FEF2F2] dark:bg-[#1F1010] border border-[#EF4444]/20 flex items-center gap-3 hover:border-[#EF4444]/50 active:scale-95 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-[#FEE2E2] dark:bg-[#2A0E0E] text-[#EF4444] flex items-center justify-center shrink-0">
+                  <Trash2 className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-[#EF4444]">Hapus File</p>
+                  <p className="text-[10px] text-[#EF4444]/70">Pindah ke sampah</p>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1330,7 +1860,7 @@ export default function MobileAllFilesView({
       {folderMenu && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-enter"
-          onClick={() => setFolderMenu(null)}
+          onClick={closeFolderMenu}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1355,7 +1885,7 @@ export default function MobileAllFilesView({
               type="button"
               onClick={() => {
                 const target = folderMenu;
-                setFolderMenu(null);
+                closeFolderMenu();
                 openRenameFolder(target);
               }}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-[10px] text-[14px] font-medium text-left text-[#0A0A0A] dark:text-[#FAFAFA] hover:bg-[#F4F4F6] dark:hover:bg-[#181822] active:bg-[#F4F4F5] dark:active:bg-[#181822]"
@@ -1368,7 +1898,7 @@ export default function MobileAllFilesView({
               type="button"
               onClick={() => {
                 const target = folderMenu;
-                setFolderMenu(null);
+                closeFolderMenu();
                 handleDeleteFolder(target.id, target.name);
               }}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-[10px] text-[14px] font-medium text-left text-[#EF4444] hover:bg-[#FEF2F2] dark:hover:bg-[#2A0F0F] active:bg-[#FEF2F2] dark:active:bg-[#2A0F0F]"
@@ -1379,7 +1909,7 @@ export default function MobileAllFilesView({
 
             <button
               type="button"
-              onClick={() => setFolderMenu(null)}
+              onClick={closeFolderMenu}
               className="mt-2 w-full h-10 rounded-[10px] bg-[#F4F4F6] dark:bg-[#181822] text-[13px] font-semibold text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] active:scale-[0.99]"
             >
               Batal
