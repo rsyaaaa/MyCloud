@@ -8,6 +8,7 @@ const db = require('./db');
 const { authMiddleware, vaultAuthMiddleware } = require('./auth');
 const { probeMedia, generateThumbnail } = require('./ffmpegHelper');
 const thumbnailQueue = require('./thumbnailQueue');
+const activeTransferManager = require('./activeTransfers');
 
 const router = express.Router();
 
@@ -151,6 +152,8 @@ router.post('/upload/abort', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'uploadId is required' });
   }
 
+  activeTransferManager.finishUpload(uploadId);
+
   const userTempChunksDir = path.join(config.USERS_DIR, req.user.id, 'uploads', '.temp_chunks');
   const metaPath = path.join(userTempChunksDir, `${uploadId}.json`);
   const partPath = path.join(userTempChunksDir, `${uploadId}.part`);
@@ -282,6 +285,15 @@ router.post('/upload/chunk', authMiddleware, uploadChunk.single('chunk'), async 
     meta.uploadedBytes = partStat.size;
     meta.updatedAt = Date.now();
 
+    // Track active upload for admin dashboard real-time monitoring
+    activeTransferManager.updateUpload({
+      uploadId,
+      userId: req.user.id,
+      username: req.user.username,
+      totalBytes: meta.totalSize,
+      uploadedBytes: meta.uploadedBytes
+    });
+
     // Check if this was the last chunk
     if (meta.nextChunkIndex >= meta.totalChunks) {
       // Validate file extension / media type
@@ -369,6 +381,9 @@ router.post('/upload/chunk', authMiddleware, uploadChunk.single('chunk'), async 
         mediaType,
         userId: req.user.id
       });
+
+      // Clear active upload from tracking
+      activeTransferManager.finishUpload(uploadId);
 
       const savedMedia = await db.get('SELECT * FROM media_files WHERE id = ?', [mediaId]);
 
@@ -872,6 +887,10 @@ router.patch('/:id', authMiddleware, async (req, res) => {
 
 // POST /api/media/:id/lock (Move to Safe Vault)
 router.post('/:id/lock', authMiddleware, async (req, res) => {
+  if (req.user.role === 'admin') {
+    return res.status(403).json({ error: 'Fitur brankas rahasia tidak tersedia untuk akun admin.' });
+  }
+
   try {
     const media = await db.get('SELECT * FROM media_files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
     if (!media) {

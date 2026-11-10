@@ -138,19 +138,73 @@ export default function TerminalPage() {
     };
   }, []);
 
-  // Fit again when fullscreen toggles
+  // Sync native fullscreen events (e.g. user presses Esc or swipe gesture)
   useEffect(() => {
-    setTimeout(() => {
-      if (fitAddonRef.current && xtermInstanceRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
-        fitAddonRef.current.fit();
-        wsRef.current.send(JSON.stringify({
-          type: 'resize',
-          cols: xtermInstanceRef.current.cols,
-          rows: xtermInstanceRef.current.rows
-        }));
-      }
-    }, 150);
+    const handleFullscreenChange = () => {
+      const isNative = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      setIsFullscreen(isNative);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Fit terminal dimensions whenever fullscreen toggles or window changes
+  useEffect(() => {
+    const runFit = () => {
+      try {
+        if (fitAddonRef.current && xtermInstanceRef.current) {
+          fitAddonRef.current.fit();
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'resize',
+              cols: xtermInstanceRef.current.cols,
+              rows: xtermInstanceRef.current.rows
+            }));
+          }
+        }
+      } catch (e) {}
+    };
+
+    runFit();
+    const t1 = setTimeout(runFit, 50);
+    const t2 = setTimeout(runFit, 150);
+    const t3 = setTimeout(runFit, 350);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [isFullscreen]);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          await document.documentElement.webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (e) {
+      // Fallback to CSS-only fullscreen if browser blocks HTML5 Fullscreen API
+      setIsFullscreen((prev) => !prev);
+    }
+  };
 
   const sendQuickCommand = (cmd) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -176,6 +230,18 @@ export default function TerminalPage() {
     }
   };
 
+  const handleResetSession = () => {
+    if (window.confirm('Mulai ulang sesi terminal? Proses yang sedang berjalan di shell akan dihentikan dan sesi baru akan dibuka.')) {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'reset' }));
+      }
+      if (xtermInstanceRef.current) {
+        xtermInstanceRef.current.reset();
+        xtermInstanceRef.current.focus();
+      }
+    }
+  };
+
   if (user?.role !== 'admin') {
     return (
       <div className="p-8 text-center text-[#EF4444]">
@@ -185,8 +251,16 @@ export default function TerminalPage() {
   }
 
   return (
-    <div className={`p-4 sm:p-6 mx-auto animate-enter transition-all ${isFullscreen ? 'fixed inset-0 z-50 bg-[#000000] p-3' : 'max-w-7xl'}`}>
-      <div className="flex flex-col h-[calc(100vh-140px)] sm:h-[calc(100vh-120px)] bg-[#000000] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[16px] overflow-hidden shadow-2xl">
+    <div className={
+      isFullscreen
+        ? 'fixed inset-0 z-[100] w-screen h-screen bg-black flex flex-col p-0 m-0 overflow-hidden'
+        : 'p-4 sm:p-6 mx-auto max-w-7xl animate-enter transition-all'
+    }>
+      <div className={
+        isFullscreen
+          ? 'flex flex-col w-full h-full bg-black border-none rounded-none overflow-hidden'
+          : 'flex flex-col h-[calc(100vh-140px)] sm:h-[calc(100vh-120px)] bg-[#000000] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[16px] overflow-hidden shadow-2xl'
+      }>
         {/* Terminal Header Bar */}
         <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-[#0A0A0E] border-b border-[#1F1F27] gap-3 shrink-0">
           <div className="flex items-center gap-3">
@@ -199,20 +273,20 @@ export default function TerminalPage() {
                   Server Terminal
                 </span>
                 <span className="text-[11px] font-mono text-[#9C9C9C] hidden sm:inline">
-                  autofocus-server (bash)
+                  autofocus-server (sesi persisten)
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 {status === 'connected' && (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#10B981]">
                     <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-                    Terhubung (Active PTY)
+                    Sesi Aktif Persisten (Background Alive)
                   </span>
                 )}
                 {status === 'connecting' && (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#F59E0B]">
                     <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping" />
-                    Menghubungkan...
+                    Menghubungkan ke sesi...
                   </span>
                 )}
                 {status === 'disconnected' && (
@@ -237,20 +311,25 @@ export default function TerminalPage() {
             </button>
 
             <button
-              onClick={initTerminal}
+              onClick={handleResetSession}
               className="p-1.5 sm:px-2.5 sm:py-1 rounded-[6px] text-[12px] font-medium text-[#9C9C9C] hover:text-white bg-[#14141A] hover:bg-[#1F1F27] border border-[#272733] transition-colors flex items-center gap-1.5"
-              title="Mulai ulang sesi terminal"
+              title="Mulai ulang sesi terminal dari awal (Reset Sesi)"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Restart</span>
+              <span className="hidden sm:inline">Reset Sesi</span>
             </button>
 
             <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-1.5 sm:px-2.5 sm:py-1 rounded-[6px] text-[12px] font-medium text-[#9C9C9C] hover:text-white bg-[#14141A] hover:bg-[#1F1F27] border border-[#272733] transition-colors flex items-center gap-1.5"
-              title={isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}
+              onClick={toggleFullscreen}
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-[6px] text-[12px] font-medium border transition-colors flex items-center gap-1.5 ${
+                isFullscreen
+                  ? 'bg-[#C2410C] text-white border-[#C2410C]'
+                  : 'text-[#9C9C9C] hover:text-white bg-[#14141A] hover:bg-[#1F1F27] border border-[#272733]'
+              }`}
+              title={isFullscreen ? 'Keluar Layar Penuh (Esc)' : 'Layar Penuh (Fullscreen)'}
             >
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Kecilkan' : 'Fullscreen'}</span>
             </button>
           </div>
         </div>

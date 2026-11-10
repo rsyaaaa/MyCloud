@@ -1260,28 +1260,30 @@ export default function MobileMediaDetailView({
             </div>
 
             {/* Option A: Move to Safe Vault (Brankas Rahasia) */}
-            <button
-              onClick={() => {
-                closeFolderSheet();
-                onLock(currentMedia.id);
-              }}
-              className="w-full p-3.5 rounded-[16px] bg-[#2A140A] border border-[#C2410C]/40 flex items-center justify-between text-left active:scale-98 transition-transform"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md">
-                  <Lock className="w-5 h-5 stroke-[2.2]" />
+            {onLock && (
+              <button
+                onClick={() => {
+                  closeFolderSheet();
+                  onLock(currentMedia.id);
+                }}
+                className="w-full p-3.5 rounded-[16px] bg-[#2A140A] border border-[#C2410C]/40 flex items-center justify-between text-left active:scale-98 transition-transform"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md">
+                    <Lock className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[13.5px] text-white">
+                      {lang === 'en' ? 'Move to Safe Vault' : 'Pindahkan ke Brankas Rahasia'}
+                    </p>
+                    <p className="text-[11.5px] text-[#FB923C]/85">
+                      {lang === 'en' ? 'Hide and lock securely with vault PIN' : 'Sembunyikan & amankan dengan PIN/password'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-[13.5px] text-white">
-                    {lang === 'en' ? 'Move to Safe Vault' : 'Pindahkan ke Brankas Rahasia'}
-                  </p>
-                  <p className="text-[11.5px] text-[#FB923C]/85">
-                    {lang === 'en' ? 'Hide and lock securely with vault PIN' : 'Sembunyikan & amankan dengan PIN/password'}
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-[#FB923C]" />
-            </button>
+                <ChevronRight className="w-4 h-4 text-[#FB923C]" />
+              </button>
+            )}
 
             {/* Option B: Folder List */}
             <div className="space-y-1.5 pt-1">

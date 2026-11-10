@@ -55,8 +55,13 @@ export default function Sidebar({
     );
   }
 
+  if (user?.role !== 'admin') {
+    navItems.push(
+      { id: 'vault', label: t('vault', 'Brankas Terkunci'), icon: isUnlocked ? ShieldCheck : Shield }
+    );
+  }
+
   navItems.push(
-    { id: 'vault', label: t('vault', 'Brankas Terkunci'), icon: isUnlocked ? ShieldCheck : Shield },
     { id: 'trash', label: t('trash', 'Tempat Sampah'), icon: Trash2 }
   );
 
@@ -215,17 +220,19 @@ export default function Sidebar({
           </div>
 
           <div className="space-y-1">
-            {/* Change Profile Picture */}
-            <button
-              onClick={() => {
-                if (onHide) onHide();
-                if (onOpenAvatarModal) onOpenAvatarModal();
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[13px] font-medium text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] hover:text-[#0A0A0A] dark:hover:text-white transition-colors"
-            >
-              <Camera className="w-4 h-4 text-[#C2410C]" />
-              <span>{t('changeAvatar', 'Ganti Foto Profil')}</span>
-            </button>
+            {/* Change Profile Picture (Disabled for admin) */}
+            {user?.role !== 'admin' && (
+              <button
+                onClick={() => {
+                  if (onHide) onHide();
+                  if (onOpenAvatarModal) onOpenAvatarModal();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[13px] font-medium text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#141418] hover:text-[#0A0A0A] dark:hover:text-white transition-colors"
+              >
+                <Camera className="w-4 h-4 text-[#C2410C]" />
+                <span>{t('changeAvatar', 'Ganti Foto Profil')}</span>
+              </button>
+            )}
 
             {/* Switch User Expandable Toggle (Hanya untuk desktop) */}
             {!isMobile && (

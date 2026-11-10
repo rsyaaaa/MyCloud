@@ -712,7 +712,7 @@ export default function MobileApp({
           />
         )}
 
-        {currentTab === 'vault' && (
+        {currentTab === 'vault' && user?.role !== 'admin' && (
           <MobileVaultView
             onOpenViewer={handleMobileOpenViewer}
             onUnlockMedia={onUnlockMedia}

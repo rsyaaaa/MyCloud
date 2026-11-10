@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const config = require('./config');
 const db = require('./db');
 const { generateThumbnail } = require('./ffmpegHelper');
+const activeTransferManager = require('./activeTransfers');
 
 const router = express.Router();
 
@@ -249,7 +250,30 @@ router.get('/download/:id', async (req, res) => {
       ? `${media.display_name}${path.extname(media.original_name)}`
       : media.original_name;
 
-    res.download(media.file_path, filename);
+    const stat = fs.statSync(media.file_path);
+    const downloadId = `dl_${user.id}_${Date.now()}`;
+    activeTransferManager.startDownload({
+      downloadId,
+      userId: user.id,
+      username: user.username,
+      totalBytes: stat.size
+    });
+
+    const fileStream = fs.createReadStream(media.file_path);
+    fileStream.on('data', (chunk) => {
+      activeTransferManager.updateDownload({ downloadId, chunkBytes: chunk.length });
+    });
+
+    const finishDl = () => {
+      activeTransferManager.finishDownload(downloadId);
+    };
+    res.on('finish', finishDl);
+    res.on('close', finishDl);
+
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Content-Type', media.mime_type || 'application/octet-stream');
+    fileStream.pipe(res);
   } catch (err) {
     console.error('[Download] Error:', err);
     if (!res.headersSent) res.status(500).json({ error: 'Gagal mengunduh file.' });

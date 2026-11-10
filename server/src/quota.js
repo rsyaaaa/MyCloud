@@ -5,6 +5,7 @@ const os = require('os');
 const db = require('./db');
 const config = require('./config');
 const { authMiddleware, adminMiddleware } = require('./auth');
+const activeTransferManager = require('./activeTransfers');
 
 const router = express.Router();
 
@@ -298,12 +299,18 @@ router.get('/admin/system-stats', authMiddleware, adminMiddleware, async (req, r
       pending_requests: pendingRequests.count,
       network: realtime.network,
       disk_io: realtime.disk_io,
-      system: realtime.system
+      system: realtime.system,
+      active_transfers: activeTransferManager.getActiveTransfers()
     });
   } catch (err) {
     console.error('[Admin Stats] Error:', err);
     return res.status(500).json({ error: 'Gagal memuat statistik sistem.' });
   }
+});
+
+// GET /api/admin/active-transfers (List currently active transfers)
+router.get('/admin/active-transfers', authMiddleware, adminMiddleware, (req, res) => {
+  return res.json({ active_transfers: activeTransferManager.getActiveTransfers() });
 });
 
 // GET /api/admin/users (List all users)

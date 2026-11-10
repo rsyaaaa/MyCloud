@@ -170,7 +170,7 @@ export default function App() {
     onOpenText: (media) => setTextEditorMedia(media),
     onOpenViewer: handleOpenViewer,
     onToggleFavorite: handleToggleFavorite,
-    onLockMedia: handleLockMedia,
+    onLockMedia: user?.role === 'admin' ? null : handleLockMedia,
     onUnlockMedia: handleUnlockMedia,
     onOrganizeMedia: handleOrganizeMedia,
     onDeleteMedia: handleDeleteMedia,

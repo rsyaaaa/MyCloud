@@ -223,7 +223,7 @@ export default function DesktopApp({
             />
           )}
 
-          {currentTab === 'vault' && (
+          {currentTab === 'vault' && user?.role !== 'admin' && (
             <VaultPage
               onOpenViewer={onOpenViewer}
               onUnlockMedia={onUnlockMedia}

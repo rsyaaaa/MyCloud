@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Server, HardDrive, Wifi, Activity, Cpu, Users, ArrowUp, ArrowDown,
+  Server, HardDrive, Wifi, Activity, Cpu, Users, ArrowUp, ArrowDown, ArrowUpDown,
   RefreshCw, CheckCircle, XCircle, Clock, Shield, Edit3, Check, X,
   Database, Globe, Play, Pause, AlertCircle
 } from 'lucide-react';
@@ -33,11 +33,9 @@ export default function AdminHomeDashboard() {
   const { t, lang } = useLanguage();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
-  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLivePolling, setIsLivePolling] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
   const [newQuotaGb, setNewQuotaGb] = useState('');
   const pollIntervalRef = useRef(null);
@@ -54,13 +52,11 @@ export default function AdminHomeDashboard() {
 
   const loadAllData = async () => {
     try {
-      const [statsRes, reqsRes, usersRes] = await Promise.all([
+      const [statsRes, usersRes] = await Promise.all([
         api.getAdminStats(),
-        api.getAdminQuotaRequests(),
         api.getAdminUsers()
       ]);
       setStats(statsRes);
-      setRequests(reqsRes.requests || []);
       setUsers(usersRes.users || []);
       setLastUpdated(new Date());
     } catch (err) {
@@ -90,18 +86,6 @@ export default function AdminHomeDashboard() {
     };
   }, [isLivePolling]);
 
-  const handleActionRequest = async (id, action) => {
-    setActionLoading(true);
-    try {
-      await api.actionAdminQuotaRequest(id, action);
-      await loadAllData();
-    } catch (e) {
-      alert(e.message || t('processRequestFailed', 'Gagal memproses permohonan.'));
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleUpdateQuota = async (userId) => {
     const gb = parseFloat(newQuotaGb);
     if (isNaN(gb) || gb <= 0) {
@@ -129,6 +113,7 @@ export default function AdminHomeDashboard() {
   const network = stats?.network || { rx_speed_bytes: 0, tx_speed_bytes: 0, total_rx_bytes: 0, total_tx_bytes: 0, active_interface: 'eth0' };
   const diskIo = stats?.disk_io || { read_speed_bytes: 0, write_speed_bytes: 0, total_read_bytes: 0, total_write_bytes: 0, device: 'sda' };
   const system = stats?.system || { status: 'ONLINE', uptime_seconds: 0, cpu_percent: 0, cpu_cores: 4, load_avg: [0, 0, 0], memory: { total: 0, free: 0, used: 0, percent: 0 } };
+  const activeTransfers = stats?.active_transfers || [];
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 sm:space-y-7 animate-enter">
@@ -450,71 +435,6 @@ export default function AdminHomeDashboard() {
         </div>
       </div>
 
-      {/* Storage Requests (Permohonan Kuota) if any */}
-      {requests.length > 0 && (
-        <section className="card-artisan p-5 sm:p-6 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[16px]">
-          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
-            <Clock className="w-5 h-5 text-[#F59E0B]" />
-            <h3 className="font-serif font-bold text-base sm:text-lg text-[#0A0A0A] dark:text-[#FAFAFA]">
-              {t('quotaRequestsPendingTitle', 'Permohonan Tambah Kuota Menunggu Persetujuan')} ({requests.length})
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] text-[#6B6B6B] dark:text-[#9C9C9C]">
-                  <th className="py-2.5 px-3">{t('userColumn', 'Pengguna')}</th>
-                  <th className="py-2.5 px-3">{t('requestColumn', 'Permintaan')}</th>
-                  <th className="py-2.5 px-3">{t('reasonColumn', 'Alasan')}</th>
-                  <th className="py-2.5 px-3 text-right">{t('actionColumn', 'Aksi')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27]">
-                {requests.map((r) => (
-                  <tr key={r.id} className="hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] transition-colors">
-                    <td className="py-3 px-3 font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
-                      {r.username}
-                      <span className="block text-[11px] font-normal text-[#6B6B6B] dark:text-[#9C9C9C] font-mono">
-                        {t('currently', 'Saat ini')}: {formatBytes(r.used_storage_bytes)} / {formatBytes(r.storage_quota_bytes)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-bold text-[#C2410C]">
-                      +{formatBytes(r.requested_bytes)}
-                    </td>
-                    <td className="py-3 px-3 text-[#6B6B6B] dark:text-[#9C9C9C] max-w-xs truncate">
-                      {r.reason || '-'}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      {r.status === 'pending' ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleActionRequest(r.id, 'approved')}
-                            disabled={actionLoading}
-                            className="btn-primary text-[12px] py-1 px-3 h-7"
-                          >
-                            {t('approve', 'Setujui')}
-                          </button>
-                          <button
-                            onClick={() => handleActionRequest(r.id, 'rejected')}
-                            disabled={actionLoading}
-                            className="btn-destructive text-[12px] py-1 px-3 h-7"
-                          >
-                            {t('reject', 'Tolak')}
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-[12px] text-[#9C9C9C] italic">{t('processedLabel', 'Diproses')}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
       {/* Registered Users & Disk Capacity Overview Table */}
       <section className="card-artisan p-5 sm:p-6 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[16px]">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
@@ -662,6 +582,136 @@ export default function AdminHomeDashboard() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* Active User Transfers Card (Live Upload / Download Monitoring) */}
+      <section className="card-artisan p-5 sm:p-6 bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[16px]">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[8px] bg-[#EFF6FF] dark:bg-[#081B33] text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center">
+              <ArrowUpDown className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <div>
+              <h3 className="font-serif font-bold text-base sm:text-lg text-[#0A0A0A] dark:text-[#FAFAFA] leading-tight">
+                {t('activeTransfersTitle', 'Aktivitas Transfer Data Pengguna')} ({activeTransfers.length} {t('activeNow', 'Aktif')})
+              </h3>
+              <p className="text-[11px] sm:text-[12px] text-[#6B6B6B] dark:text-[#9C9C9C]">
+                {t('activeTransfersSubtitle', 'Memantau pengguna yang sedang melakukan proses unggah (upload) atau unduh (download) data secara real-time.')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded bg-[#F4F4F5] dark:bg-[#121217] text-[#6B6B6B] dark:text-[#9C9C9C] border border-[#E8E8EC] dark:border-[#1F1F27]">
+              <span className={`w-2 h-2 rounded-full ${activeTransfers.length > 0 ? 'bg-[#10B981] animate-ping' : 'bg-[#9C9C9C]'}`} />
+              <span>{activeTransfers.length > 0 ? 'TRANSFER BERLANGSUNG' : 'STANDBY'}</span>
+            </span>
+          </div>
+        </div>
+
+        {activeTransfers.length === 0 ? (
+          <div className="py-8 text-center text-[#6B6B6B] dark:text-[#9C9C9C] space-y-2">
+            <div className="w-12 h-12 rounded-full bg-[#F4F4F5] dark:bg-[#121217] text-[#9C9C9C] flex items-center justify-center mx-auto">
+              <ArrowUpDown className="w-6 h-6 stroke-[1.8] opacity-60" />
+            </div>
+            <p className="text-[13px] font-medium text-[#0A0A0A] dark:text-[#FAFAFA]">
+              {t('noActiveTransfers', 'Tidak ada proses transfer data yang sedang berjalan')}
+            </p>
+            <p className="text-[11px] max-w-sm mx-auto text-[#9C9C9C]">
+              {t('noActiveTransfersNote', 'Saat pengguna melakukan upload atau download berkas, progres dan total ukuran akan terpantau secara real-time di sini.')}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] text-[#6B6B6B] dark:text-[#9C9C9C]">
+                  <th className="py-2.5 px-3">{t('userColumn', 'Pengguna')}</th>
+                  <th className="py-2.5 px-3">{t('transferType', 'Aktivitas')}</th>
+                  <th className="py-2.5 px-3">{t('totalSize', 'Total Ukuran')}</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">{t('transferProgress', 'Progres Selesai')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E8EC] dark:divide-[#1F1F27]">
+                {activeTransfers.map((item) => {
+                  const isUpload = item.type === 'upload';
+                  const percent = Math.min(100, Math.max(0, item.progress || 0));
+
+                  return (
+                    <tr key={item.id} className="hover:bg-[#F3F4F6] dark:hover:bg-[#14141A] transition-colors">
+                      {/* User */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-full font-bold text-[12px] flex items-center justify-center border shrink-0 ${
+                            isUpload
+                              ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] border-[#C2410C]/20'
+                              : 'bg-[#EFF6FF] dark:bg-[#081B33] text-[#2563EB] border-[#2563EB]/20'
+                          }`}>
+                            {(item.username || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] block">
+                              {item.username}
+                            </strong>
+                            <span className="text-[10px] font-mono text-[#6B6B6B] dark:text-[#9C9C9C]">
+                              ID: {item.id.slice(0, 10)}...
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Type: Upload or Download */}
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                          isUpload
+                            ? 'bg-[#FFF7ED] dark:bg-[#2A1208] text-[#C2410C] border-[#C2410C]/30'
+                            : 'bg-[#EFF6FF] dark:bg-[#081B33] text-[#2563EB] border-[#2563EB]/30'
+                        }`}>
+                          {isUpload ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                          {isUpload ? 'UPLOAD DATA' : 'DOWNLOAD DATA'}
+                        </span>
+                      </td>
+
+                      {/* Total Size */}
+                      <td className="py-3 px-3 font-mono">
+                        <strong className="text-[#0A0A0A] dark:text-[#FAFAFA] text-[13px] block">
+                          {formatBytes(item.totalBytes)}
+                        </strong>
+                        <span className="text-[11px] text-[#6B6B6B] dark:text-[#9C9C9C]">
+                          {formatBytes(item.transferredBytes)} terkirim
+                        </span>
+                      </td>
+
+                      {/* Progress Bar & Percentage */}
+                      <td className="py-3 px-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-[#6B6B6B] dark:text-[#9C9C9C]">
+                              {percent === 100 ? 'Menyelesaikan...' : 'Mentransfer data...'}
+                            </span>
+                            <span className={`font-bold ${isUpload ? 'text-[#C2410C]' : 'text-[#2563EB]'}`}>
+                              {percent}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-[#E8E8EC] dark:bg-[#1F1F27] h-2.5 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 rounded-full ${
+                                isUpload
+                                  ? 'bg-gradient-to-r from-[#C2410C] to-[#EA580C]'
+                                  : 'bg-gradient-to-r from-[#2563EB] to-[#60A5FA]'
+                              }`}
+                              style={{ width: `${Math.max(2, percent)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* Host Specs Footer Banner */}

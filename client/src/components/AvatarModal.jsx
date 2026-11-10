@@ -14,7 +14,7 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  if (!isOpen) return null;
+  if (!isOpen || user?.role === 'admin') return null;
 
   const currentAvatarUrl = api.getAvatarUrl(user);
 

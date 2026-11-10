@@ -149,13 +149,15 @@ export default function MediaViewerModal({
               <Unlock className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ) : (
-            <button
-              onClick={() => onLock(currentMedia.id)}
-              className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-              title={t('lockToVaultSecret', 'Kunci ke Brankas Rahasia')}
-            >
-              <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+            onLock && (
+              <button
+                onClick={() => onLock(currentMedia.id)}
+                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                title={t('lockToVaultSecret', 'Kunci ke Brankas Rahasia')}
+              >
+                <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            )
           )}
 
           {!isVault && (

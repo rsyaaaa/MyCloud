@@ -406,6 +406,13 @@ router.post('/vault/verify-pin', authMiddleware, async (req, res) => {
 
 // POST /api/auth/avatar (Upload custom avatar)
 router.post('/avatar', authMiddleware, avatarUpload.single('avatar'), async (req, res) => {
+  if (req.user.role === 'admin' || req.user.username === 'admin') {
+    if (req.file && fs.existsSync(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
+    return res.status(403).json({ error: 'Akun admin menggunakan avatar sistem bawaan dan tidak dapat diubah.' });
+  }
+
   if (!req.file) {
     return res.status(400).json({ error: 'Tidak ada file foto yang dipilih.' });
   }
@@ -477,6 +484,10 @@ router.get('/avatar/:userId', async (req, res) => {
 
 // DELETE /api/auth/avatar (Reset custom avatar to default)
 router.delete('/avatar', authMiddleware, async (req, res) => {
+  if (req.user.role === 'admin' || req.user.username === 'admin') {
+    return res.status(403).json({ error: 'Akun admin menggunakan avatar sistem bawaan.' });
+  }
+
   try {
     const customAvatar = path.join(config.USERS_DIR, req.user.id, 'avatar.jpg');
     if (fs.existsSync(customAvatar)) {
