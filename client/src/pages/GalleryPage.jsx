@@ -741,7 +741,7 @@ export default function GalleryPage({
         </div>
       ) : (
         /* Dedicated Hub Layout for "Foto" or "Video" */
-        <div className={viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" : "space-y-3"}>
+        <div key={viewMode} className={`animate-view-morph ${viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" : "space-y-3"}`}>
           {mediaList.map((media, idx) => (
             <MediaCard
               key={media.id}

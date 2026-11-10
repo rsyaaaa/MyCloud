@@ -609,7 +609,7 @@ export default function MobileGalleryView({
     <div className="pb-32 space-y-4 bg-[#FAFAFA] dark:bg-[#0B0B0E] text-[#0A0A0A] dark:text-[#F4F4F5] min-h-screen relative">
       {/* SELECTION BAR (When items are selected via long-press) */}
       {isSelectionMode && (
-        <header className="fixed top-0 inset-x-0 z-50 bg-[#C2410C] text-white px-4 h-14 flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-200">
+        <header className="fixed top-0 inset-x-0 z-50 bg-[#C2410C] text-white px-4 h-14 flex items-center justify-between shadow-xl animate-selection-bar">
           <div className="flex items-center gap-3">
             <button
               onClick={clearSelection}
@@ -618,7 +618,7 @@ export default function MobileGalleryView({
             >
               <X className="w-5 h-5" />
             </button>
-            <span className="font-semibold text-base font-sans tracking-tight text-white">
+            <span key={selectedIds.size} className="inline-block animate-counter-flip font-semibold text-base font-sans tracking-tight text-white">
               {selectedIds.size} dipilih
             </span>
           </div>
@@ -909,13 +909,14 @@ export default function MobileGalleryView({
               <div className="grid grid-cols-3 gap-1.5 auto-rows-[115px] grid-flow-dense">
                 {items.map((media) => {
                   const globalIdx = displayedMediaList.findIndex((m) => m.id === media.id);
+                  const safeIdx = globalIdx !== -1 ? globalIdx : 0;
                   const spanClass = getGridItemSpan(media);
                   const isSelected = selectedIds.has(media.id);
 
                   return (
                     <div
                       key={media.id}
-                      onClick={() => handleMediaClick(displayedMediaList, globalIdx !== -1 ? globalIdx : 0)}
+                      onClick={() => handleMediaClick(displayedMediaList, safeIdx)}
                       onTouchStart={(e) => handleTouchStart(media, e)}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={handleTouchEnd}
@@ -928,8 +929,13 @@ export default function MobileGalleryView({
                           handleLongPressItem(media);
                         }
                       }}
-                      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                      className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-all select-none group ${
+                      style={{
+                        animationDelay: `${Math.min(safeIdx * 20, 400)}ms`,
+                        WebkitTouchCallout: 'none',
+                        WebkitUserSelect: 'none',
+                        userSelect: 'none'
+                      }}
+                      className={`animate-item-cascade ${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-all select-none group ${
                         isSelected ? 'ring-3 ring-[#C2410C] ring-offset-2 dark:ring-offset-[#0B0B0E] scale-[0.96]' : ''
                       }`}
                     >
@@ -937,11 +943,11 @@ export default function MobileGalleryView({
                       {isSelectionMode && (
                         <div className="absolute top-1.5 left-1.5 z-20 pointer-events-none">
                           {isSelected ? (
-                            <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#121217]">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#121217] animate-check-pop">
+                              <Check className="w-3.5 h-3.5" />
                             </div>
                           ) : (
-                            <div className="w-6 h-6 rounded-full border-2 border-white/90 bg-black/40 backdrop-blur-xs" />
+                            <div className="w-6 h-6 rounded-full border-2 border-white/90 bg-black/40 backdrop-blur-xs transition-transform duration-200" />
                           )}
                         </div>
                       )}
@@ -951,7 +957,7 @@ export default function MobileGalleryView({
                         src={api.getThumbnailUrl(media.id)}
                         alt={media.display_name}
                         draggable="false"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300 pointer-events-none select-none animate-blur-up"
                         loading="lazy"
                         decoding="async"
                       />
@@ -966,7 +972,7 @@ export default function MobileGalleryView({
 
                       {/* Favorite Heart Badge */}
                       {Boolean(media.is_favorite) && !isSelectionMode && (
-                        <div className="absolute bottom-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs">
+                        <div className="absolute bottom-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs animate-heart-pop">
                           <Heart className="w-3 h-3 fill-[#EF4444]" />
                         </div>
                       )}
@@ -1010,8 +1016,13 @@ export default function MobileGalleryView({
                       handleLongPressItem(media);
                     }
                   }}
-                  style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                  className={`${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-all select-none group ${
+                  style={{
+                    animationDelay: `${Math.min(idx * 20, 400)}ms`,
+                    WebkitTouchCallout: 'none',
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none'
+                  }}
+                  className={`animate-item-cascade ${spanClass} relative overflow-hidden rounded-[10px] bg-[#F4F4F6] dark:bg-[#14141B] border border-[#E8E8EC]/60 dark:border-[#22222E]/80 cursor-pointer active:scale-[0.98] transition-all select-none group ${
                     isSelected ? 'ring-3 ring-[#C2410C] ring-offset-2 dark:ring-offset-[#0B0B0E] scale-[0.96]' : ''
                   }`}
                 >
@@ -1019,11 +1030,11 @@ export default function MobileGalleryView({
                   {isSelectionMode && (
                     <div className="absolute top-1.5 left-1.5 z-20 pointer-events-none">
                       {isSelected ? (
-                        <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#121217]">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <div className="w-6 h-6 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-md ring-2 ring-white dark:ring-[#121217] animate-check-pop">
+                          <Check className="w-3.5 h-3.5" />
                         </div>
                       ) : (
-                        <div className="w-6 h-6 rounded-full border-2 border-white/90 bg-black/40 backdrop-blur-xs" />
+                        <div className="w-6 h-6 rounded-full border-2 border-white/90 bg-black/40 backdrop-blur-xs transition-transform duration-200" />
                       )}
                     </div>
                   )}
@@ -1033,7 +1044,7 @@ export default function MobileGalleryView({
                     src={api.getThumbnailUrl(media.id)}
                     alt={media.display_name}
                     draggable="false"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300 pointer-events-none select-none animate-blur-up"
                     loading="lazy"
                     decoding="async"
                   />
@@ -1048,7 +1059,7 @@ export default function MobileGalleryView({
 
                   {/* Favorite Heart Badge */}
                   {Boolean(media.is_favorite) && !isSelectionMode && (
-                    <div className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs">
+                    <div className="absolute top-1.5 left-1.5 p-1 rounded-full bg-black/40 text-[#EF4444] backdrop-blur-xs animate-heart-pop">
                       <Heart className="w-3 h-3 fill-[#EF4444]" />
                     </div>
                   )}

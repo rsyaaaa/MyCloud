@@ -23,6 +23,7 @@ export default function UploadModal({
   const [isOverQuota, setIsOverQuota] = useState(false);
   const [folderList, setFolderList] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
   const fileInputRef = useRef(null);
   const abortControllerRef = useRef(null);
 
@@ -82,25 +83,44 @@ export default function UploadModal({
   };
 
   const handleClose = () => {
-    setSelectedFiles([]);
-    setErrorMsg('');
-    setProgressInfo(null);
-    onClose();
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setSelectedFiles([]);
+      setErrorMsg('');
+      setProgressInfo(null);
+      setIsClosing(false);
+      onClose();
+    }, 220);
   };
 
   const handleUploadAll = () => {
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0 || isClosing) return;
     const targetFolderObj = folderList.find((f) => f.id === selectedFolderId) || targetFolder || null;
     startUpload(selectedFiles, targetFolderObj);
-    setSelectedFiles([]);
-    setErrorMsg('');
-    setIsOverQuota(false);
-    onClose();
+    setIsClosing(true);
+    setTimeout(() => {
+      setSelectedFiles([]);
+      setErrorMsg('');
+      setIsOverQuota(false);
+      setIsClosing(false);
+      onClose();
+    }, 220);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
-      <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[14px] max-w-lg w-full p-6 shadow-modal animate-in fade-in zoom-in-95 duration-150 text-[#0A0A0A] dark:text-[#FAFAFA]">
+    <div
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md ${
+        isClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+      }`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[20px] max-w-lg w-full p-6 shadow-2xl text-[#0A0A0A] dark:text-[#FAFAFA] ${
+          isClosing ? 'animate-modal-pop-out' : 'animate-modal-pop'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E8E8EC] dark:border-[#1F1F27]">
           <div className="flex items-center gap-2.5">

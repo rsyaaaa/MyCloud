@@ -74,7 +74,9 @@ export default function MobileApp({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [profileDrawerClosing, setProfileDrawerClosing] = useState(false);
   const [pagelistDrawerOpen, setPagelistDrawerOpen] = useState(false);
+  const [pagelistDrawerClosing, setPagelistDrawerClosing] = useState(false);
   const [adminDiskStats, setAdminDiskStats] = useState(null);
 
   useEffect(() => {
@@ -323,11 +325,16 @@ export default function MobileApp({
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
     window.history.pushState({ type: 'drawer', name: 'pagelist', tab: currentTabRef.current, depth: nextDepth }, '', '#menu');
+    setPagelistDrawerClosing(false);
     setPagelistDrawerOpen(true);
   };
   const closePagelistDrawer = () => {
-    if (!pagelistDrawerOpenRef.current) return;
-    setPagelistDrawerOpen(false);
+    if (!pagelistDrawerOpenRef.current || pagelistDrawerClosing) return;
+    setPagelistDrawerClosing(true);
+    setTimeout(() => {
+      setPagelistDrawerOpen(false);
+      setPagelistDrawerClosing(false);
+    }, 240);
     if (window.history.state?.type === 'drawer' && window.history.state?.name === 'pagelist') {
       window.history.back();
     }
@@ -337,11 +344,16 @@ export default function MobileApp({
     const nextDepth = (historyDepthRef.current || 0) + 1;
     historyDepthRef.current = nextDepth;
     window.history.pushState({ type: 'drawer', name: 'profile', tab: currentTabRef.current, depth: nextDepth }, '', '#profile');
+    setProfileDrawerClosing(false);
     setProfileDrawerOpen(true);
   };
   const closeProfileDrawer = () => {
-    if (!profileDrawerOpenRef.current) return;
-    setProfileDrawerOpen(false);
+    if (!profileDrawerOpenRef.current || profileDrawerClosing) return;
+    setProfileDrawerClosing(true);
+    setTimeout(() => {
+      setProfileDrawerOpen(false);
+      setProfileDrawerClosing(false);
+    }, 240);
     if (window.history.state?.type === 'drawer' && window.history.state?.name === 'profile') {
       window.history.back();
     }
@@ -432,11 +444,19 @@ export default function MobileApp({
         return;
       }
       if (profileDrawerOpenRef.current) {
-        setProfileDrawerOpen(false);
+        setProfileDrawerClosing(true);
+        setTimeout(() => {
+          setProfileDrawerOpen(false);
+          setProfileDrawerClosing(false);
+        }, 240);
         return;
       }
       if (pagelistDrawerOpenRef.current) {
-        setPagelistDrawerOpen(false);
+        setPagelistDrawerClosing(true);
+        setTimeout(() => {
+          setPagelistDrawerOpen(false);
+          setPagelistDrawerClosing(false);
+        }, 240);
         return;
       }
       if (detailViewerRef.current.isOpen) {
@@ -781,12 +801,12 @@ export default function MobileApp({
         </>
       )}
 
-      {/* Floating Bottom Navigation Bar (Auto-hides on scroll down on non-home pages) */}
+      {/* Floating Bottom Navigation Bar (Material 3 Android 17 Pill Dynamics) */}
       <nav
-        className={`fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[62px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[22px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.60)] z-40 flex items-center justify-around px-2 transition-all duration-300 ease-in-out ${
+        className={`fixed bottom-3 inset-x-3 sm:inset-x-6 max-w-md mx-auto h-[64px] bg-white/95 dark:bg-[#121217]/95 backdrop-blur-2xl border border-[#E8E8EC] dark:border-[#20202A] rounded-[24px] shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.70)] z-40 flex items-center justify-around px-2 transition-all duration-300 ease-out ${
           !isSelectionMode && (currentTab === 'home' || showNavbar)
             ? 'translate-y-0 opacity-100 pointer-events-auto'
-            : 'translate-y-24 opacity-0 pointer-events-none'
+            : 'translate-y-28 opacity-0 pointer-events-none'
         }`}
       >
         {navItems.map((item) => {
@@ -800,14 +820,24 @@ export default function MobileApp({
                 setTab(item.id);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-[16px] transition-all active:scale-95 ${
-                isActive
-                  ? 'text-[#C2410C] font-semibold bg-[#FFF7ED] dark:bg-[#25150D] dark:text-[#EA580C]'
-                  : 'text-[#6B6B6B] dark:text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA]'
-              }`}
+              className="flex-1 flex flex-col items-center justify-center py-1 transition-transform duration-200 active:scale-90 select-none group"
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
-              <span className="text-[11px] mt-0.5 tracking-tight">
+              <div
+                className={`w-14 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isActive
+                    ? 'bg-[#FFEDD5] dark:bg-[#34180A] text-[#C2410C] dark:text-[#F97316] shadow-xs'
+                    : 'text-[#71717A] dark:text-[#A1A1AA] group-hover:text-[#0A0A0A] dark:group-hover:text-white'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'animate-tab-bounce' : ''}`} />
+              </div>
+              <span
+                className={`text-[10px] mt-0.5 tracking-tight transition-colors duration-200 ${
+                  isActive
+                    ? 'font-bold text-[#C2410C] dark:text-[#F97316]'
+                    : 'font-medium text-[#71717A] dark:text-[#A1A1AA]'
+                }`}
+              >
                 {item.label}
               </span>
             </button>
@@ -815,15 +845,19 @@ export default function MobileApp({
         })}
       </nav>
 
-      {/* Mobile Pagelist Drawer (Slides in from the left when clicking MyCloud in navbar) */}
+      {/* Mobile Pagelist Drawer (Slides in from the left with Material spring physics, and slides back on close) */}
       {pagelistDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex animate-enter"
+          className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex ${
+            pagelistDrawerClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+          }`}
           onClick={closePagelistDrawer}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-[290px] sm:w-[320px] max-w-[85vw] h-full bg-white dark:bg-[#0E0E12] border-r border-[#E8E8EC] dark:border-[#1F1F27] shadow-2xl flex flex-col animate-in slide-in-from-left duration-250"
+            className={`w-[290px] sm:w-[320px] max-w-[85vw] h-full bg-white dark:bg-[#0E0E12] border-r border-[#E8E8EC] dark:border-[#1F1F27] shadow-2xl flex flex-col ${
+              pagelistDrawerClosing ? 'animate-drawer-out-left' : 'animate-drawer-in-left'
+            }`}
           >
             <Sidebar
               currentTab={currentTab}
@@ -834,16 +868,16 @@ export default function MobileApp({
                   setCurrentTabState(tab);
                   localStorage.setItem('mycloud_active_tab', tab);
                   notifyTabChange(tab);
-                  setPagelistDrawerOpen(false);
+                  closePagelistDrawer();
                 } else {
                   setTab(tab);
-                  setPagelistDrawerOpen(false);
+                  closePagelistDrawer();
                 }
               }}
               onHide={closePagelistDrawer}
               onOpenAvatarModal={() => {
-                setPagelistDrawerOpen(false);
-                openAvatarModal();
+                closePagelistDrawer();
+                setTimeout(() => openAvatarModal(), 200);
               }}
               isMobile={true}
             />
@@ -851,18 +885,22 @@ export default function MobileApp({
         </div>
       )}
 
-      {/* User Profile & Avatar Menu Bottom Sheet (Drawer) */}
+      {/* User Profile & Avatar Menu Bottom Sheet (Android 17 Fluid Bottom Sheet: slides up on open, slides down on close) */}
       {profileDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+          className={`fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-md ${
+            profileDrawerClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+          }`}
           onClick={closeProfileDrawer}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-modal animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA] space-y-3"
+            className={`bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[28px] p-5 pb-8 shadow-2xl max-h-[85vh] overflow-y-auto text-[#0A0A0A] dark:text-[#FAFAFA] space-y-3 ${
+              profileDrawerClosing ? 'animate-sheet-down' : 'animate-sheet-up'
+            }`}
           >
             {/* Drawer Drag Pill */}
-            <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#2A2A38] mx-auto mb-1" />
+            <div className="w-12 h-1.5 rounded-full bg-[#D4D4D8] dark:bg-[#343444] mx-auto mb-2 active:bg-[#C2410C] transition-colors" />
 
             {/* Header */}
             <div className="flex items-center justify-between pb-2 border-b border-[#E8E8EC] dark:border-[#20202A]">

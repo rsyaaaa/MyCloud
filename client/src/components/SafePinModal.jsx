@@ -52,18 +52,18 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
-      <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] max-w-sm w-full p-6 shadow-modal animate-in fade-in zoom-in-95 duration-150 text-center text-[#0A0A0A] dark:text-[#FAFAFA]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-backdrop-in">
+      <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[24px] max-w-sm w-full p-6 shadow-2xl animate-modal-pop text-center text-[#0A0A0A] dark:text-[#FAFAFA]">
         <div className="flex justify-end">
           <button
             onClick={onClose}
-            className="text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] p-1 rounded transition-colors"
+            className="text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] p-1 rounded-full transition-transform active:scale-90"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="w-14 h-14 bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/30 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div className="w-14 h-14 bg-[#FFF7ED] dark:bg-[#2A1208] border border-[#C2410C]/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-xs">
           <ShieldCheck className="w-7 h-7 text-[#C2410C]" />
         </div>
 
@@ -77,7 +77,7 @@ export default function SafePinModal({ isOpen, onClose, onSuccess }) {
         </p>
 
         {error && (
-          <div className="mb-4 p-2.5 bg-[#FEF2F2] dark:bg-[#200A0A] border border-[#EF4444]/40 rounded-[6px] text-[#EF4444] dark:text-[#FCA5A5] text-[13px]">
+          <div className="mb-4 p-2.5 bg-[#FEF2F2] dark:bg-[#200A0A] border border-[#EF4444]/40 rounded-[10px] text-[#EF4444] dark:text-[#FCA5A5] text-[13px] animate-shake">
             {error}
           </div>
         )}

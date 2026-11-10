@@ -134,9 +134,12 @@ export default function MobileAllFilesView({
   const [renamingFolder, setRenamingFolder] = useState(false);
 
   const [folderMenu, setFolderMenu] = useState(null);
+  const [folderMenuClosing, setFolderMenuClosing] = useState(false);
   const [folderHeaderMenuOpen, setFolderHeaderMenuOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [actionSheetClosing, setActionSheetClosing] = useState(false);
   const [genericFileSheet, setGenericFileSheet] = useState(null);
+  const [genericFileSheetClosing, setGenericFileSheetClosing] = useState(false);
 
   // Multi-Select Mode State for All Files
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
@@ -178,14 +181,22 @@ export default function MobileAllFilesView({
 
       // 2. Close generic file sheet
       if (genericFileSheetRef.current) {
-        setGenericFileSheet(null);
+        setGenericFileSheetClosing(true);
+        setTimeout(() => {
+          setGenericFileSheet(null);
+          setGenericFileSheetClosing(false);
+        }, 240);
         e.stopImmediatePropagation();
         return;
       }
 
       // 3. Close internal action sheets / modals
       if (actionSheetOpenRef.current) {
-        setActionSheetOpen(false);
+        setActionSheetClosing(true);
+        setTimeout(() => {
+          setActionSheetOpen(false);
+          setActionSheetClosing(false);
+        }, 240);
         e.stopImmediatePropagation();
         return;
       }
@@ -195,7 +206,11 @@ export default function MobileAllFilesView({
         return;
       }
       if (folderMenuRef.current) {
-        setFolderMenu(null);
+        setFolderMenuClosing(true);
+        setTimeout(() => {
+          setFolderMenu(null);
+          setFolderMenuClosing(false);
+        }, 240);
         e.stopImmediatePropagation();
         return;
       }
@@ -348,12 +363,18 @@ export default function MobileAllFilesView({
 
   const openGenericFileSheet = (file) => {
     window.history.pushState({ type: 'modal', name: 'generic_file', tab: 'allfiles' }, '', '#file-action');
+    setGenericFileSheetClosing(false);
     setGenericFileSheet(file);
   };
 
-  const closeGenericFileSheet = () => {
-    if (!genericFileSheetRef.current) return;
-    setGenericFileSheet(null);
+  const closeGenericFileSheet = (callback) => {
+    if (!genericFileSheetRef.current || genericFileSheetClosing) return;
+    setGenericFileSheetClosing(true);
+    setTimeout(() => {
+      setGenericFileSheet(null);
+      setGenericFileSheetClosing(false);
+      if (typeof callback === 'function') callback();
+    }, 240);
     if (window.history.state?.type === 'modal' && window.history.state?.name === 'generic_file') {
       window.history.back();
     }
@@ -361,13 +382,38 @@ export default function MobileAllFilesView({
 
   const openFolderMenu = (folder) => {
     window.history.pushState({ type: 'modal', name: 'folder_menu', tab: 'allfiles' }, '', '#folder-menu');
+    setFolderMenuClosing(false);
     setFolderMenu(folder);
   };
 
-  const closeFolderMenu = () => {
-    if (!folderMenuRef.current) return;
-    setFolderMenu(null);
+  const closeFolderMenu = (callback) => {
+    if (!folderMenuRef.current || folderMenuClosing) return;
+    setFolderMenuClosing(true);
+    setTimeout(() => {
+      setFolderMenu(null);
+      setFolderMenuClosing(false);
+      if (typeof callback === 'function') callback();
+    }, 240);
     if (window.history.state?.type === 'modal' && window.history.state?.name === 'folder_menu') {
+      window.history.back();
+    }
+  };
+
+  const openActionSheet = () => {
+    window.history.pushState({ type: 'modal', name: 'action_sheet', tab: 'allfiles' }, '', '#action-sheet');
+    setActionSheetClosing(false);
+    setActionSheetOpen(true);
+  };
+
+  const closeActionSheet = (callback) => {
+    if (!actionSheetOpenRef.current || actionSheetClosing) return;
+    setActionSheetClosing(true);
+    setTimeout(() => {
+      setActionSheetOpen(false);
+      setActionSheetClosing(false);
+      if (typeof callback === 'function') callback();
+    }, 240);
+    if (window.history.state?.type === 'modal' && window.history.state?.name === 'action_sheet') {
       window.history.back();
     }
   };
@@ -854,7 +900,7 @@ export default function MobileAllFilesView({
       {/* 1. TOP NAVBAR / SELECTION BAR */}
       {isSelectionMode ? (
         <>
-          <header className="fixed top-0 inset-x-0 z-50 bg-[#C2410C] text-white px-4 h-14 flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-200">
+          <header className="fixed top-0 inset-x-0 z-50 bg-[#C2410C] text-white px-4 h-14 flex items-center justify-between shadow-xl animate-selection-bar">
             <div className="flex items-center gap-3">
               <button
                 onClick={clearSelection}
@@ -863,7 +909,7 @@ export default function MobileAllFilesView({
               >
                 <X className="w-5 h-5" />
               </button>
-              <span className="font-semibold text-base font-sans tracking-tight text-white">
+              <span key={selectedFileIds.size} className="inline-block animate-counter-flip font-semibold text-base font-sans tracking-tight text-white">
                 {selectedFileIds.size} dipilih
               </span>
             </div>
@@ -1118,14 +1164,14 @@ export default function MobileAllFilesView({
         {loading ? (
           <MediaGridSkeleton count={8} />
         ) : (
-          <>
+          <div key={activeViewMode} className="animate-view-morph">
             {/* VIEW MODE: LIST (Screenshot 2 Style) */}
             {activeViewMode === 'list' ? (
               <div className="space-y-1">
                 {/* A. Folders List (only when at root) */}
                 {!currentFolder && sortedFolders.length > 0 && (
                   <div className="mb-2">
-                    {sortedFolders.map((folder) => (
+                    {sortedFolders.map((folder, fIdx) => (
                       <div
                         key={folder.id}
                         onClick={() => handleFolderClick(folder)}
@@ -1141,8 +1187,13 @@ export default function MobileAllFilesView({
                             openFolderMenu(folder);
                           }
                         }}
-                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                        className="flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none"
+                        style={{
+                          animationDelay: `${Math.min(fIdx * 25, 400)}ms`,
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none'
+                        }}
+                        className="animate-item-cascade flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none"
                       >
                         <div className="flex items-center gap-3.5 min-w-0 flex-1">
                           {/* Folder Icon Squircle */}
@@ -1180,6 +1231,7 @@ export default function MobileAllFilesView({
                 {/* B. Files List */}
                 {sortedFiles.map((file, idx) => {
                   const isSelected = selectedFileIds.has(file.id);
+                  const delay = Math.min((sortedFolders.length + idx) * 20, 450);
 
                   return (
                     <div
@@ -1197,8 +1249,13 @@ export default function MobileAllFilesView({
                           handleLongPressFile(file);
                         }
                       }}
-                      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                      className={`flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none ${
+                      style={{
+                        animationDelay: `${delay}ms`,
+                        WebkitTouchCallout: 'none',
+                        WebkitUserSelect: 'none',
+                        userSelect: 'none'
+                      }}
+                      className={`animate-item-cascade flex items-center justify-between py-2.5 px-3 rounded-[14px] hover:bg-black/5 dark:hover:bg-[#14141B] active:bg-black/5 dark:active:bg-[#14141B] transition-colors cursor-pointer group select-none ${
                         isSelected ? 'bg-[#FFF7ED] dark:bg-[#25150D] ring-2 ring-[#C2410C]/60' : ''
                       }`}
                     >
@@ -1207,11 +1264,11 @@ export default function MobileAllFilesView({
                         {isSelectionMode && (
                           <div className="shrink-0 pointer-events-none mr-0.5">
                             {isSelected ? (
-                              <div className="w-5 h-5 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-xs">
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <div className="w-5 h-5 rounded-full bg-[#C2410C] text-white flex items-center justify-center shadow-xs animate-check-pop">
+                                <Check className="w-3.5 h-3.5" />
                               </div>
                             ) : (
-                              <div className="w-5 h-5 rounded-full border-2 border-[#CBD5E1] dark:border-[#3F3F46]" />
+                              <div className="w-5 h-5 rounded-full border-2 border-[#CBD5E1] dark:border-[#3F3F46] transition-transform duration-200" />
                             )}
                           </div>
                         )}
@@ -1293,7 +1350,7 @@ export default function MobileAllFilesView({
                 {/* A. Folders Grid (Screenshot 3 top cards, only when at root) */}
                 {!currentFolder && sortedFolders.length > 0 && (
                   <div className="grid grid-cols-2 gap-3">
-                    {sortedFolders.map((folder) => (
+                    {sortedFolders.map((folder, fIdx) => (
                       <div
                         key={folder.id}
                         onClick={() => handleFolderClick(folder)}
@@ -1309,8 +1366,13 @@ export default function MobileAllFilesView({
                             openFolderMenu(folder);
                           }
                         }}
-                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                        className="rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-3 flex flex-col justify-between h-[126px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs"
+                        style={{
+                          animationDelay: `${Math.min(fIdx * 25, 400)}ms`,
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none'
+                        }}
+                        className="animate-item-cascade rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-3 flex flex-col justify-between h-[126px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs"
                       >
                         {/* Top row: folder icon + name + 3 dots */}
                         <div className="flex items-center justify-between gap-1.5">
@@ -1344,6 +1406,7 @@ export default function MobileAllFilesView({
                 <div className="grid grid-cols-2 gap-3">
                   {sortedFiles.map((file, idx) => {
                     const isSelected = selectedFileIds.has(file.id);
+                    const delay = Math.min((sortedFolders.length + idx) * 20, 450);
 
                     return (
                       <div
@@ -1361,8 +1424,13 @@ export default function MobileAllFilesView({
                             handleLongPressFile(file);
                           }
                         }}
-                        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-                        className={`rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-2.5 flex flex-col h-[180px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs relative ${
+                        style={{
+                          animationDelay: `${delay}ms`,
+                          WebkitTouchCallout: 'none',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none'
+                        }}
+                        className={`animate-item-cascade rounded-[18px] bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] p-2.5 flex flex-col h-[180px] cursor-pointer active:scale-[0.98] transition-all hover:border-[#C2410C]/40 dark:hover:border-[#333342] select-none shadow-xs relative ${
                           isSelected ? 'ring-3 ring-[#C2410C] ring-offset-2 dark:ring-offset-[#0B0B0E] scale-[0.97]' : ''
                         }`}
                       >
@@ -1513,7 +1581,7 @@ export default function MobileAllFilesView({
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
@@ -1615,12 +1683,16 @@ export default function MobileAllFilesView({
       {/* 5. ACTION SHEET MODAL: UPLOAD OR BUAT FOLDER */}
       {actionSheetOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-enter"
-          onClick={() => setActionSheetOpen(false)}
+          className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm ${
+            actionSheetClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+          }`}
+          onClick={() => closeActionSheet()}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className={`w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-2xl ${
+              actionSheetClosing ? 'animate-sheet-down' : 'animate-sheet-up'
+            }`}
           >
             <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#2A2A38] mx-auto mb-4" />
             <h3 className="font-semibold text-base text-[#0A0A0A] dark:text-[#FAFAFA] mb-4">
@@ -1631,12 +1703,13 @@ export default function MobileAllFilesView({
               {/* Upload Berkas -> triggers Android Native File Chooser */}
               <button
                 onClick={() => {
-                  setActionSheetOpen(false);
-                  if (directFileInputRef.current) {
-                    directFileInputRef.current.click();
-                  } else if (onOpenUpload) {
-                    onOpenUpload(currentFolder);
-                  }
+                  closeActionSheet(() => {
+                    if (directFileInputRef.current) {
+                      directFileInputRef.current.click();
+                    } else if (onOpenUpload) {
+                      onOpenUpload(currentFolder);
+                    }
+                  });
                 }}
                 className="p-4 rounded-[16px] bg-[#F4F4F6] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#252534] flex flex-col items-center justify-center text-center gap-2 hover:border-[#C2410C]/40 active:scale-95 transition-all"
               >
@@ -1654,8 +1727,9 @@ export default function MobileAllFilesView({
               {/* Buat Folder */}
               <button
                 onClick={() => {
-                  setActionSheetOpen(false);
-                  setCreateModalOpen(true);
+                  closeActionSheet(() => {
+                    setCreateModalOpen(true);
+                  });
                 }}
                 className="p-4 rounded-[16px] bg-[#F4F4F6] dark:bg-[#1A1A24] border border-[#E8E8EC] dark:border-[#252534] flex flex-col items-center justify-center text-center gap-2 hover:border-[#3B82F6]/40 active:scale-95 transition-all"
               >
@@ -1673,7 +1747,7 @@ export default function MobileAllFilesView({
 
             <button
               type="button"
-              onClick={() => setActionSheetOpen(false)}
+              onClick={() => closeActionSheet()}
               className="mt-3 w-full h-10 rounded-[12px] bg-[#F4F4F6] dark:bg-[#181822] text-[13px] font-semibold text-[#8E8E9E] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] active:scale-[0.99]"
             >
               Batal
@@ -1685,12 +1759,16 @@ export default function MobileAllFilesView({
       {/* 5B. POPUP ACTION SHEET UNTUK BERKAS UMUM (ZIP, APK, TAR, DLL) */}
       {genericFileSheet && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-enter"
-          onClick={closeGenericFileSheet}
+          className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm ${
+            genericFileSheetClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+          }`}
+          onClick={() => closeGenericFileSheet()}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className={`w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[24px] p-5 pb-8 shadow-2xl ${
+              genericFileSheetClosing ? 'animate-sheet-down' : 'animate-sheet-up'
+            }`}
           >
             <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#2A2A38] mx-auto mb-4" />
 
@@ -1856,15 +1934,19 @@ export default function MobileAllFilesView({
         </div>
       )}
 
-      {/* 7. FOLDER OPTIONS BOTTOM SHEET (from 3 dots on a folder item) */}
+      {/* 7. FOLDER OPTIONS BOTTOM SHEET (from 3 dots on a folder item or long-press) */}
       {folderMenu && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-enter"
-          onClick={closeFolderMenu}
+          className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm ${
+            folderMenuClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+          }`}
+          onClick={() => closeFolderMenu()}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[20px] px-4 pt-3 pb-7 shadow-modal"
+            className={`w-full max-w-md bg-white dark:bg-[#14141B] border-t border-[#E8E8EC] dark:border-[#22222E] rounded-t-[20px] px-4 pt-3 pb-7 shadow-2xl ${
+              folderMenuClosing ? 'animate-sheet-down' : 'animate-sheet-up'
+            }`}
           >
             <div className="w-10 h-1 rounded-full bg-[#E8E8EC] dark:bg-[#2A2A38] mx-auto mb-4" />
             <div className="flex items-center gap-3 pb-3 mb-2 border-b border-[#E8E8EC] dark:border-[#22222E]">

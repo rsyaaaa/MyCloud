@@ -693,12 +693,12 @@ export default function AdminHomeDashboard() {
                               {percent}%
                             </span>
                           </div>
-                          <div className="w-full bg-[#E8E8EC] dark:bg-[#1F1F27] h-2.5 rounded-full overflow-hidden">
+                          <div className="w-full bg-[#E8E8EC] dark:bg-[#1F1F27] h-2.5 rounded-full overflow-hidden shadow-inner">
                             <div
-                              className={`h-full transition-all duration-300 rounded-full ${
+                              className={`h-full transition-all duration-300 rounded-full animate-transfer-stripes ${
                                 isUpload
-                                  ? 'bg-gradient-to-r from-[#C2410C] to-[#EA580C]'
-                                  : 'bg-gradient-to-r from-[#2563EB] to-[#60A5FA]'
+                                  ? 'bg-[#C2410C]'
+                                  : 'bg-[#2563EB]'
                               }`}
                               style={{ width: `${Math.max(2, percent)}%` }}
                             />

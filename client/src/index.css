@@ -77,66 +77,459 @@
   background: #C2410C;
 }
 
-/* Button & Interactive Animations */
-button, a, input, select {
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+/* Fluid Material You Touch Feedback & Motion Variables */
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-bounce-in: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-button:active:not(:disabled), a:active {
-  transform: scale(0.98);
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Genesis Component Classes */
+button, a, input, select, [role="button"], .interactive-tap {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              background-color 0.18s cubic-bezier(0.2, 0, 0, 1), 
+              border-color 0.18s cubic-bezier(0.2, 0, 0, 1), 
+              box-shadow 0.22s cubic-bezier(0.2, 0, 0, 1), 
+              opacity 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active:not(:disabled), a:active:not([disabled]), [role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.93) !important;
+}
+
+/* Genesis Component Classes with Fluid Physics */
 .btn-primary {
-  @apply bg-[#C2410C] text-white font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#EA580C] hover:shadow-[0_4px_12px_rgba(194,65,12,0.35)] hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-[#C2410C] text-white font-medium text-[14px] px-4 py-2 rounded-[10px] hover:bg-[#EA580C] hover:shadow-[0_4px_16px_rgba(194,65,12,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-secondary {
-  @apply bg-transparent text-[#0A0A0A] dark:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#252532] font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#F4F4F5] dark:hover:bg-[#1A1A24] hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-transparent text-[#0A0A0A] dark:text-[#FAFAFA] border border-[#E8E8EC] dark:border-[#252532] font-medium text-[14px] px-4 py-2 rounded-[10px] hover:bg-[#F4F4F5] dark:hover:bg-[#1A1A24] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .btn-ghost {
-  @apply bg-transparent text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#1A1A24] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] px-3 py-2 rounded-[6px] transition-all inline-flex items-center justify-center gap-2 select-none text-[14px];
+  @apply bg-transparent text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#F4F4F5] dark:hover:bg-[#1A1A24] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] px-3 py-2 rounded-[10px] transition-all inline-flex items-center justify-center gap-2 select-none text-[14px];
 }
 
 .btn-destructive {
-  @apply bg-[#EF4444] text-white font-medium text-[14px] px-4 py-2 rounded-[6px] hover:bg-[#DC2626] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
+  @apply bg-[#EF4444] text-white font-medium text-[14px] px-4 py-2 rounded-[10px] hover:bg-[#DC2626] hover:shadow-[0_4px_16px_rgba(239,68,68,0.4)] transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 select-none;
 }
 
 .input-artisan {
-  @apply bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#262633] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C] rounded-[6px] px-3.5 h-[38px] text-[14px] focus:border-[#C2410C] focus:ring-[3px] focus:ring-[#C2410C]/15 focus:outline-none transition-all disabled:bg-[#F4F4F5] dark:disabled:bg-[#101016] disabled:opacity-50;
+  @apply bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#262633] text-[#0A0A0A] dark:text-[#FAFAFA] placeholder-[#9C9C9C] rounded-[10px] px-3.5 h-[40px] text-[14px] focus:border-[#C2410C] focus:ring-[4px] focus:ring-[#C2410C]/20 focus:outline-none transition-all disabled:bg-[#F4F4F5] dark:disabled:bg-[#101016] disabled:opacity-50;
 }
 
 .chip-filter {
-  @apply h-[30px] px-3 rounded-full border border-[#E8E8EC] dark:border-[#242430] text-[12px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[#F4F4F5] dark:bg-[#16161F] text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#E8E8EC] dark:hover:bg-[#20202B] hover:text-[#0A0A0A] dark:hover:text-white select-none;
+  @apply h-[32px] px-3.5 rounded-full border border-[#E8E8EC] dark:border-[#242430] text-[12px] font-medium inline-flex items-center gap-1.5 transition-all cursor-pointer bg-[#F4F4F5] dark:bg-[#16161F] text-[#6B6B6B] dark:text-[#A1A1AA] hover:bg-[#E8E8EC] dark:hover:bg-[#20202B] hover:text-[#0A0A0A] dark:hover:text-white select-none active:scale-95;
 }
 
 .chip-filter-active {
-  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#EA580C] hover:text-white dark:bg-[#C2410C] dark:border-[#C2410C];
+  @apply bg-[#C2410C] text-white border-[#C2410C] hover:bg-[#EA580C] hover:text-white dark:bg-[#C2410C] dark:border-[#C2410C] shadow-sm;
 }
 
 .card-artisan {
-  @apply bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] rounded-[14px] transition-all duration-200 hover:-translate-y-[2px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:border-[#353545];
+  @apply bg-white dark:bg-[#14141B] border border-[#E8E8EC] dark:border-[#22222E] rounded-[14px] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_10px_32px_rgba(0,0,0,0.08)] dark:hover:border-[#353545];
 }
 
 .card-elevated {
-  @apply bg-white dark:bg-[#171720] border border-[#E8E8EC] dark:border-[#252532] rounded-[14px] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all;
+  @apply bg-white dark:bg-[#171720] border border-[#E8E8EC] dark:border-[#252532] rounded-[14px] hover:shadow-[0_10px_32px_rgba(0,0,0,0.08)] transition-all;
 }
 
-/* Fluid Page and Modal Animations */
-@keyframes fadeInScale {
+/* ==============================================================================
+   Android 17 & Google Drive Motion Keyframes
+   ============================================================================== */
+
+/* 1. Page and Modal Fluid Fade-Slide */
+@keyframes pageFadeSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-enter, .animate-page-enter {
+  animation: pageFadeSlide 0.32s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 2. Staggered Entrance Animations */
+@keyframes staggerSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-stagger-1 { animation: staggerSlideUp 0.3s cubic-bezier(0.05, 0.7, 0.1, 1) 0.04s forwards; }
+.animate-stagger-2 { animation: staggerSlideUp 0.3s cubic-bezier(0.05, 0.7, 0.1, 1) 0.08s forwards; }
+.animate-stagger-3 { animation: staggerSlideUp 0.3s cubic-bezier(0.05, 0.7, 0.1, 1) 0.12s forwards; }
+.animate-stagger-4 { animation: staggerSlideUp 0.3s cubic-bezier(0.05, 0.7, 0.1, 1) 0.16s forwards; }
+
+/* 3. Checkbox Pop Animation */
+@keyframes checkPop {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-35deg);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.22) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+.animate-check-pop {
+  animation: checkPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 4. Heart Favorite Explosion */
+@keyframes heartPop {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.45);
+  }
+  50% {
+    transform: scale(0.88);
+  }
+  75% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-heart-pop {
+  animation: heartPop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform;
+}
+
+/* 5. Item Deletion Smooth Collapse */
+@keyframes itemDelete {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 240px;
+    margin-bottom: inherit;
+  }
+  35% {
+    opacity: 0.4;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+    overflow: hidden;
+  }
+}
+.animate-item-delete {
+  animation: itemDelete 0.36s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity, max-height;
+}
+
+/* 6. Folder Morphing Expand */
+@keyframes folderExpand {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+.animate-folder-enter {
+  animation: folderExpand 0.28s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 7. Bottom Navigation Tab Icon Bounce */
+@keyframes tabBounce {
+  0% {
+    transform: scale(0.82);
+  }
+  50% {
+    transform: scale(1.26);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-tab-bounce {
+  animation: tabBounce 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform;
+}
+
+/* 8. Contextual Action Bar Slide-Down */
+@keyframes selectionBarSlideDown {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-selection-bar {
+  animation: selectionBarSlideDown 0.26s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 9. Counter Badge Number Flip */
+@keyframes counterFlip {
+  0% {
+    transform: translateY(-8px) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(2px) scale(1.15);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.animate-counter-flip {
+  animation: counterFlip 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 10. Bottom Sheet Fluid Slide-Up & Slide-Down */
+@keyframes sheetSlideUp {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.animate-sheet-up {
+  animation: sheetSlideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  will-change: transform;
+}
+
+@keyframes sheetSlideDown {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+}
+.animate-sheet-down {
+  animation: sheetSlideDown 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 10b. Drawer Slide Left Transitions */
+@keyframes drawerSlideInLeft {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.animate-drawer-in-left {
+  animation: drawerSlideInLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform;
+}
+
+@keyframes drawerSlideOutLeft {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+.animate-drawer-out-left {
+  animation: drawerSlideOutLeft 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  will-change: transform;
+}
+
+/* 11. Modal Spring Pop-In & Pop-Out (Avatar / Dialog) */
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(12px);
+  }
+  60% {
+    transform: scale(1.03) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-modal-pop {
+  animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes modalPopOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+}
+.animate-modal-pop-out {
+  animation: modalPopOut 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 11b. View Morph Animation (Grid <-> List transition) */
+@keyframes viewMorph {
   0% {
     opacity: 0;
     transform: scale(0.97);
   }
   100% {
     opacity: 1;
-    transform: none;
+    transform: scale(1);
   }
 }
+.animate-view-morph {
+  animation: viewMorph 0.28s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+  will-change: transform, opacity;
+}
 
-.animate-enter {
-  animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* 11c. Progressive Staggered Item Cascade (Google Photos/Drive style) */
+@keyframes itemCascade {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-item-cascade {
+  animation: itemCascade 0.35s cubic-bezier(0.05, 0.7, 0.1, 1) both;
+  will-change: transform, opacity;
+}
+
+/* 12. Refresh Wave Pulse */
+@keyframes refreshPulse {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(3px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-refresh-pulse {
+  animation: refreshPulse 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 13. Image Blur-Up Progressive Reveal */
+@keyframes imageBlurUp {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+.animate-blur-up {
+  animation: imageBlurUp 0.32s cubic-bezier(0.05, 0.7, 0.1, 1) forwards;
+  will-change: filter, opacity, transform;
+}
+
+/* 14. Vault PIN Dot Bounce */
+@keyframes pinDotBounce {
+  0% {
+    transform: scale(0.7);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pin-bounce {
+  animation: pinDotBounce 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform;
+}
+
+/* 15. Wrong PIN Shake Vibration */
+@keyframes pinShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(5px); }
+}
+.animate-shake {
+  animation: pinShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+  will-change: transform;
+}
+
+/* 16. Animated Transfer Striped Gradient */
+@keyframes moveStripes {
+  0% { background-position: 0 0; }
+  100% { background-position: 36px 0; }
+}
+.animate-transfer-stripes {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.2) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.2) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 18px 18px;
+  animation: moveStripes 1s linear infinite;
+}
+
+/* 17. Haptic Squeeze for Long Press */
+.haptic-squeeze {
+  transform: scale(0.95);
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Mobile Media Detail View Zoom In / Zoom Out Animations */

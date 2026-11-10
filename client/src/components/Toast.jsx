@@ -24,15 +24,15 @@ export default function Toast({ toasts, onDismiss }) {
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto border ${borderClass} ${bgClass} p-3.5 rounded-[8px] shadow-lg flex items-start gap-3 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200`}
+            className={`pointer-events-auto border ${borderClass} ${bgClass} p-3.5 rounded-[16px] shadow-2xl flex items-start gap-3 transition-all animate-modal-pop`}
           >
             {icon}
-            <div className="flex-1 text-[14px] leading-relaxed text-[#0A0A0A] dark:text-[#FAFAFA]">
+            <div className="flex-1 text-[13px] font-medium leading-relaxed text-[#0A0A0A] dark:text-[#FAFAFA]">
               {toast.message}
             </div>
             <button
               onClick={() => onDismiss(toast.id)}
-              className="text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] p-0.5 rounded transition-colors"
+              className="text-[#6B6B6B] dark:text-[#9C9C9C] hover:text-[#0A0A0A] dark:hover:text-[#FAFAFA] p-1 rounded-full active:scale-90 transition-transform"
             >
               <X className="w-4 h-4" />
             </button>

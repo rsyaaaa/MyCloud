@@ -590,7 +590,7 @@ export default function AllFilesPage({
         </div>
       ) : viewMode === 'list' ? (
         /* Table / List View */
-        <div className="bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] overflow-hidden shadow-sm">
+        <div key="allfiles-list" className="animate-view-morph bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] overflow-hidden shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-[#E8E8EC] dark:border-[#1F1F27] bg-[#FAFAFA] dark:bg-[#121218] text-[11px] font-mono uppercase tracking-wider text-[#6B6B6B] dark:text-[#9C9C9C]">
@@ -678,7 +678,7 @@ export default function AllFilesPage({
         </div>
       ) : (
         /* Grid View */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div key="allfiles-grid" className="animate-view-morph grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {files.map((file, idx) => (
             <MediaCard
               key={file.id}

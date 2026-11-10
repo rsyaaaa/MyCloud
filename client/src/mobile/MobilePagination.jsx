@@ -38,10 +38,13 @@ export default function MobilePagination({
                   <span className="text-[#9C9C9C] text-[11px] px-0.5">…</span>
                 )}
                 <button
-                  onClick={() => onPageChange(p)}
-                  className={`w-7 h-7 rounded-[6px] text-[12px] font-mono font-semibold transition-colors flex items-center justify-center ${
+                  onClick={() => {
+                    onPageChange(p);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`w-8 h-8 rounded-[8px] text-[12px] font-mono font-semibold transition-transform duration-200 active:scale-90 flex items-center justify-center ${
                     p === currentPage
-                      ? 'bg-[#C2410C] text-white border border-[#C2410C] shadow-primary-glow'
+                      ? 'bg-[#C2410C] text-white border border-[#C2410C] shadow-md scale-105'
                       : 'bg-white dark:bg-[#0A0A0E] text-[#6B6B6B] dark:text-[#9C9C9C] border border-[#E8E8EC] dark:border-[#1F1F27] hover:bg-[#FFF7ED] dark:hover:bg-[#2A1208]'
                   }`}
                 >

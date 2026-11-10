@@ -13,6 +13,16 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleSafeClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 220);
+  };
 
   if (!isOpen || user?.role === 'admin') return null;
 
@@ -84,10 +94,17 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+    <div
+      onClick={handleSafeClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 ${
+        isClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'
+      }`}
+    >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[12px] p-5 shadow-modal text-[#0A0A0A] dark:text-[#FAFAFA] animate-enter"
+        className={`w-full max-w-sm bg-white dark:bg-[#0A0A0E] border border-[#E8E8EC] dark:border-[#1F1F27] rounded-[20px] p-5 shadow-2xl text-[#0A0A0A] dark:text-[#FAFAFA] ${
+          isClosing ? 'animate-modal-pop-out' : 'animate-modal-pop'
+        }`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-[#E8E8EC] dark:border-[#1F1F27] mb-4">
           <div className="flex items-center gap-2">
@@ -95,7 +112,7 @@ export default function AvatarModal({ isOpen, onClose, onUpdated }) {
             <h3 className="font-serif font-bold text-lg">{t('changeAvatar', 'Ganti Foto Profil')}</h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleSafeClose}
             className="p-1 rounded text-[#6B6B6B] hover:text-[#0A0A0A] dark:text-[#9C9C9C] dark:hover:text-white"
           >
             <X className="w-5 h-5" />
